@@ -165,11 +165,12 @@ module.exports = {
     Profile:    {
         config:     {
             name:        'profile',
-            scheme:      '/\\b(([\\w_-]|\.(?!html?|je?pg|png|pdf))+|profile)\\b/',
+            scheme:      '/(([\\w_-]|\\.(?!html?|je?pg|pdf|gif|svg|ico|png|(doc|xls|ppt)x?))+|profile)/',
             title:       'Profile Page',
             description: 'Displaying User Profiles',
             accessor:     false,
             restrict:    { true: null, false: 'login' },
+            errorIF:     (ret) => (Object.keys(ret).length==0),
             page:        {
                 title:      (path,usr,pay) => `Profile | ${Object.values((pay||{}).name||[]).join(' ')}`,
                 CSS:        ['style'],

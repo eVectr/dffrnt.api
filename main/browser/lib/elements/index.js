@@ -1,8 +1,8 @@
 
 'use strict';
 
-module.exports = function (COMPS) {
-	require("./lib/stock"	)(COMPS);
-	require("./lib/explorer")(COMPS);
-	require("./lib/evectr"	)(COMPS);
+module.exports = function (COMPS, LID) {
+	require("./lib/stock"	)(COMPS, LID);
+	require("./lib/explorer")(COMPS, LID);
+	require("./lib/evectr"	)(COMPS, LID);
 }

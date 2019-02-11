@@ -5,9 +5,9 @@ module.exports = {
 	Data:  [
 		function (path, req) { return {}; },
 	],
-	Build: function (Actions, Stores) {
+	Build: function (Actions, Stores, LID) {
 		return function (res) {
-			Stores.App.singleton.updateStore({
+			Stores.Apps[LID].singleton.updateStore({
 				page: 		1,
 				styles: 	'',
 				content: 	{

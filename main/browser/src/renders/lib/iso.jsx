@@ -1,6 +1,6 @@
 'use strict';
 
-module.exports = (function ISO(global, space, REST, user, path) {
+module.exports = (function ISO(global, space, REST, user, path, LID) {
 
 
 	////////////////////////////////////////////////////////////////////////
@@ -14,7 +14,7 @@ module.exports = (function ISO(global, space, REST, user, path) {
 		const   React 	= require('react');
 		const	Reflux 	= require('reflux');
 		const  Actions 	= require('../../actions')(Reflux);
-		const   COMPS	= require('./components')(global, Reflux, Actions);
+		const   COMPS	= require('./components')(global, Reflux, Actions, null, LID);
 		const RDOMServ 	= require('react-dom/server');
 		const  Stores	= COMPS.Stores;
 		const  Spaces	= {
@@ -24,41 +24,47 @@ module.exports = (function ISO(global, space, REST, user, path) {
 		const    App	= React.createFactory(COMPS.Elements[TC(PAGE.main)].App);
 		const   Data	= Spaces.Page.Data[0].bind(REST)(path);
 		const   Build	= {
-			Auth: Spaces.Auth.Build(Actions, Stores),
-			Page: Spaces.Page.Build(Actions, Stores),
+			Auth: Spaces.Auth.Build(Actions, Stores, LID),
+			Page: Spaces.Page.Build(Actions, Stores, LID),
 		};
+		const  Merger   = function Merger(data, res) {
+			let dta = Imm.fromJS(data), mrg = Imm.fromJS(res);
+			return dta.mergeDeepWith((o,n) => { 
+				return ((IS(n)=='socket')?(o||null):n);
+			}, 	mrg).toJS();
+		}
 
-		Reflux.initStore(Stores.App);
+		Reflux.initStore(Stores.App(LID));
 		Reflux.initStore(Stores.Data);
 
-		const   Single	= Stores.App.singleton;
+		const   Single	= Stores.Apps[LID].singleton;
 		const   State	= Single.state;
-
-		// Build.Page(Data, TITLE);
-
 		const   Styles	= State.style.replace(/\n */g,' ');
 
 		return {
 			Styles:	Styles,
 			HTML: 	'',
-			State: 	Single.state,
+			State: 	State,
 			Call: 	Spaces.Page.Call,
-			Auth: 	function (title) {
+			Auth: 	function Auth(title) {
 				global.TITLE  = title; 
 				Single.reset();
 				Build.Auth(user, TITLE);
 			},
 			Render: function (Build, Data) {
 				return function Render(res) {
-					Build.Page(res||Data, TITLE);
+					Build.Page(Merger(Data,res), TITLE);
 					return RDOMServ.renderToString(App());
 				}.bind(this)
 			}(Build, Data),
-			Build: 	function (Build, Data, App) {
+			Build: 	function (Build, Data, Single) {
 				return function Builder(res) {
-					Build.Page(res||Data, TITLE);
-					return App.singleton.state;
+					Build.Page(Merger(Data,res), TITLE);
+					return Single.state;
 				}.bind(this)
-			}(Build, Data, Stores.App)
+			}(Build, Data, Single),
+			Clear:  function Clear(LID) {
+				delete Stores.Apps[LID];
+			},
 		};
 });

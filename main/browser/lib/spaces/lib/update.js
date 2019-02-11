@@ -5,41 +5,58 @@ module.exports = {
 	Data:  [
 		function (path, req) { 
 			return   {
-				"user_id": 0,
-				"display_name": "",
-				"email_address": "",
-				"name": { "first": "", "last": "" },
-				"photos": {
-					"profile": "",
-					"cover": ""
+				"user_id": null,
+				"display_name": null,
+				"email_address": null,
+				"name": { "first": null, "last": null },
+				"birth_date": null,
+				"photos": { "profile": null, "cover": null },
+				"location": {
+					"id": null,
+					"label": "",
+					"codes": { "region": "", "country": "" }
 				},
 				"details": {
-					"hobbies": null,
-					"languages": null,
-					"nationalities": null,
-					"religion": null,
+					"hobbies": 		 [],
+					"languages": 	 [],
+					"nationalities": [],
+					"religion": 	 null,
 					"identity": {
-						"sex": null,
-						"marital": null,
-						"gender": null,
-						"orient": null,
+						"sex": 		null,
+						"marital": 	null,
+						"gender": 	null,
+						"orient": 	null
 					},
 					"misc": {
 						"description": null,
-						"education": {
-							"institutions": null,
-							"description": null
-						}
+						"education": { "institutions": null, "description": null }
 					}
 				},
-				"location": {
-					"id": 0, "label": "",
-					"codes": { "region": "", "country": "" }
-				},
+				"provider_id": null,
 				"services": [],
-				"checks": { "verified": 0, "status": 0, },
-				"birth_date": "",
-				"member_since": "",
+				"settings": {
+					"email": 	  null,
+					"timezone":   null,
+					"language":   null,
+					"visibility": {
+						"items": [],
+						"value": 0
+					},
+					"modes": 	  { 
+						"admin": 		 0, 
+						"transactional": 0, 
+						"provider": 	 0 
+					}
+				},
+				"checks": { 
+					"tour_done": 	0,
+					"status": 		0, 
+					"verified": 	0, 
+					"identified": 	0, 
+					"accredited": 	0, 
+					"rating": 		null
+				},
+				"member_since": null
 			};
 		},
 	],
@@ -48,12 +65,15 @@ module.exports = {
 			method:	'GET',
 			path: 	'/user',
 			params: { uids: user.Scopes.user_id },
-			query:	Assign({},{single:true,links:true},query||{}),
+			query:	Assign({},{
+						uuid: user.Scopes.user_id,
+						single:true,links:true,
+					}, query||{}),
 			body:	body||{},
 			files:	files||[]
 		};
 	},
-	Build: function (Actions, Stores) {
+	Build: function (Actions, Stores, LID) {
 		var THS = this;
 		return function (res) {
 			var PNL 	= { from: 'Evectr', name: ['Content','Panel'] },
@@ -61,6 +81,7 @@ module.exports = {
 				SBMT 	= { from: 'Evectr', name: ['Form','Button'] },
 				BR  	= { tag: 'br' },
 				HR  	= { tag: 'hr', props: { className: 'MTB spread' } },
+				FLT 	= function FLT(v) { return !!v },
 				SUBMIT 	= function SUBMIT(label, style, start, size) { 
 					return {	
 						tag:	'div',
@@ -79,11 +100,11 @@ module.exports = {
 				dta 	= Imm.fromJS(THS.Data[0]()),
 				mrg 	= Imm.fromJS(res);
 			// -----
-			res = dta.mergeDeepWith(
-				function(o,n,k) { 
-					return (IS(n)=='socket'?o||null:n);
-				}, 	mrg
-			).toJS();
+			// res = dta.mergeDeepWith(
+				// function(o,n,k) { 
+					// return (IS(n)=='socket'?o||null:n);
+				// }, 	mrg
+			// ).toJS();
 			// -----
 			var photos 			= res.photos||{},
 				details 		= res.details||{},
@@ -114,11 +135,8 @@ module.exports = {
 						{ value: 'R', label: 'In a Relationship' },
 					],
 				};
-
-			function fnull(v) { return !!v; }
-
 			// -----
-			return Stores.App.singleton.updateStore({
+			return Stores.Apps[LID].singleton.updateStore({
 				header:		{
 					title: 	{
 						cover: 	photos.cover,
@@ -258,7 +276,7 @@ module.exports = {
 												}]	},
 										]}	}, 
 										HR, SUBMIT('Update Info'),
-									].filter(fnull),		
+									].filter(FLT),		
 								},
 							}, { // ABOUT ME
 								tag:	{ from: 'Evectr', name: ['Content','Panel'] },
@@ -300,7 +318,7 @@ module.exports = {
 															tag:	{ from: 'Evectr', name: ['Form','Xput'] },
 															props:	{
 																id: 		'user-hobbies',
-																name:		'eHIDs',
+																name:		'HIDs',
 																icon:		'futbol',
 																placeholder:'Add some Hobbies',
 																tokens:		 hobbies,
@@ -313,10 +331,12 @@ module.exports = {
 																],
 																more: 		['Casual'],
 																data:		{
-																	id:   'user-hobbies-sgst', 
-																	url:  '/search/for/hobbies',
-																	list: '/get/hobbies',
+																	id:   		'user-hobbies-sgst', 
+																	url:  		'/search/for/hobbies',
+																	list: 		'/get/hobbies',
+																	context:     true,
 																},
+																remove:		 true,
 																help:		{ text: [{ tag: 'p', items: [
 																	'Please input a list of your hobbies in order of preference. Your favorite should be first, followed by your second-favorite, and so forth.'
 																]}]	},
@@ -336,20 +356,22 @@ module.exports = {
 															tag:	{ from: 'Evectr', name: ['Form','Xput'] },
 															props:	{
 																id: 		'user-lang',
-																name:		'eLGIDs',
+																name:		'LGIDs',
 																icon:		'language',
 																placeholder:'Add your Language(s)',
-																tokens:		 languages,
+																tokens:		 languages||[],
 																strict: 	 true,
+																remove:		 true,
 																levels:		[
 																	{K:'A1',V:1}, {K:'A2',V:2}, 
 																	{K:'B1',V:3}, {K:'B2',V:4}, 
 																	{K:'C1',V:5}, {K:'C2',V:6}
 																],
 																data:		{
-																	id:   'user-lang-sgst', 
-																	url:  '/search/for/languages',
-																	list: '/get/languages',
+																	id:   		'user-lang-sgst', 
+																	url: 		'/search/for/languages',
+																	list: 		'/get/languages',
+																	context:     true,
 																},
 																help:		{ text: [
 																	{ tag:  'p', items: ['You can input more than one language in this selection should you choose, but please use the format below:'] },
@@ -368,19 +390,21 @@ module.exports = {
 															tag:	{ from: 'Evectr', name: ['Form','Xput'] },
 															props:	{
 																id: 		'user-nations',
-																name:		'eNIDs',
+																name:		'NIDs',
 																icon:		'flag',
 																placeholder:[
 																	'Add your Nationality',
 																	'Add a Secondary Nationality',
 																],
 																limit:		 2,
-																tokens:		 nationalities,
+																tokens:		 nationalities||[],
 																strict: 	 true,
+																remove:		 true,
 																data:		{
-																	id:   'user-nations-sgst', 
-																	url:  '/search/for/nationalities',
-																	list: '/get/nationalities',
+																	id:   		'user-nations-sgst', 
+																	url:  		'/search/for/nationalities',
+																	list: 		'/get/nationalities',
+																	context:     true,
 																},
 																help:		{ text: [
 																	{ tag:  'p', items: ['You can input a combination of two nationalities for instances where immigration or dual nationalities come into play.However, please input your primary identity as your nationality first, followed by a comma (,) then your secondary nationality.For example, Chinese-Americans would:'] },
@@ -399,11 +423,11 @@ module.exports = {
 															tag:	{ from: 'Evectr', name: ['Form','Xput'] },
 															props:	{
 																id: 		'user-religion',
-																name:		'eRID',
+																name:		'RID',
 																icon:		'hand-peace',
 																placeholder:'Religion',
 																limit:		 1,
-																tokens:		[religion],
+																tokens:		[religion].filter(FLT),
 																strict: 	 true,
 																data:		{
 																	id:   'user-religion-sgst', 
@@ -425,15 +449,15 @@ module.exports = {
 																name:		'Sex',
 																icon:		'transgender-alt',
 																title:		'Sex',
-																options:	selects.sex,
-																value:		sex,
-																input:			{
+																options:	 selects.sex,
+																value:		 sex,
+																input:		{
 																	kind: 		'tokens',
 																	id: 		'user-orient',
-																	name:		'eGID',
+																	name:		'GID',
 																	placeholder:'Orientation',
 																	limit:		 1,
-																	tokens:		[orient],
+																	tokens:		[orient].filter(FLT),
 																	strict: 	 true,
 																	data:		{
 																		id:   'user-orient-sgst', 
@@ -496,7 +520,7 @@ module.exports = {
 												]
 											}
 										}, HR, SUBMIT('Update Profile','norm')
-									].filter(fnull),		
+									].filter(FLT),		
 								},
 							},
 						],

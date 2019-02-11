@@ -1,6 +1,6 @@
 'use strict';
 
-module.exports = function Comps(global, Reflux, Actions, IOs) {
+module.exports = function Comps(global, Reflux, Actions, IOs, LID) {
 
 
 	////////////////////////////////////////////////////////////////////////
@@ -36,7 +36,7 @@ module.exports = function Comps(global, Reflux, Actions, IOs) {
 	////////////////////////////////////////////////////////////////////////
 	// COMPONENTS ----------------------------------------------------------
 
-		require('../../elements')(COMPS);
+		require('../../elements')(COMPS, LID); 
 
 		const App = COMPS.Elements[TC(PAGE.main)].App;
 

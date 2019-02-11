@@ -17,10 +17,13 @@ module.exports = {
 			files:	 files||[]
 		};
 	},
-	Build: function (Actions, Stores) {
+	Build: function (Actions, Stores, LID) {
 		return function (res) {
 			// -----
-			return Stores.App.singleton.updateStore({
+
+			console.log('PAGE: Static')
+
+			return Stores.Apps[LID].singleton.updateStore({
 				content: 	{
 					built: 		true,
 					segments: 	{

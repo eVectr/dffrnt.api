@@ -5,9 +5,9 @@ module.exports = {
 	Data:  [
 		function (path, req) { return {}; },
 	],
-	Build: function (Actions, Stores) {
+	Build: function (Actions, Stores, LID) {
 		return function (res) {
-			Stores.App.singleton.updateStore({
+			return Stores.Apps[LID].singleton.updateStore({
 				content: 	{
 					built: 		true,
 					segments: 	{
@@ -28,7 +28,7 @@ module.exports = {
 						}],
 					}
 				},
-			});
-		}
+			}, 	true);
+		};
 	}
 }

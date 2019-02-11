@@ -29,7 +29,7 @@ module.exports = function (Reflux, Actions, Spaces, IOs) {
 			if (!!IOs && !!IOs.IO) {
 				IOs.Socket = IOs.IO(`${NMESPC.host}/${NMESPC.name}`);
 				if (!!IOs.Socket) {
-					Reflux.initStore(Stores.App);
+					Reflux.initStore(Stores.App(LOCKER));
 					Reflux.initStore(Stores.Nav);
 					Reflux.initStore(Stores.Content);
 					Reflux.initStore(Stores.Data);
@@ -37,11 +37,11 @@ module.exports = function (Reflux, Actions, Spaces, IOs) {
 					IOs.Socket.on('connect', 		Actions.Content.setup);
 					IOs.Socket.on('build', 	 		Actions.Content.build);
 					IOs.Socket.on('receive', 		Actions.Data.receive);
-					// IOs.Socket.on('uploaded', 		Actions.Data.receive);
-					// ?????
-						// Socket.on('connet_error', 	SockConnErr);
-						// Socket.on('connect_timeout',SockConnErr);
-						// Socket.on('error', 			SockConnErr);
+						// IOs.Socket.on('uploaded', 		Actions.Data.receive);
+						// ?????
+							// Socket.on('connet_error', 	SockConnErr);
+							// Socket.on('connect_timeout',SockConnErr);
+							// Socket.on('error', 			SockConnErr);
 				}
 			}
 		}
@@ -64,184 +64,176 @@ module.exports = function (Reflux, Actions, Spaces, IOs) {
 	// STORES ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
 		const Stores = { 
-			App: null, Nav: null, Content: null, Data: null, 
+			Apps: {}, App: null, Nav: null, Content: null, Data: null, 
 			Run: { Access: runAccess, Socket: runSocket },
 			ISO: {}, 
 		};
 
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////
-		// STORE.DEFAULT ////////////////////////////////////////////////////////////////////////////////////////
-
-			class AppMix extends Reflux.Store {
-
-				constructor			(defaults) {
-					super(); this.temps = defaults;
-					this.state = this.setInitialState(defaults);
-				}
-
-				setInitialState 	(defaults) {
-					var dflts = FromJS(defaults),
-						inits = FromJS(Stores.ISO),
-						state = dflts.mergeDeep(inits);
-					return state.toJS();
-				}
-
-				updateStore 		(value, receive) {
-					this.secretlyUpdateStore(value);
-					if (!!receive) return this.state;
-				}
-				secretlyUpdateStore (value) {
-					let state, imval = FromJS(value||{});
-					state = FromJS(this.state).mergeDeep(imval);
-					this.setState(state.toJS());
-				}
-
-				reset() { this.state = this.temps; }
-
-			}
-
-		/////////////////////////////////////////////////////////////////////////////////////////////////////////
 		// STORE.APP     ////////////////////////////////////////////////////////////////////////////////////////
-			Stores.App 		= class extends AppMix {
-
-				constructor		() {
-					super({
-						ready: 		function () {
-							var Store = Stores.App.singleton.state,
-								Chekd = !!Store.header.checked,
-								Built = !!Store.content.built,
-								Ident = !!Store.header.identified,
-								Pause = !!Store.paused;
-							return (Chekd && Built && !(!Ident && Pause));
-						},
-						status: 	1, // 1 = Welcome, 2 = Login, 3 = Expired, 4 = Disconnected
-						paused: 	false,
-						progress: 	0,
-						page: 		{ num: 0, pth: [] },
-						style: 		'',
-						header: 		{
-							title:		'',
-							checked: 	true,
-							identified: false,
-							user: 		{
-								Account: '--{{ACCOUNT}}--',
-								Profile: {
-									Photo: 	 '--{{PHOTO}}--',
-									Name: 	 { 
-										First: 	'--{{NAME.FIRST}}--', 
-										Last: 	'--{{NAME.LAST}}--' 
-									},
-									Age: 	 0,
-									Sex: 	'I',
-									Email: 	'--{{EMAIL}}--', 
-									Location: 	{ 
-										City: 	'--{{LOCATION.CITY}}--', 
-										Region: '--{{LOCATION.REGION}}--', 
-										Country:'--{{LOCATION.COUNTRY}}--' 
-									}
+			Stores.App 		= function App(LID) {
+				if (!!!Stores.Apps[LID]) {
+					Stores.Apps[LID] = class extends Reflux.Store {
+						constructor		() {
+							super(); let defaults = {
+								ready: 		function () {
+									var Store = Stores.Apps[LID].singleton.state,
+										Chekd = !!Store.header.checked,
+										Built = !!Store.content.built,
+										Ident = !!Store.header.identified,
+										Pause = !!Store.paused;
+									return (Chekd && Built && !(!Ident && Pause));
 								},
-								Scopes:  {},
-								Token: 	 null
-							},
-							messages:	{},
-							alerts:		{},
-							admin:		{},
-							searches: 	[],
-						},
-						content: 	{ built: false, nav: {}, buttons: {}, forms: {} },
-						footer: 	{
-							credits: 	{
-								author:  'Arian Johnson',
-								company: 'eVectr Inc.',
-								website: 'eVectr.com',
-								contact: 'arian.johnson@evectr.com'
-							},
-							chats:		[
-								{kind:'user',name:{First:  'Arian',Last:  'Johnson'}},
-								{kind:'user',name:{First: 'Darren',Last:      'Sun'}},
-								{kind:'user',name:{First:   'Marc',Last:   'Djoudi'}},
-								{kind:'user',name:{First:  'Sarah',Last:'Jefferson'}},
-								{kind:'user',name:{First:'Ricardo',Last:     'Mora'}},
-								{kind:'user',name:{First:   'Sean',Last:      'Kim'}},
-								{kind:'user',name:{First:  'Yosef',Last: 'Ben Zaid'}},
-								{kind:'user',name:{First: 'Farhan',Last:   'Bhatti'}},
-								{kind:'user',name:{First:'Rodrigo',Last:    'Lopez'}},
-								{kind:'user',name:{First:'Pritesh',Last:    'Patel'}},
-							]
-						},
-					});
-					this.listenables = [Actions.App];
-				}
+								status: 	1, // 1 = Welcome, 2 = Login, 3 = Expired, 4 = Disconnected
+								paused: 	false,
+								progress: 	0,
+								page: 		{ num: 0, pth: [] },
+								style: 		'',
+								header: 		{
+									title:		'',
+									checked: 	true,
+									identified: false,
+									user: 		{
+										Account: '--{{ACCOUNT}}--',
+										Profile: {
+											Photo: 	 '--{{PHOTO}}--',
+											Name: 	 { 
+												First: 	'--{{NAME.FIRST}}--', 
+												Last: 	'--{{NAME.LAST}}--' 
+											},
+											Age: 	 0,
+											Sex: 	'I',
+											Email: 	'--{{EMAIL}}--', 
+											Location: 	{ 
+												City: 	'--{{LOCATION.CITY}}--', 
+												Region: '--{{LOCATION.REGION}}--', 
+												Country:'--{{LOCATION.COUNTRY}}--' 
+											}
+										},
+										Scopes:  {},
+										Token: 	 null
+									},
+									messages:	{},
+									alerts:		{},
+									admin:		{},
+									searches: 	[],
+								},
+								content: 	{ built: false },
+								footer: 	{
+									credits: 	{
+										author:  'Arian Johnson',
+										company: 'eVectr Inc.',
+										website: 'eVectr.com',
+										contact: 'arian.johnson@evectr.com'
+									},
+									chats:		[
+										{kind:'user',name:{First:  'Arian',Last:  'Johnson'}},
+										{kind:'user',name:{First: 'Darren',Last:      'Sun'}},
+										{kind:'user',name:{First:   'Marc',Last:   'Djoudi'}},
+										{kind:'user',name:{First:  'Sarah',Last:'Jefferson'}},
+										{kind:'user',name:{First:'Ricardo',Last:     'Mora'}},
+										{kind:'user',name:{First:   'Sean',Last:      'Kim'}},
+										{kind:'user',name:{First:  'Yosef',Last: 'Ben Zaid'}},
+										{kind:'user',name:{First: 'Farhan',Last:   'Bhatti'}},
+										{kind:'user',name:{First:'Rodrigo',Last:    'Lopez'}},
+										{kind:'user',name:{First:'Pritesh',Last:    'Patel'}},
+									]
+								},
+							};
+							this.temps = FromJS(defaults);
+							this.state = this.setInitialState(defaults);
+							this.listenables = [Actions.App];
+						}
 
-				isIdentified 	() { return this.state.header.identified; }
-				onConnect 		() { this.updateStore({ status: 2 }); }
-				onPause 		(pause) { this.updateStore({ paused: !!pause }); }
-				onProgress	 	(prog, extra) {
-					var config = {}; extra = (extra||{});
-					switch (true) {
-						case !!!prog: 	config = { progress: 0 }; break;;
-						default: 	  	config = {
-											progress:	(prog+'%'),
-											paused: 	(prog<100)
-										};
-					}; 	this.updateStore(Assign(config, extra));
-				}
-				onIdentify	 	(ret) {
-					var THS = this, 
-						loc = window.location,
-						pay = ret.payload, 
-						opt = pay.options, usr = {},
-						qry = opt.query||opt.body,
-						res = pay.result,
-						nxt = res.next,
-						rdr = null, dsp;
-					IOs.Access.emit(nxt[0], nxt[1]);
-					switch (qry.path) {
-						case RLogin: 	usr = (pay.result.user||{});
-										dsp = usr.Scopes.display_name;
-										rdr = `/${dsp.toLowerCase()}`;
-						case RCheck:	THS.updateStore({
-											status: 1, paused: false, 
-											header: {
-												identified: true, 
-												checked: true,
-												user: usr
-										} 	}); 
-										(!!rdr)&&(loc.href = rdr);
-										break;;
-						case RLogout: 	THS.onDisconnect(pay);
-										loc.href = '/login';
-										break;;
-					};
-				}
-				onDisconnect 	(pay) {
-					var code 	= (pay.result||{}).code,
-						status 	= !isNaN(code),
-						idented = this.isIdentified(),
-						store 	= {
-							paused: false, header: {
-								identified: false, checked: true,
-								user: this.temps.header.user
-							}, status: 2
-						};
-					if (status && (code!=3||idented)) store.status = code;
-					this.updateStore(store);
-				}
-				getPage 		(path) {
-					if (isNaN(parseInt(path))) {
-						var nav = FromJS(this.state.content.nav);
-						return nav.find(function (b) { return b.get('path')===path; })
-								  .get('page');
-					} else { return path; }
-				}
-				getPath 		(path) {
-					var nav = FromJS(this.state.content.nav),
-						gtr = (isNaN(parseInt(path))?'path':'page');
-					return TC(nav.find(function (b) { return b.get(gtr)===path; })
-							  .get('path')).match(/\b(\w+)/g);
-				}
+						isIdentified 	() { return this.state.header.identified; }
+						onConnect 		() { this.updateStore({ status: 2 }); }
+						onPause 		(pause) { this.updateStore({ paused: !!pause }); }
+						onProgress	 	(prog, extra) {
+							var config = {}; extra = (extra||{});
+							switch (true) {
+								case !!!prog: 	config = { progress: 0 }; break;;
+								default: 	  	config = {
+													progress:	(prog+'%'),
+													paused: 	(prog<100)
+												};
+							}; 	this.updateStore(Assign(config, extra));
+						}
+						onIdentify	 	(ret) {
+							var THS = this, 
+								loc = window.location,
+								pay = ret.payload, 
+								opt = pay.options, usr = {},
+								qry = opt.query||opt.body,
+								res = pay.result,
+								nxt = res.next,
+								rdr = null, dsp;
+							IOs.Access.emit(nxt[0], nxt[1]);
+							switch (qry.path) {
+								case RLogin: 	usr = (pay.result.user||{});
+												dsp = usr.Scopes.display_name;
+												rdr = `/${dsp.toLowerCase()}`;
+								case RCheck:	THS.updateStore({
+													status: 1, paused: false, 
+													header: {
+														identified: true, 
+														checked: true,
+														user: usr
+												} 	}); 
+												(!!rdr)&&(loc.href = rdr);
+												break;;
+								case RLogout: 	THS.onDisconnect(pay);
+												loc.href = '/login';
+												break;;
+							};
+						}
+						onDisconnect 	(pay) {
+							var code 	= (pay.result||{}).code,
+								status 	= !isNaN(code),
+								idented = this.isIdentified(),
+								store 	= {
+									paused: false, header: {
+										identified: false, checked: true,
+										user: this.temps.getIn(['header','user']).toJS()
+									}, status: 2
+								};
+							if (status && (code!=3||idented)) store.status = code;
+							this.updateStore(store);
+						}
+						getPage 		(path) {
+							if (isNaN(parseInt(path))) {
+								var nav = FromJS(this.state.content.nav);
+								return nav.find(function (b) { return b.get('path')===path; })
+										.get('page');
+							} else { return path; }
+						}
+						getPath 		(path) {
+							var nav = FromJS(this.state.content.nav),
+								gtr = (isNaN(parseInt(path))?'path':'page');
+							return TC(nav.find(function (b) { return b.get(gtr)===path; })
+									.get('path')).match(/\b(\w+)/g);
+						}
 
-			}; Stores.App.id 		= 'App';
+						setInitialState 	(defaults) {
+							var dflts = FromJS(defaults),
+								inits = FromJS(Stores.ISO),
+								state = dflts.mergeDeep(inits);
+							return state.toJS();
+						}
+						updateStore 		(value, receive) {
+							this.secretlyUpdateStore(value);
+							if (!!receive) return this.state;
+						}
+						secretlyUpdateStore (value) {
+							let state, imval = FromJS(value||{});
+							state = FromJS(this.state).mergeDeep(imval);
+							this.setState(state.toJS());
+						}
+						reset() { 
+							this.state = this.temps.toJS(); 
+						}
+					}; Stores.Apps[LID].id = LID; 
+				}; 	return Stores.Apps[LID];
+			};
 
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////
 		// STORE.NAV     ////////////////////////////////////////////////////////////////////////////////////////
@@ -253,7 +245,7 @@ module.exports = function (Reflux, Actions, Spaces, IOs) {
 
 				onSelect 		(page) {
 					// --------------------------------------------------------
-					var app = Stores.App.singleton, start = NOW(),
+					var app = Stores.Apps[LOCKER].singleton, start = NOW(),
 						num = app.getPage(page), finish,
 						pth = app.getPath(page), total,
 						pge = {page:{num:num,pth:pth}},
@@ -280,13 +272,13 @@ module.exports = function (Reflux, Actions, Spaces, IOs) {
 				}
 				
 				onSetup 		() {
-					try { var built = Stores.App.singleton.state.content.built;
+					try { var built = Stores.Apps[LOCKER].singleton.state.content.built;
 						if (!!!built) IOs.Socket.emit('setup');
 					} catch (e) { IOs.Socket.emit('setup'); }
 				}
 				onBuild 		(res) { 
 					console.log('Build', res);
-					Stores.App.singleton.updateStore(res)
+					Stores.Apps[LOCKER].singleton.updateStore(res)
 					requestAnimationFrame(function () {
 						// var accss =  Spaces['accessor'],
 						// 	space = (Spaces[NMESPC.name]||Spaces['default']);
@@ -439,6 +431,7 @@ module.exports = function (Reflux, Actions, Spaces, IOs) {
 						THS.setStats(qry.id, qry.path, iT, rT, fT, res);
 					// -------------------------------------------------
 				}
+
 				setStats 		(id, path, iterTime, rendTime, fullTime, state) {
 					var stats = this.stats[id], lg = this.logStore;
 					setTimeout(function () {
@@ -450,7 +443,6 @@ module.exports = function (Reflux, Actions, Spaces, IOs) {
 						lg(path, stats);
 					}, 	0);
 				}
-				
 				logStore (id) {
 					// ----------------------------------------
 					console.log.apply(console, ["[#%s]:", id].concat(ARGS(arguments).slice(1)));

@@ -5,10 +5,10 @@ module.exports = {
 	Data:  [
 		function (path, req) { return {}; },
 	],
-	Build: function (Actions, Stores) {
+	Build: function (Actions, Stores, LID) {
 		return function (res, title) {
 			var fnull = function(v) { return !!v; };
-			return Stores.App.singleton.updateStore({
+			return Stores.Apps[LID].singleton.updateStore({
 				header:		Assign({
 					checked: 	true,
 					identified: !!res,

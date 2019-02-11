@@ -112,7 +112,8 @@ module.exports = function Comps(COMPS) {
 		};
 
 		COMPS.joinV 	= (obj, delim = ' ') => {
-			return Object.values(obj).join(delim);
+			try { return Object.values(obj).join(delim); }
+			catch(e) { return ''; }
 		};
 
 		COMPS.onSocket 	= (props) => {

@@ -328,11 +328,12 @@
 				padding: .5em .75em;
 				color: inherit;
 				font: inherit;
-				font-size: .9em /* !important */;
+				font-size: .8em /* !important */;
 				background: #f8f8f8;
 				resize: none;
 			}
-			label.input .grow {
+			label.input .grow, 
+			label.input.slc-txt>select[data-restrict] {
 				max-width: calc(100% - .5em);
 				min-width: 5em;
 				flex-grow: 1;
@@ -469,15 +470,20 @@
 				position: absolute;
 				opacity: 0;
 			}
+			label.input .suggest:not(.open) > *,
+			.gridItemSearchBox .suggest:not(.open) > * {
+				pointer-events: none !important;
+			}
 			label.input .suggest > label,
 			.gridItemSearchBox .suggest > label,
 			label.input input ~ .validate > label {
 				position: relative;
 				padding: .5em;
 				font-size: .9em;
-				border-bottom: solid 1px #dbdbdb;
 				background: inherit;
 				cursor: pointer;
+				border-top:    solid 1px transparent;
+				border-bottom: solid 1px transparent;
 				color: #464646;
 			}
 			label.input input ~ .validate > label {
@@ -485,6 +491,23 @@
 				color: white;
 				font-size: .8rem;
 				padding: .25em .5rem;
+			}
+			label.input .suggest > label > .more,
+			.gridItemSearchBox .suggest > label > .more {
+				vertical-align: super;
+				font-style: italic;
+				font-size: .9em;
+				line-height: 1em;
+				color: #7C7C7C;
+			}
+			label.input .suggest > label > .more::before,
+			.gridItemSearchBox .suggest > label > .more::before {
+				margin-left: .25em;
+				content: ' (';
+			}
+			label.input .suggest > label > .more::after,
+			.gridItemSearchBox .suggest > label > .more::after {
+				content: ')';
 			}
 			label.input input ~ .validate > label:hover {
 				cursor: help;
@@ -494,10 +517,6 @@
 			.gridItemSearchBox .suggest > label:hover, {
 				white-space: normal;
 			}
-			label.input .suggest > label:last-of-type,
-			.gridItemSearchBox .suggest > label:last-of-type {
-				border: none;
-			}
 			label.input .suggest > label > *,
 			.gridItemSearchBox .suggest > label > * {
 				pointer-events: none !important;
@@ -506,12 +525,26 @@
 			label.input .suggest > input:checked + label,
 			.gridItemSearchBox .suggest > label:hover,
 			.gridItemSearchBox .suggest > input:checked + label {
-				background: #f0f0f0;
+				background:   #f0f0f0;
+				border-color: #dbdbdb;
+			}
+			label.input .suggest > label:first-of-type:hover,
+			label.input .suggest > input:first-of-type:checked + label,
+			.gridItemSearchBox .suggest > label:first-of-type:hover,
+			.gridItemSearchBox .suggest > input:first-of-type:checked + label {
+				border-top-color:    transparent;
+			}
+			label.input .suggest > label:last-of-type:hover,
+			label.input .suggest > input:last-of-type:checked + label,
+			.gridItemSearchBox .suggest > label:last-of-type:hover,
+			.gridItemSearchBox .suggest > input:last-of-type:checked + label {
+				border-bottom-color: transparent;
 			}
 
 		/**************************************************************/
 		/* GLYPHS */
 
+			label.input.slc-txt>select[data-restrict],
 			label.input.glyph:not(.slc-txt)>:not(span):not(label):not(.tag):not(.validate) { 
 				max-width: calc(100% - 2.7em) !important; 
 			}
@@ -553,7 +586,9 @@
 				left: -1em;
 			}
 
-			label.input.slc-txt>select { width: 5rem; }
+			label.input.slc-txt>select:not([data-restrict]) { width: 5rem; }
+			label.input.slc-txt.rev>select[data-restrict]~input { display: none; }
+
 			label.input.slc-txt>select~.tags,
 			label.input.slc-txt>select~input { 
 				border-left: solid 1px #cacaca; 
@@ -595,14 +630,14 @@
 			}
 			label.input.date>i,
 			label.input.date>[type="number"] { 
-				font-size: 1.2em !important; 
+				font-size: 1.1em !important; 
 				min-width: 0 !important;
 				line-height: 1 !important;
 			}
 			label.input.date>i,
 			label.input.date>input {
 				/* min-height: 2rem; */
-				padding: .4em 0 !important;
+				padding: .41em 0 !important;
 			}
 			label.input.date>input::placeholder {
 				font-size: .75em;
@@ -615,7 +650,7 @@
 			label.input.date>input:nth-last-of-type(2)  		 { padding-right: .25em; }
 			label.input.date>input[size="2"]:nth-last-of-type(2) { width: 2em; }
 			label.input.date>input[size="4"]:nth-last-of-type(2) { width: 3em; }
-			label.input.date[data-rel]>input:nth-last-of-type(2) 		   { padding-right: 1em; }
+			label.input.date[data-rel]>input:nth-last-of-type(2) 		   { padding-right: 1em; padding-left: .2em !important; }
 			label.input.date[data-rel]>input[size="2"]:nth-last-of-type(2) { width: 2.5em; }
 			label.input.date[data-rel]>input[size="4"]:nth-last-of-type(2) { width: 3.5em; text-align: left; }
 			label.input.date>i::before { content: '/'; }
@@ -972,14 +1007,11 @@
 
 			label.input[data-nfo]::after { 
 				right: .5rem;
-				/* font-size: .8rem; */
 				font-size: .8em;
-				/* line-height: 2.5; */
 				line-height: 2em;
 				content: '\f059' !important;
 				cursor: help;
 			}
-
 			label.input[data-rel]::after,
 			label.input[data-nfo]::after { 
 				display: flex;
@@ -987,11 +1019,34 @@
 				flex-grow: 0;
 				align-self: stretch;
 				align-items: center;
-				/* right: .5rem; */
 				right: .6em;
 				background: #f8f8f8;
 				padding: 0 .5em;
 				border-radius: 0;
+			}
+
+			div.tags > .clear { 
+				display: flex;
+				flex-shrink: 0;
+				flex-grow: 0;
+				align-self: stretch;
+				align-items: center;
+				right: -1em;
+				padding: 0 .5em;
+				border-radius: 0;
+				border: none;
+				background: inherit;
+				line-height: 2em;
+				font-size: .8em;
+				color: #3E3E3E;
+				content: '\f057' !important;
+				cursor: help;
+			}
+			div.tags > .clear > i:not(:hover) { 
+				opacity: .5; 
+			}
+			div.tags > [type="hidden"][value=""] ~ .clear > i { 
+				opacity: 0; 
 			}
 
 			div.help {
@@ -1012,6 +1067,7 @@
 			div.help + * {
 				margin-top: 1em;
 			}
+
 			label.input[data-nfo]>div.help {
 				top: -50%; left: calc(100% + .5rem);
 				max-width: 20vw;
@@ -1040,6 +1096,7 @@
 				z-index: 0;
 				position: absolute;
 			}
+
 			label.input[data-nfo]>div.help:hover,
 			label.input[data-nfo]:hover>div.help,
 			label.input[data-nfo]>div.help:hover>*,
@@ -1078,6 +1135,7 @@
 				display: block; content: " ";
 				opacity: 0; z-index: 9999;
 				pointer-events: none;
+				position: absolute;
 			}
 			.slab .loaded::before {
 				background-color: #f5f5f5;
@@ -1127,6 +1185,7 @@
 			}
 
 			.loadit[value="load"]:checked+form.loaded::after {
+				position: relative;
 				top: calc(50% - 35px); 
 				left: calc(50% - 35px);
 				width: 48px; height: 48px;
@@ -1140,6 +1199,7 @@
 			}
 			.loadit[value="done"]:not(:checked)+form.loaded::after,
 			.loadit[value="time"]:not(:checked)+form.loaded::after {
+				position: relative;
 				display: flex;
 				justify-content: center;
 				align-items: center;
@@ -1436,7 +1496,7 @@
 				z-index:  0;
 			}
 			.gridMain.stock {
-				grid-template-rows: 6vh 6vh 1rem 6vh 1px auto 15vh 3vh;
+				grid-template-rows: 3.4rem 3.4rem 1rem 3.4rem 1px auto 15vh 1.7rem;
 				grid-template-areas: 
 					"header  header  header  header  header " 
 					"search  search  search  search  search " 
@@ -1448,7 +1508,7 @@
 					"chat    chat    chat    chat    chat   ";
 			}
 			.gridMain.cover {
-				grid-template-rows: 6vh 6vh calc(41vmin - 6vh) 6vh 50px auto 15vh 3vh;
+				grid-template-rows: 3.4rem 3.4rem calc(41vmin - 3.4rem) 3.4rem 3.4rem auto 15vh 1.7rem;
 				grid-template-areas: 
 					"header  header  header  header  header " 
 					"search  search  search  search  search " 
@@ -1460,7 +1520,7 @@
 					"chat    chat    chat    chat    chat   ";
 			}
 			.gridMain.jumbo {
-				grid-template-rows: 6vh 3vh 1px auto 15vh 3vh;
+				grid-template-rows: 3.4rem 1.7rem 1px auto 15vh 1.7rem;
 				grid-template-areas: 
 					"header  header  header  header  header " 
 					"gap     gap     gap     gap     gap    " 
@@ -1534,6 +1594,7 @@
 				.gridItemSearchBox {
 					grid-area: box;
 					justify-content: flex-start;
+					align-items: center;
 					position: relative;
 					padding: .5rem 2em;
 					min-height: 100%;
@@ -1569,7 +1630,7 @@
 					.gridItemSearchBox > input[type="text"],
 					.gridItemSearchBox > input[type="search"] {
 						-webkit-appearance: textfield;
-						font-size: .9rem;
+						font-size: .8em;
 						border: 0;
 						border-collapse: collapse;
 						border-radius: 0;
@@ -1577,9 +1638,9 @@
 						justify-self: stretch;
 						width: 100%;
 					}
-					.gridItemSearchBox.tags > label.tag::before {
+					/* .gridItemSearchBox.tags > label.tag::before {
 						top: -.2em;
-					}
+					} */
 					.gridItemSearchBox > input[type="text"] {
 						padding: 0 .5em;
 					}
@@ -1594,6 +1655,15 @@
 					align-items: center;
 					height: 110%;
 					opacity: .65;
+				}
+				.gridSearch>button>a {
+					display: flex;
+					font-size: .5em;
+					color: black !important;
+					font-style: italic;
+				}
+				.gridSearch>button>a:hover {
+					color: white !important;
 				}
 
 		/******************************************************************/
@@ -1726,6 +1796,9 @@
 				.gridItemName {
 					grid-area: name;
 					white-space: nowrap;
+					display: flex;
+					flex-flow: row;
+					align-items: center;
 				}
 				.gridItemName:not(.d) {
 					pointer-events: none;
@@ -1846,7 +1919,7 @@
 			}
 
 			.gridContent {
-				grid-template-rows:     100px 100%;
+				grid-template-rows:     8rem 100%;
 				grid-template-areas: 	
 					"left   pic     stub   join   right "
 					"left   sidebar copy   other  right "
@@ -2022,7 +2095,7 @@
 					grid-area: threads;
 					display: grid;
 					grid-gap: 0 1rem;
-					grid-auto-columns: 6vh;
+					grid-auto-columns: 3.4rem;
 					grid-auto-flow: column;
 					top: 3vh;
 					height: 500%;
@@ -2173,8 +2246,8 @@
 						display: flex;
 						justify-content: center;
 						color: inherit;
-						transition: visibility  0s ease-in,
-									opacity    .2s ease-in;
+						transition: visibility  0s ease-in-out .2s,
+									opacity    .1s ease-in-out .2s;
 					}
 					.gridDrop > .drop > .menu {
 						display:  grid;
@@ -2189,7 +2262,7 @@
 
 						position: relative;
 						top: 0; padding: 0;
-						margin-top: calc(.5em + .5rem);
+						margin-top: calc(1em + .5rem);
 						min-width: 100%;
 						max-width: 20vw;
 							width: max-content;
@@ -2338,13 +2411,13 @@
 		@supports not (position: sticky) {
 			.gridItemPic.d {
 				top: .5vh;
-				margin-right: calc((8.585rem / 2) - 8vh);
+				margin-right: calc(8.585rem / 3);
 			}
 			.gridDrop:not(:hover) > .drop:not(:hover) {
 				opacity: 0;
 				visibility: hidden;
-				transition:    opacity .2s ease-in .5s,
-							visibility  0s ease-in .75s; 
+				transition:    opacity .1s ease-in-out .1s,
+							visibility  0s ease-in-out .5s; 
 			}
 		}
 		input.reveal.open:not(.trade):not(:checked) ~ 
@@ -2531,7 +2604,7 @@
 		}
 
 		.bubble.small.er{ width:  2.75rem; height:  2.75rem; background-size:  2.75rem; }
-		.bubble.small	{ width:     6vh;  height:     6vh;  background-size:     6vh;  }
+		.bubble.small	{ width:   3.4rem;  height:  3.4rem;  background-size:  3.4rem; }
 		.bubble.medium 	{ width:   5.5rem; height:   5.5rem; background-size:   5.5rem; }
 		.bubble.large 	{ width:     7rem; height:     7rem; background-size:     7rem; }
 		.bubble.huge  	{ width: 8.585rem; height: 8.585rem; background-size: 8.585rem; }
@@ -3358,7 +3431,6 @@
 
 /**********************************************************************/
 /* TOP/BOTTOM */
-
 
 	/******************************************************************/
 	/* GENERAL */

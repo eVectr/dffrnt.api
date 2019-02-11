@@ -15,13 +15,13 @@ module.exports = {
 			files:	 files||[]
 		};
 	},
-	Build: function (Actions, Stores) {
+	Build: function (Actions, Stores, LID) {
 		return function (res) {
 			var BR 	 	= { tag: 'br' },
 				BLCK 	= { from: 'Evectr', name: ['Content','Block'] },
 				TABS 	= { from: 'Evectr', name: ['Content','Tabs'] };
 
-			Stores.App.singleton.updateStore({
+			Stores.Apps[LID].singleton.updateStore({
 				content: 	{
 					built: 		true,
 					nav: 		{},

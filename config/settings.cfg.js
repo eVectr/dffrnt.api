@@ -1,10 +1,14 @@
 
 module.exports = {
 	Debug: 		false,
-	Port: 		3001,
+	Port: 		8443,
+	SSL:		{
+		Cert: 	"../SSL/evectr.2018-2020.certificate.pem",
+		Key: 	"../SSL/evectr.2018-2020.privatekey.pem",
+	},
 	Services: 	[
-		'http://localhost:3001/gbl-accessor',
-		'http://localhost:3001/gbl-rest',
+		'https://localhost:8443/gbl-accessor',
+		'https://localhost:8443/gbl-rest',
 	],
 	Folders: 	{
 		Uploads: 	{
@@ -73,11 +77,11 @@ module.exports = {
 					"           'tour_done', u.tour_done",
 					"       ) AS checks",
 					"FROM       users                 u",
-					"INNER JOIN user_profile_details  d ON u.user_id = d.user_fk",
-					"INNER JOIN user_settings         s ON u.user_id = s.user_fk",
-					"LEFT  JOIN search_locale         l ON d.location = l.id",
-					"LEFT  JOIN regions               r ON r.id = l.region_id",
-					"LEFT  JOIN countries             f ON f.id = r.country_id",
+					"INNER JOIN user_profile_details  d ON u.user_id    = d.user_fk",
+					"INNER JOIN user_settings         s ON u.user_id    = s.user_fk",
+					"LEFT  JOIN locale_search         l ON d.location   = l.city_id",
+					"LEFT  JOIN locale_regions        r ON l.region_id  = r.id",
+					"LEFT  JOIN locale_countries      f ON l.country_id = f.id",
 					"WHERE      email_address = ?"
 				].join('\n')
 			},

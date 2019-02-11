@@ -6,26 +6,22 @@
 
 	// System Requires
 		// --------------------------------------------
-		const {
-			colors, Assign, Imm, StrTime, ROOTD, LJ, path, os, fs,
-			ARGS, TYPE, EXTEND, HIDDEN, DEFINE, NIL, UoN, IaN, IS,
-			ISS, OF, FOLDER, DCT, RGX, FRMT, CLM, CLMNS, ELOGR,
-			preARGS, Dbg, LG, TLS, JSN
-		} = require('dffrnt.utils');
+		const { fs, ROOTD, LG, SetSettings } = require('dffrnt.utils');
+		const { Settings } = require('dffrnt.confs').Init();
+		SetSettings(Settings);
 
 	// Route/Session Requires
 		const 	express 		  = require('express');
 		const { Routes, Session } = require('dffrnt.route');
-		const { Settings 		} = require('dffrnt.confs');
 		const { SSL, Port 		} = Settings;
 		const { createServer 	} = require(!!SSL?'https':'http');
 
 	// Setup Requires
 		let api 	= 	express(),
-			server 	= 	createServer(...[!!SSL ? {
+			server 	= 	createServer(!!SSL ? {
 							key:  fs.readFileSync(`${ROOTD}/${SSL.Key}`,  'utf8'),
 							cert: fs.readFileSync(`${ROOTD}/${SSL.Cert}`, 'utf8'),
-						} : null].concat([api]).filter(v=>!!v)),
+						} : {}, api),
 			sess 	= 	Session(server, api);
 
 // ----------------------------------------------------------------------------------------------

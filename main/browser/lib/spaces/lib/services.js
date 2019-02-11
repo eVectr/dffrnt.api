@@ -2,29 +2,87 @@
 'use strict';
 
 module.exports = {
-	Data:  		[ 
-		function (path, req) { return {}; }, 
+	Data:  [ 
+		function (path, req) { 
+			return   {
+				"user_id": null,
+				"display_name": null,
+				"email_address": null,
+				"name": { "first": null, "last": null },
+				"birth_date": null,
+				"photos": { "profile": null, "cover": null },
+				"location": {
+					"id": null,
+					"label": "",
+					"codes": { "region": "", "country": "" }
+				},
+				"details": {
+					"hobbies": 		 null,
+					"languages": 	 null,
+					"nationalities": null,
+					"religion": 	 null,
+					"identity": {
+						"sex": 		null,
+						"marital": 	null,
+						"gender": 	null,
+						"orient": 	null
+					},
+					"misc": {
+						"description": null,
+						"education": { "institutions": null, "description": null }
+					}
+				},
+				"provider_id": null,
+				"services": [],
+				"settings": {
+					"email": 	  null,
+					"timezone":   null,
+					"language":   null,
+					"visibility": {
+						"items": [],
+						"value": 0
+					},
+					"modes": 	  { 
+						"admin": 		 0, 
+						"transactional": 0, 
+						"provider": 	 0,
+						"scount":		 0
+					}
+				},
+				"checks": { 
+					"tour_done": 	0,
+					"status": 		0, 
+					"verified": 	0, 
+					"identified": 	0, 
+					"accredited": 	0, 
+					"rating": 		null
+				},
+				"member_since": null
+			};
+		}, 
 	],
 	Redirect: 	'settings#user-modes',
-	Call: 		function(path, params, query, body, files, user) {
+	Call:  function (path, params, query, body, files, user) {
 		return {
 			method:	'GET',
 			path: 	'/user',
 			params: { uids: user.Scopes.user_id },
 			query:	Assign({},{
-						single:true,
+						uuid: user.Scopes.user_id,
 						links:['photos','services','settings'],
+						single:true,
 					}, 	query||{}),
 		};
 	},
-	Build: 		function (Actions, Stores) {
+	Build: function (Actions, Stores, LID) {
 		var THS = this;
 		return function (res) {
 			var fnull 	  = function(v) { return !!v; },
 				PNL 	  = { from: 'Evectr', name: ['Content','Panel'] },
-				SVC 	  = { from: 'Evectr', name: ['Service'] },
+				SVC 	  = { from: 'Evectr', name: ['Services'] },
 				RAD  	  = { tag: 'input', props:{id:'closeSvc',name:'svcs',className:'reveal'}},
 				BR  	  = { tag: 'br' },
+				user_id	  = res.user_id,
 				pdid 	  = res.provider_id,
 				photos 	  = res.photos||{},
 				services  = res.services||[],
@@ -34,7 +92,7 @@ module.exports = {
 			// -----
 			if (!provider) throw new Error('Not a Service Provider');
 			// -----
-			return Stores.App.singleton.updateStore({
+			return Stores.Apps[LID].singleton.updateStore({
 				header:		{
 					title: 	{
 						cover: 	photos.cover,
@@ -59,10 +117,12 @@ module.exports = {
 									name:		'services',
 									accordian: 	true,
 									header: 	{ label: 'Edit Services', icon: 'edit' },
-									body:		services.map(function(s){ return {
-													tag: SVC, props: Assign({},s,{
-														editable: true,
-												})	}; })
+									body:		[{ 
+										tag: SVC, props: { 
+											editable: true, 
+											services: services 
+										} 
+									}],
 								}
 							} : null, { 		  // ADD NEW SERVICE
 								tag: PNL, props: { 
@@ -71,11 +131,15 @@ module.exports = {
 									align:	'gridSlice',
 									form: 	{
 										'id':			'add-service-form',
-										'data-action': 	'/add/services/'+pdid,
+										'rid':			'services',
+										'data-action': 	'/add/service',
 										'method':		'POST',
+										'clear':		 true,
 										'buttons':		[
 											{ kind:'submit',label:'Add Service',style:'norm' },
 										],
+										'params':		{},
+										'query':		{ uids: user_id },
 									},
 									body:	[
 										{ 	tag:	'div',
@@ -134,6 +198,7 @@ module.exports = {
 															pattern: /\d{1,5}\.\d{2}/,
 															invalid: 'That price ain\'t legit',
 														},
+														restrict: 	['Free','Quote'],
 													},
 										}	}	]	},
 										{ 	tag:	'div',

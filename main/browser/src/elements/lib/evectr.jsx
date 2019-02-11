@@ -1,6 +1,6 @@
 'use strict';
 
-module.exports = function Comps(COMPS) {
+module.exports = function Comps(COMPS, LID) {
 
 	////////////////////////////////////////////////////////////////////////
 	// CONSTANTS -----------------------------------------------------------
@@ -68,10 +68,8 @@ module.exports = function Comps(COMPS) {
 		// APP     /////////////////////////////////////////////////////////
 			EV.App 				= class App 		extends Mix('Reflux',MX.General) {
 				constructor(props) {
-					super(props)
-					this.name  = 'APP';
-					this.store = COMPS.Stores.App;
-					this.mode  = PAGE.type||'';
+					super(props); this.name  = 'APP'; this.mode  = PAGE.type||'';
+					this.store = COMPS.Stores.App(LID); 
 				}
 
 				getHeader(mode, title, searches = []) {
@@ -691,9 +689,10 @@ module.exports = function Comps(COMPS) {
 						props	=   THS.props,
 						id		=  "search",
 						name	=  "terms",
-						attrs 	= { id:id,name:id,method:'POST',action:'/results'},
+						attrs 	= { id:id,name:id,method:'POST',action:'/results',accept:'text/html'},
 						classes = ["gridItemSearch","gridSearch"],
-						tokens	=   props.tokens||[];
+						tokens	=   props.tokens||[],
+						isSrch	=   NMESPC.name == 'results';
 					return ( COMPS.IsAuthd ?
 						<form {...attrs} className={classN('norm-b',...classes)}>
 							<div className="tkn norm"><span><i className={FA('search')}></i></span></div>
@@ -702,19 +701,24 @@ module.exports = function Comps(COMPS) {
 								search:			  true,
 								id:				  name,
 								name:			  name, 
-								placeholder: 	["I'm looking for People who...","and/or..."],
+								placeholder: 	["i.e. New York, French, Tutor, etc."],
+								// placeholder: 	["I'm looking for People who...","and/or..."],
 								styles:			["gridItemSearchBox","bare"],
 								complete:	 	 "off", 
 								tokens:			  tokens,
+								clear:		 	  true,
 								verbs:		 	  true,
+								removal:		 "delete",
+								more: 			['Casual'],
 								data:			{
 									id:   		`${name}-sgst`, 
 									url:  		'/search/suggest',
+									context:     true,
 								},
 							}}/>
-							<input  type="hidden" id="search-uid" name="uid" value={COMPS.UID}/>
+							<input  type="hidden" id="search-uid" name="uid" value={COMPS.UID} required/>
 							<button type="submit" id="search-go"  className="tkn norm">
-								<span>GO</span>
+								<span>GO</span>{ !isSrch ? <Frag> <a>Defined Search</a></Frag> : null }
 							</button>
 						</form> : <div className={classN(...classes)}></div>
 					);
@@ -840,9 +844,9 @@ module.exports = function Comps(COMPS) {
 					let props 	= this.props,
 						mode	= props.mode||'show',
 						pic		= props.photo,
-						uname	= props.uname,
+						uname	= props.uname||['',''],
 						fname	= props.name,
-						badges	= props.badges,
+						badges	= props.badges||[],
 						locale	= props.locale,
 						age		= props.age,
 						sex 	= { 
@@ -987,7 +991,7 @@ module.exports = function Comps(COMPS) {
 						copy  =  copy||{items:[]}; 
 						other = other||{items:[]};
 						let dflts = { label: '', href: '#', icon: null },
-							items = copy.items.concat(other.items);
+							items = copy.items.concat(other.items).filter(v=>!!v);
 						return {
 							name:	'sidebar',
 							items: 	items.map(v => {
@@ -1254,6 +1258,36 @@ module.exports = function Comps(COMPS) {
 
 		// SERVICE /////////////////////////////////////////////////////////
 
+			EV.Services 		= class Services 	extends Mix('Reflux',MX.Static) {
+				constructor(props) {
+					super(props); let THS = this; THS.name = 'SERVICES';
+					// ---------------------------------------------------
+						THS.fid = 'services';
+					// ---------------------------------------------------
+						THS.mapStoreToState(COMPS.Stores.Data, store => {
+							let id = THS.fid, {stamp,items=[]} = (store[id]||{});
+							if (!!stamp&&stamp!==THS.state.stamp) return { 
+								stamp:  stamp,  loaded: true, 
+								status: 'done', services: (items[0]||{}).services,
+							}; 	else return null;	
+						}	);
+				}
+
+				// MAIN      /////////////////////////////////////////////////////////
+
+					render() {
+						let THS		= this,
+							props 	= THS.state,
+							edit  	= !!props.editable,
+							srvcs	= props.services||[];
+						return (
+							<Frag>{srvcs.map((s) => (
+								<Service key={`svc-slab-${s.id}`} {...s} editable={edit}/>
+							))}</Frag>
+						);
+					}
+			};
+
 			EV.Service 			= class Service 	extends Mix('Pure',  MX.Static) {
 				constructor(props) {
 					super(props); this.name = 'SERVICE';
@@ -1300,7 +1334,7 @@ module.exports = function Comps(COMPS) {
 						btns  = { font:'.8em' },
 						form  = {
 							'id':			`${id}-form`,
-							'data-action': 	`/edit/services/${svid}`,
+							'data-action': 	`/edit/service`,
 							'method':		'PUT',
 							'className':	'gridSlice spread reveal top',
 							'buttons':		[
@@ -1311,6 +1345,8 @@ module.exports = function Comps(COMPS) {
 									kind:'button',	  style:'nope',  label:'Delete Service',	
 									icon:'trash-alt', start:'eight', size: 'some' })
 							],
+							'params':		{ sids: svid },
+							'query':		{ uids: COMPS.UID },
 						},
 						attrs = {
 							id: 	id,
@@ -1363,12 +1399,13 @@ module.exports = function Comps(COMPS) {
 											placeholder:'0.00',
 											min:		'0.00',
 											max:		'10000.00',
-											step:		'0.05',
+											step:		'0.01',
 											value:		 (Number(charge)||0).toFixed(2),
 											validate: 	{
 												pattern: /\d{1,5}\.\d{2}/,
 												invalid: 'That price ain\'t legit',
 											},
+											restrict: 	['Free','Quote'],
 										},
 									}	} />
 								</div>
@@ -1707,10 +1744,11 @@ module.exports = function Comps(COMPS) {
 										'query':		{ uid: COMPS.UID },
 										'stamp':		 props.stamp,
 										'status':		 props.status,
+										'clear':		 true,
 										'buttons':		[{ 
 											kind: 'submit', label: `Add New ${fnme}`,
 											style:'good',   icon:  'save' 
-										},	]
+										},	],
 									},
 									items: [
 										{ text: `Add a ${fnme}` }, 
@@ -1748,15 +1786,25 @@ module.exports = function Comps(COMPS) {
 						THS.handleSubmit = THS.handleSubmit.bind(THS);
 						THS.handleReset  = THS.handleReset.bind(THS);
 					// ---------------------------------------------------
-						THS.SnapShot = null; rid = props.rid;
+						THS.SnapShot    = null; rid = props.rid;
+						THS.Statuses    = { true:'fail', false:'done' };
+						THS.ShouldClear = !!props.clear;
 					// ---------------------------------------------------
-						if (!!!rid) THS.mapStoreToState(
+						THS.mapStoreToState(
 							COMPS.Stores.Data, store => {
 								let id = THS.eid, {items,stamp} = (store[id]||{});
-								if (!!stamp&&stamp!==THS.state.stamp) return { 
-										stamp:  stamp,  loaded: true, 
-										status: 'done', result: (items||{}),
-								}; 	else return null;	
+								if (!!stamp&&stamp!==THS.state.stamp) {
+									let cde = !!items.code,
+										sts = THS.Statuses[cde],
+										itm = cde?items:null;
+									THS.clrForm(cde);
+									return { 
+										stamp: 	stamp,
+										result: (itm||{}),
+										status: sts,
+										loaded: true, 
+									};
+								} else return null;	
 						}	);
 				}
 
@@ -1816,17 +1864,17 @@ module.exports = function Comps(COMPS) {
 								else req[name]=value;
 							}, { params, query } = THS.props;
 						// ------------------------------------------------------------
-						for (let {name,value,dataset} of inputs) 
-							fillVals(name,value,dataset);
+							for (let {name,value,dataset} of inputs) 
+								fillVals(name,value,dataset);
 						// ------------------------------------------------------------
-						return { 
-							method:	 	mth,
-							headers:    { token: COMPS.Token },
-							params:	 	Assign(params, prm),
-							[wch]: 		Assign(query, req, {
-											id: eid, single: true
-										}),
-						};
+							return { 
+								method:	 	mth,
+								headers:    { token: COMPS.Token },
+								params:	 	Assign(params, prm),
+								[wch]: 		Assign(query, req, {
+												id: eid, single: true
+											}),
+							};
 					}
 
 				// EVENTS    /////////////////////////////////////////////////////////
@@ -1864,6 +1912,22 @@ module.exports = function Comps(COMPS) {
 							elems = ['input','textarea','select'], 
 							query = `${elems.join(`${css},`)}${css}`;
 						return THS.refs.form.querySelectorAll(query);
+					}
+					clrForm(code) {
+						let THS = this;
+						if (THS.ShouldClear && !!!code) {
+							let inputs = THS.getForm();
+							for (let el of inputs) {
+								switch (el.tagName) {
+									case 'SELECT': 
+										el.value = 'none'; break;;
+									case 'RADIO': case 'CHECKBOX': 
+										el.checked = false; break;;
+									default: 
+										el.value = '';
+								};
+							}
+						}
 					}
 
 					getAttrs(props) {
@@ -2125,7 +2189,6 @@ module.exports = function Comps(COMPS) {
 						this.timer  	= null;
 					// ----------------------------------------------------
 						if (!!this.props.data) {
-							this.duplicate  = !!this.props.duplicate;
 							this._drop 		= React.createRef();
 							this.previous 	= null;
 						}
@@ -2136,20 +2199,23 @@ module.exports = function Comps(COMPS) {
 					get data    () { return this.props.data; }
 					get drop    () { return this._drop.current; }
 
+					get ctx     () { return !!this.data.context; }
 					get focused () { return this._focused; }
-					get suggest () { return !!this.props.data; }
-					get strict  () { return (this.props.data||{}).strict; }
+					get suggest () { return !!this.data; }
+					get strict  () { return (this.data||{}).strict; }
 
 					get start   () { return (this.data||{}).start||3; }
 					get max  	() { 
-						let THS = this, prop = THS.state, token = prop.tokens||{},
-							tkn = (THS.duplicate?0:(token.length||0)),
-							max = ((prop.data||{}).max||10);
-						return tkn + max; 
+						let THS = this, p = THS.state;
+						return ((p.data||{}).max||10); 
 					}
+					get listCnt () { try { 
+						return this.drop.parentElement.childElementCount/2; 
+					} catch(e) { return 0; } }
 
 					get typed 	() { return this.input.current.dataset.typed; }
 					get value 	() { return this.input.current.value; }
+					get current	() { return this.hidden.current.value; }
 
 					get attrs 	() {
 						return {
@@ -2183,18 +2249,15 @@ module.exports = function Comps(COMPS) {
 											value:		(value||{}).value,
 										}
 									}).bind(this),
-							compl: 	((tokens = []) => {
-										let dupli = this.duplicate,
-											omapr = t=>t.value.toString(),
-											omits = dupli?[]:tokens.map(omapr);
-										return Assign({}, this.data, {
-											click:	this.doAdd.bind(this), 
-											input:	this.input, 
-											forRef: this._drop,
-											verbs:  !!this.props.verbs,
-											omit:	omits,
-											open: 	false,
-										});
+							compl: 	((open, tokens = []) => {
+										let state = Assign({}, this.data, {
+												click:	this.doAdd.bind(this), 
+												input:	this.input, 
+												forRef: this._drop,
+												verbs:  !!this.props.verbs,
+												open: 	open,
+											});
+										return state;
 									}).bind(this),
 						};
 					}
@@ -2237,40 +2300,49 @@ module.exports = function Comps(COMPS) {
 					getList(text = '') {
 						let THS = this; text = text.trim();
 						// --------------------------------------------
-						let prev  = THS.previous, 
-							data  = THS.data,
+						let ACTS  = Actions.Data,
+							prev  = THS.previous, 
+							data  = THS.data||{},
+							cntx  = THS.ctx,
+							val   = THS.current,
 							start = THS.start,
 							leng  = text.length,
+							id    = data.id,
 							list  = data.list,
+							max   = data.max||10,
+							count = this.listCnt,
 							delay = 150,
 							req   = { 
 								method:	 'GET',
 								headers: { token: COMPS.Token },
 								params:	 {},
-								query:	 { 
-									id:    data.id,
-									limit: THS.max,
-								},
+								query:	 Assign({ 
+									id: id, limit: THS.max,
+								},  cntx?{context:val}:{}),
 							},
 							func  = {
 								typd:   () => (THS.previous=text),
-								list: 	() => (func.typd(),Actions.Data.send(list, req, true)),
-								data: 	() => (func.typd(),Actions.Data.send(data.url, 
+								list: 	() => (func.typd(),ACTS.send(list, req, true)),
+								data: 	() => (func.typd(),ACTS.send(data.url, 
 												Assign(req ,{params:{term:text}}), 
 												true)),
 							}, 
 							call  = func.data,
+							maxed = count>=max,
 							shrt  = leng<start,
 							stat  = {
-								equals: text==prev,
+								equals: text==prev&&maxed,
 								shortN: !!!list&&shrt,
 								shortL: !!list&&shrt,
 							};
 						// --------------------------------------------
+
+							console.log('ID: %s | MAX: %s | CNT: %s', id, max, count);
+
 						THS.setTyped(text)
 						switch (true) {
-							case stat.equals: return Actions.Data.place(data.id,{open:true});
-							case stat.shortN: return THS.clrList(THS.state.tokens);
+							case stat.equals: return ACTS.place(id,{open:true});
+							case stat.shortN: return THS.clrList();
 							case stat.shortL: call = func.list; break;;
 						};
 						// --------------------------------------------
@@ -2283,13 +2355,13 @@ module.exports = function Comps(COMPS) {
 						);
 					}
 
-					clrList(omits = []) {
+					clrList() {
 						if (this.suggest) {
 							let id = this.state.data.id;
 							this.previous = '';
-							Actions.Data.place(id, Assign({ 
-								omit: (omits||[]).map(t=>t.value)
-							}, !!this.typed?{items:[]}:{}));
+							Actions.Data.place(id, Assign(
+								{}, (!!this.typed?{items:[]}:{})
+							)	);
 						}
 					}
 					clrValue(text = '') {
@@ -2310,7 +2382,7 @@ module.exports = function Comps(COMPS) {
 						if (idx == L) {
 							tag = !!tag ? tag : {}; 
 							// --------------------------------------------
-							THS.clrList([]); THS.setTyped();
+							THS.clrList(); THS.setTyped();
 							THS.setState({ value: {
 								label: tag.label, value: tag.value,
 							} 	});
@@ -2332,9 +2404,9 @@ module.exports = function Comps(COMPS) {
 					render() {
 						let THS 	= this,
 							props 	= THS.state, 
-							value 	= props.value||{}, 
 							data 	= props.data,
 							group 	= `tag-${props.id}`,
+							open	= props.open,
 							iattr 	= THS.attrs.input(group,props,false,data),
 							hattr 	= THS.attrs.hiden(props);
 						return (
@@ -2343,7 +2415,7 @@ module.exports = function Comps(COMPS) {
 									<Form.Input    {...props} {...iattr}/>
 									<input         {...hattr} ref={this.hidden}/>
 										{ !!data ?
-									<Form.Complete {...THS.attrs.compl()}/>
+									<Form.Complete {...THS.attrs.compl(open)}/>
 										: null }
 								</Frag>
 							</div>
@@ -2353,13 +2425,14 @@ module.exports = function Comps(COMPS) {
 
 			EV.Form.Tokens 		= class Tokens 		extends EV.Form.DataList {
 				constructor(props) {
-					let cls = 'tag'; super(props); this.name = 'TOKENS';
+					let cls = 'tag', arw; super(props); this.name = 'TOKENS';
 					// ----------------------------------------------------
 						this.handleKeyDown 	= this.handleKeyDown.bind(this);
 						this.handleFocus 	= this.handleFocus.bind(this);
 						this.handleBlur 	= this.handleBlur.bind(this);
 						this.handleChange 	= this.handleChange.bind(this);
 						this.handleSelect 	= this.handleSelect.bind(this);
+						this.handleClear 	= this.handleClear.bind(this);
 						this.doArrows 		= this.doArrows.bind(this);
 						this.doDelete 		= this.doDelete.bind(this);
 					// ----------------------------------------------------
@@ -2369,6 +2442,17 @@ module.exports = function Comps(COMPS) {
 						this.levels 	 = this.state.levels||[];
 						this.level_dflt  = this.levels[0]||{K:undefined,V:null};
 						this.verbs 	 	 = !!this.state.verbs;
+						this.clearer 	 = this.getClear(props);
+						this.mounted	 = false;
+					// ----------------------------------------------------
+						arw = [37,38,39,40];
+						this.__arrows	 = arw;
+						this.__arrows.H	 = [arw[0],arw[2]];
+						this.__arrows.V	 = [arw[1],arw[3]];
+						this.__arrows.L	 =  arw[0];
+						this.__arrows.U	 =  arw[1];
+						this.__arrows.R	 =  arw[2];
+						this.__arrows.D	 =  arw[3];
 				}
 
 				// CYCLE     /////////////////////////////////////////////////////////
@@ -2380,13 +2464,18 @@ module.exports = function Comps(COMPS) {
 						try {elm.checked = true; elm.focus();}catch(e){}
 					}
 
+					componentDidMount() {
+						this.mounted = true;
+					}
+
 				// GETTERS   /////////////////////////////////////////////////////////
 
 					get size	() { return Object.keys(this.refs).length; }
 					get length	() { return this.value.length; }
 					get last	() { return this.size-1; }
+					get removal	() { return this.props.removal||'mark'; }
 
-					get arrows	() { return [37,38,39,40]; }
+					get arrows	() { return this.__arrows; }
 					get remers	() { return [8,46]; }
 					get adders	() { return [186]; }
 					get enters	() { return [13]; }
@@ -2414,8 +2503,10 @@ module.exports = function Comps(COMPS) {
 					get attrs 	() {
 						return Assign({
 							token: 	((group, tag, i) => {
-										let id 	= `${group}-${i}`,
-											chk	= !!tag.checked; 
+										let mnt = this.mounted,
+											id 	= `${group}-${i}`,
+											chk	= !!tag.checked,
+											lvl = tag.level; 
 										return {
 											rad: Assign({},this.attrRadio,{
 												'data-index':		i,
@@ -2424,12 +2515,12 @@ module.exports = function Comps(COMPS) {
 												'form':				group,
 												'value': 			tag.value,
 												'defaultChecked':	chk,
-												'autoFocus':		chk,
+												'autoFocus':		mnt && chk,
 												'onKeyDown': 		this.handleKeyDown,
 											}),
 											lbl: Assign({},this.attrLabel,{
 												'htmlFor': 			id, 
-												'data-level': 		tag.level,
+												'data-level': 		!!lvl?lvl.V||lvl:lvl,
 												'onClick': 			this.handleSelect(i),
 											}),
 										};
@@ -2451,31 +2542,36 @@ module.exports = function Comps(COMPS) {
 						} catch(e) { return -1; }
 					}
 					getValue(tokens) {
-						let origin = this.props.tokens,
+						let modes   = ['mark','delete'],
+							origin  = this.props.tokens,
+							removal = this.removal,
+							mark    = removal==modes[0],
 							k = List(tokens),
 							e = (t)=>this.getLevel(t.value,t.level),
 							r = [
-								(v,t)=>`${v}${!!v?';':''}${
-									k.find(o=>o.value==t.value)?'':t.value
+								(v,t)=>`${v}${
+									k.find(o=>o.value==t.value)?
+										'':`${!!v?';':''}${t.value}`
 								}`,
 								(v,t)=>`${v}${!!v?';':''}${e(t)}`,
 							],
-							d = origin.reduce(r[0],''),
+							d = mark?origin.reduce(r[0],''):'',
 							v = tokens.reduce(r[1],'');
-						return `${v}${!!d?`;${d}`:''}`;
+						return `${[v,d].filter(v=>!!v).join(';')}`;
 					}
 					getLevel(value, level) {
 						let THS  = this,
 							lvls = List(THS.levels),
 							lvld = THS.level_dflt,
 							lvlv = lvls.find(l=>l.V==level),
-							filt = v=>!!v, res = [];
+							filt = v=>!!v, 
+							res  = [];
 						res.push((lvlv||lvld).V, value);
 						return res.filter(filt).join('@');
 					}
-					getMore(adjct) {
+					getAdjct(should, adjct) {
 						let THS = this, more = THS.more;
-						if (!!more) {
+						if (!!should) {
 							switch (IS(more)) {
 								case 'array': return (
 									more.has(adjct)?null:adjct
@@ -2485,11 +2581,21 @@ module.exports = function Comps(COMPS) {
 							return null;
 						}
 					}
+					getMore(more) {
+						let THS = this, isMore = THS.more;
+						return !!isMore && !!Number(more)
+					}
+					getClear(props) {
+						return ( !!props.clear ?
+							<button type="button" className="clear" onClick={this.handleClear}>
+								<i className={FA('times-circle')}></i>
+							</button>
+						: null );
+					}
 
 					hasItem(item = {}) {
 						let THS = this, state = THS.state;
-						return !THS.duplicate && 
-							!!state.tokens.filter(
+						return !!state.tokens.filter(
 								t => t.value==item.value
 							).length;
 					}
@@ -2546,27 +2652,30 @@ module.exports = function Comps(COMPS) {
 								// Handle Enter
 								case enters.has(code): THS.doSubmit(); break;;
 							}
+						} else if (targ !== THS.input.current) {
+							THS.input.current.focus();
 						}
+					}
+
+					handleClear     (e) {
+						this.setState({ tokens: [] });
 					}
 
 				// DOERS     /////////////////////////////////////////////////////////
 
 					doTokens(props,nxt) {
 						let tokens = props.tokens;
-
-							console.log({
-								PROPS: this.props.tokens
-							})
-
 						tokens = tokens.map(
 							(t,i)=>(t.checked=(i==nxt),t)
 						);	this.setState(props);
 					}
 
 					doArrows(idx, code) {
-						let L = this.last, i = idx, M, ref;
+						let L = this.last, 
+							A = this.arrows, 
+							i = idx, M, ref;
 						// Move to Drop; if needed
-						if (code==40&&i==L) {
+						if (A.V.has(code)&&i==L) {
 							this.drop.focus();
 							this.drop.checked = true;
 						} else {
@@ -2586,10 +2695,8 @@ module.exports = function Comps(COMPS) {
 						if (pos==0) this.doArrows(idx,37); else {
 							let tokens = props.tokens;
 							switch (code) {
-								case  8: nxt = idx-Number(idx>0); 
-									console.log('BACKSPACE', nxt); break;;
-								case 46: nxt = idx; 
-									console.log('DELETE'); break;;
+								case  8: nxt = idx-Number(idx>0); break;;
+								case 46: nxt = idx; break;;
 							}
 							tokens.splice(idx,1);
 							this.doTokens(props,nxt);
@@ -2607,12 +2714,13 @@ module.exports = function Comps(COMPS) {
 								tokens	= props.tokens,
 								label	= tag.label||THS.value,
 								value	= tag.value||value,
-								adjct   = THS.getMore(tag.adjct),
+								more    = tag.more,
+								adjct   = tag.adjct,
 								item  	= Assign({ 
 									value:		value,
 									label:		label,
-									adjct:		tag.adjct,
-									more:		Number(!!adjct),
+									adjct:		adjct,
+									more:		more,
 									checked:	true,
 								}, THS.leveled ? {
 									level: THS.levels[0] 
@@ -2620,7 +2728,7 @@ module.exports = function Comps(COMPS) {
 							// --------------------------------------------
 							if (!THS.hasItem(item)) {
 								tokens.push(item); 
-								THS.clrList(tokens);
+								THS.clrList();
 								THS.doTokens(props,idx);
 							}; 	THS.clrValue();
 						}
@@ -2635,25 +2743,32 @@ module.exports = function Comps(COMPS) {
 							value 	= { value: this.getValue(tokens) },
 							classes = classN('tags','fill','grow',props.styles),
 							data 	= props.data,
+							clear 	= this.clearer,
 							limit 	= props.limit||999,
 							length 	= tokens.length,
 							maxed 	= length>=limit,
 							group 	= `tag-${props.id}`,
+							open	= props.open,
+							mounted = this.mounted,
 							iattr 	= THS.attrs.input(group,props,maxed,data),
 							hattr 	= THS.attrs.hiden(props, value),
-							tattr 	= {};
+							tattr 	= {},
+							more    = false,
+							adjct   = '';
 						return (
 							<div id={group} className={classes}>
 								<Frag>
 									{tokens.map((t,i) => (i<=limit ? ( 
 										tattr = THS.attrs.token(group,t,i),
+										more  = THS.getMore(t.more),
+										adjct = THS.getAdjct(more,t.adjct),
 										<Frag key={tattr.rad.id}>
 											<input {...tattr.rad} ref={i}/>
 											<label {...tattr.lbl}>
 												<span>{t.label}</span>
-													{!!t.more?
-												<span className="more">{t.adjct}</span>
-													:null}
+													{ more ?
+												<span className="more">{adjct}</span>
+													: null }
 											</label> 
 										</Frag>
 									) : null ) )}{(
@@ -2661,10 +2776,13 @@ module.exports = function Comps(COMPS) {
 													value: '', checked: !!!length
 												},length),
 										<input ref={length} {...tattr.rad}/> )}
-									<Form.Input    {...props} {...iattr} autoFocus={!!!length}/>
-									<input         {...hattr} ref={this.hidden}/>
+									<Form.Input    {...props} {...iattr} autoFocus={mounted&&!!!length}/>
+									<Frag>
+										<input         {...hattr} ref={this.hidden}/>
+										{ clear }
+									</Frag>
 										{ !!data ?
-									<Form.Complete {...THS.attrs.compl(tokens)}/> 
+									<Form.Complete {...THS.attrs.compl(open,tokens)}/> 
 										: null }
 								</Frag>
 							</div>
@@ -2686,24 +2804,22 @@ module.exports = function Comps(COMPS) {
 						THS.handleMUp 		= THS.handleMUp.bind(THS);
 					// ------------------------------------------------------------
 						THS.name 		= 'COMPLETE';
-						THS.click 		=  THS.state.click||(()=>false);
-						THS.url 		=  THS.state.url;
+						THS.click 		=  state.click||(()=>false);
+						THS.url 		=  state.url;
 						THS.sleep 		=  false;
-						THS.verbs 		=  !!THS.state.verbs;
-						THS._max		=  THS.state.max;
+						THS.lock 		=  false;
+						THS.verbs 		=  !!state.verbs;
+						THS._max		=  state.max;
+						THS.more 		=  state.more;
 					// ------------------------------------------------------------
 						THS.mapStoreToState(
 							COMPS.Stores.Data, store => {
-								let max   = THS.max,
-									omits = THS.props.omit||[],
-									filtr = i=>!omits.has(i.value.toString()),
-									data  = store[id]||{}, items;
-								if (data.stamp!==THS.state.stamp) {
-									items = (data.items||[]).filter(filtr).slice(0,max);
+								let gOpen  = (o,i)=>(NIL(o)?(i||[]).length>0:o),
+									{items,stamp,open} = (store[id]||{});
+								if (!!stamp&&stamp!==THS.state.stamp) {
 									return Assign({
-										open:  items.length>0,
-									},  data,  { 
-										stamp: data.stamp, 
+										open:  gOpen(open,items),
+										stamp: stamp, 
 										items: items,
 								});	} else return {};	
 							}
@@ -2725,6 +2841,22 @@ module.exports = function Comps(COMPS) {
 						let THS = this, state = THS.state, items = state.items||[];
 						return items[THS.getIndex(target)];
 					}
+					getAdjct(should, adjct) {
+						let THS = this, more = THS.more;
+						if (!!should) {
+							switch (IS(more)) {
+								case 'array': return (
+									more.has(adjct)?null:adjct
+								);	 default: return adjct;
+							}
+						} else {
+							return null;
+						}
+					}
+					getMore(more) {
+						let THS = this, isMore = THS.more;
+						return !!isMore && !!Number(more)
+					}
 
 					setItem(target) {
 						let THS   = this,
@@ -2732,7 +2864,6 @@ module.exports = function Comps(COMPS) {
 							targ  = target,
 							item  = THS.getItem(targ);
 						setTimeout(() => {
-							// THS.clrSuggest();
 							THS.handleClose({target:target});
 							THS.setState({ open: false });
 							THS.input.dataset.typed = '';
@@ -2740,11 +2871,14 @@ module.exports = function Comps(COMPS) {
 						!!item && state.click(Infinity, { 
 							value:		item.value,
 							label:		item.label,
-							adjct:		item.description,
+							adjct:		item.adjct,
+							more:		item.more,
 						}); 
 					}
 					setSuggest(targ) {
-						let THS = this, NPT = THS.input;
+						let THS = this, NPT = THS.input,
+							cls = targ.parentElement.className;
+						if (!cls.split(' ').has('open')) return;
 						NPT.value = THS.getItem(targ).label;
 					}
 
@@ -2799,20 +2933,20 @@ module.exports = function Comps(COMPS) {
 					}
 
 					handleMEnter(e) {
-						e.stopPropagation(); 
+						e.stopPropagation(); if (this.lock) return;
 						let THS = this, targ = e.target.previousSibling;
 						targ.focus(); THS.setSuggest(targ);
 					}
 					handleMLeave(e) {
-						e.stopPropagation();
+						e.stopPropagation(); if (this.lock) return;
 						let THS = this, targ = e.target.previousSibling;
 						targ.blur();  THS.clrSuggest(targ);
 					}
 					handleMDown(e) {
-						let THS = this; THS.sleep = true;
+						let THS = this; THS.sleep = true; THS.lock = true;
 					}
 					handleMUp(e) {
-						let THS = this; THS.sleep = false;
+						let THS = this; THS.sleep = false; 
 						THS.setItem(e.target.previousSibling);
 					}
 
@@ -2824,10 +2958,20 @@ module.exports = function Comps(COMPS) {
 							id		= state.id,
 							items 	= state.items||[],
 							open    = !!state.open,
+							morerr  = (s) => { 
+								let THS   = this, 
+									more  = THS.getMore(s.more),
+									adjct = THS.getAdjct(more, s.adjct),
+									clss  = more?"more":null,
+									rslt  = (<span className={clss}>{adjct}</span>);
+								console.log('TOKEN:', more, !!rslt, s)
+								return rslt;
+							},
 							labelr 	= {
-								true:  s=>(<Frag><i>{`${s.verb} `}</i><b>{s.label}</b></Frag>),
-								false: s=>(<Frag>{s.label}</Frag>),
+								true:  (s)=>(<Frag><i>{`${s.verb} `}</i><b>{s.label}</b></Frag>),
+								false: (s)=>(<Frag>{s.label}</Frag>),
 							}[this.verbs];
+						THS.lock = false;
 						return (
 							<div id={id} className={classN("suggest",{open:open})} onBlur={THS.handleClose}>
 								{items.map((s,i,a,n) => (
@@ -2846,7 +2990,7 @@ module.exports = function Comps(COMPS) {
 												onMouseLeave={THS.handleMLeave}
 												onMouseDown={THS.handleMDown}
 												onMouseUp={THS.handleMUp}
-												htmlFor={n}>{labelr(s)}</label>
+												htmlFor={n}>{labelr(s)}{morerr(s)}</label>
 									</Frag>
 								))}
 							</div>
@@ -2856,7 +3000,9 @@ module.exports = function Comps(COMPS) {
 			EV.Form.Complete.defaultProps = {
 				id: 	'',
 				url: 	'/',
-				max:	 10,
+				max:	10,
+				open: 	false,
+				more: 	true,
 			};
 
 			EV.Form.Area 		= class Area 		extends Mix('Pure',  MX.Static, MX.Forms) {
@@ -2909,6 +3055,7 @@ module.exports = function Comps(COMPS) {
 								value:		props.value,
 								options:	props.options,
 								data:		props.data,
+								restrict:	!!input?input.restrict:null,
 							};
 						return (
 							<Form.Xput {...props} id={!!input?input.id:id} styles={styles} name={!!input?input.name:name}>
@@ -2927,6 +3074,8 @@ module.exports = function Comps(COMPS) {
 					super(props); this.name = 'SELECT';
 					// ------------------------------------------------------------
 						let THS = this, data = props.data, id;
+					// ------------------------------------------------------------
+						THS.handleChange = THS.handleChange.bind(THS);
 					// ------------------------------------------------------------
 						if (!!data&&data.id) { id = data.id;
 							THS.mapStoreToState(COMPS.Stores.Data, store => {
@@ -2956,6 +3105,36 @@ module.exports = function Comps(COMPS) {
 							}, 	50);	}
 					}
 
+				// GETTERS   /////////////////////////////////////////////////////////
+
+					get restrictions () { return this.props.restrict||[]; }
+					get selector	 () { return this.refs.slc; }
+					get selected 	 () { return this.selector.selectedOptions[0]; }
+					get value		 () { return this.selected.value; }
+
+				// EVENTS    /////////////////////////////////////////////////////////
+
+					handleChange(e) {
+						let strct = this.restrictions,
+							value = this.value,
+							will  = strct.has(value),
+							key   = 'restrict'; 
+						console.log('RESTRICT:', {
+							strict: strct,
+							value:	value,
+							will: 	will,
+						});
+						if (!will) {
+							delete this.selector.dataset[key];
+						} else {
+							this.selector.dataset[key] = "";
+						}
+					}
+
+				// FUNCTIONS /////////////////////////////////////////////////////////
+
+					//
+
 				// MAIN      /////////////////////////////////////////////////////////
 
 					render() {
@@ -2969,9 +3148,10 @@ module.exports = function Comps(COMPS) {
 								tabIndex: 		props.tab,
 								className:		props.className,
 								defaultValue:	props.value||'none',
+								onChange:		this.handleChange,
 							};
 						return (
-							<select {...attrs}>{[{
+							<select ref="slc" {...attrs}>{[{
 									disabled:true,value:'none',label:title
 								}].concat(opts).map((o,i) => 
 									(<option key={`opt-${i}`} {...o}>{o.label}</option>)
@@ -3009,9 +3189,13 @@ module.exports = function Comps(COMPS) {
 							acts  = THS.Acts,
 							hndl  = (wch)=>(()=>{
 								let act = acts[wch], ofs = which.get(wch);
-								return (date[`get${act}`]()+ofs)
+								try {
+									return (date[`get${act}`]()+ofs)
 										.toString()
 										.padStart(2,'0');
+								} catch (e) {
+									return '';
+								}
 							}).bind(THS);
 						return {
 							mth: hndl('mth'),
@@ -3122,7 +3306,8 @@ module.exports = function Comps(COMPS) {
 					getParts(value = '') {
 						try { let spl = value.match(/\d+/g).map(p=>parseInt(p));
 							spl.splice(1,1,spl[1]-1);this.Date=new Date(...spl);
-						} catch(e) {}; return {
+						} catch(e) {};
+						return {
 							mth: this.Get.mth(), day: this.Get.day(),
 							yrs: this.Get.yrs(), hrs: this.Get.hrs(),
 							min: this.Get.min(),
@@ -3160,7 +3345,7 @@ module.exports = function Comps(COMPS) {
 						let props 	= this.props, 
 							id  	= props.id, 
 							name  	= props.name||id, 
-							value 	= props.value, 
+							value 	= props.value||"", 
 							attrs 	= this.getAttrs(props),
 							valid 	= props.validate,
 							time  	= !!props.time,
@@ -3285,6 +3470,7 @@ module.exports = function Comps(COMPS) {
 				constructor(props) {
 					super(props); this.name = 'BUTTON';
 					this.Kinds  = { button: 'button', submit: 'submit' };
+					this.button = this.getButton(props);
 				}
 
 				getStyles(props) {
@@ -3292,9 +3478,8 @@ module.exports = function Comps(COMPS) {
 					return ["tkn"].concat(keys.filter(v=>opts.has(v)),props.styles||[]);
 				}
 
-				render() {
-					let props 	= this.props, 
-						kind	= this.Kinds[props.kind.trim()], 
+				getButton(props) {
+					let kind	= this.Kinds[props.kind.trim()], 
 						styles	= this.getStyles(props),
 						font	= props.font||'1rem',
 						action 	= props.action,
@@ -3307,11 +3492,15 @@ module.exports = function Comps(COMPS) {
 							onClick:	action,
 						};
 					return (
-						<button {...attrs}><span>
-							{!!icon?(<Frag><i className={FA(icon)}></i>{!label?' ':null}</Frag>):null}
+						<button key="bttn" {...attrs}><span key="text">
+							{!!icon?(<Frag key="icon"><i className={FA(icon)}></i>{!label?' ':null}</Frag>):null}
 							{label}
 						</span></button>
 					);
+				}
+
+				render() {
+					return this.button;
 				}
 			};
 			EV.Form.Button.defaultProps = {
@@ -3538,10 +3727,10 @@ module.exports = function Comps(COMPS) {
 					return Math.floor(count/flr)*flr; 
 				}
 				getStrikes(strikes) { return Array.from({length:strikes||0},(v,i)=>(i+1)); }
-				getRatings(rating,strikes) {
+				getRatings(score,strikes) {
 					let P = this.attrs; return v => {
-						let rt = rating, ps = parseInt(Math.ceil(rt)), attr = {};
-						if (ps==v) attr[P[Number(v==rt)]]='';
+						let sc = score, ps = parseInt(Math.ceil(sc)), attr = {};
+						if (ps==v) attr[P[Number(v==sc)]]='';
 						if (strikes.has(v)) attr[P[2]]='';
 						return (<label key={`star-${v}`} {...attr}></label>)
 					}
@@ -3550,13 +3739,13 @@ module.exports = function Comps(COMPS) {
 				render() {
 					let props 	= this.props,
 						points 	= this.points,
-						rating 	= props.rating, 
+						score 	= props.score, 
 						strikes = this.getStrikes(props.strikes), 
 						count 	= this.getCount(props.count);
 					return (
 						<div className="spread">
 							<label className="rating" data-cnt={count}>
-								<div>{points.map(this.getRatings(rating,strikes))}</div>
+								<div>{points.map(this.getRatings(score,strikes))}</div>
 							</label>
 						</div>
 					);
@@ -3627,7 +3816,8 @@ module.exports = function Comps(COMPS) {
 			
 			const { 
 				App, Head, Search, Cover, Title, Plaque, 
-				Content, Service, Form, Trusts, Foot, Threads 
+				Content, Service, Services, Form, 
+				Trusts, Foot, Threads 
 			} = EV;
 
 			COMPS.Elements.Evectr = EV;

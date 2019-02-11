@@ -12,7 +12,7 @@ module.exports = function Elem(global) {
 		const	Reflux 	= require('reflux');
 		const  Actions 	= require('../../actions')(Reflux);
 
-		const  COMPS 	= require('./components')(global, Reflux, Actions, IOs);
+		const  COMPS 	= require('./components')(global, Reflux, Actions, IOs, LOCKER);
 
 		COMPS.Stores.Run.Socket();
 };

@@ -14,7 +14,7 @@ module.exports = {
 			files:	files||[]
 		};
 	},
-	Build: function (Actions, Stores) {
+	Build: function (Actions, Stores, LID) {
 		return function (res) {
 			var USR = Map(res).filter(function(v,k){return k!='terms';}),
 				FLT = function (v) { return !!v && !['LC','SX'].has(v.tag); },
@@ -25,10 +25,11 @@ module.exports = {
 					verified: { kind: 'good', icon: 'shield-alt' },
 				};
 
-				// console.log('RESULTS:', USR.toList())
+				// console.log('RESULTS:', USR.toList().sortBy(SRT).reverse().toArray())
+				// console.log('\nRESULTS:', res, '\n')
 
 			// -----
-			return Stores.App.singleton.updateStore({
+			return Stores.Apps[LID].singleton.updateStore({
 				header: 	{
 					searches: 	res.terms.map(function(m) {
 						return {
@@ -50,7 +51,7 @@ module.exports = {
 										var fullnm = (user.name||{first:'',last:''}),
 											locale = (user.location||{label:''}).label.split(', '),
 											smodes = (user.settings||{modes:{}}).modes,
-											checks = (user.checks||{checks:{}}),
+											checks = (user.checks||{}),
 											photos = (user.photos||{}),
 											detail = (user.details||{}),
 											identi = (detail.identity||{}),

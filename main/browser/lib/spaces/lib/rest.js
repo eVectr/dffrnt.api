@@ -8,7 +8,7 @@ module.exports = {
 			delete HLP.Auth; return HLP; 
 		},
 	],
-	Build: function (Actions, Stores) {
+	Build: function (Actions, Stores, LID) {
 		return function (res) {
 
 			var THS = this, content = Imm.OrderedMap(res), page = 0,
@@ -174,7 +174,7 @@ module.exports = {
 			});
 			// console.log({ NAV: nav, BUTTONS: buttons, PAGES: pages });
 			// -----
-			return Stores.App.singleton.updateStore({
+			return Stores.Apps[LID].singleton.updateStore({
 			// return {
 				page: 		{ num: 1, pth: ['Search'] },
 				style: 		getSortStyle(styles),

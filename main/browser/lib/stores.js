@@ -51,7 +51,7 @@ module.exports = function (Reflux, Actions, Spaces, IOs) {
 		if (!!IOs && !!IOs.IO) {
 			IOs.Socket = IOs.IO(NMESPC.host + '/' + NMESPC.name);
 			if (!!IOs.Socket) {
-				Reflux.initStore(Stores.App);
+				Reflux.initStore(Stores.App(LOCKER));
 				Reflux.initStore(Stores.Nav);
 				Reflux.initStore(Stores.Content);
 				Reflux.initStore(Stores.Data);
@@ -85,232 +85,216 @@ module.exports = function (Reflux, Actions, Spaces, IOs) {
 	// STORES ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	var Stores = {
-		App: null, Nav: null, Content: null, Data: null,
+		Apps: {}, App: null, Nav: null, Content: null, Data: null,
 		Run: { Access: runAccess, Socket: runSocket },
 		ISO: {}
 	};
 
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////
-	// STORE.DEFAULT ////////////////////////////////////////////////////////////////////////////////////////
-
-	var AppMix = function (_Reflux$Store) {
-		_inherits(AppMix, _Reflux$Store);
-
-		function AppMix(defaults) {
-			_classCallCheck(this, AppMix);
-
-			var _this = _possibleConstructorReturn(this, (AppMix.__proto__ || Object.getPrototypeOf(AppMix)).call(this));
-
-			_this.temps = defaults;
-			_this.state = _this.setInitialState(defaults);
-			return _this;
-		}
-
-		_createClass(AppMix, [{
-			key: 'setInitialState',
-			value: function setInitialState(defaults) {
-				var dflts = FromJS(defaults),
-				    inits = FromJS(Stores.ISO),
-				    state = dflts.mergeDeep(inits);
-				return state.toJS();
-			}
-		}, {
-			key: 'updateStore',
-			value: function updateStore(value, receive) {
-				this.secretlyUpdateStore(value);
-				if (!!receive) return this.state;
-			}
-		}, {
-			key: 'secretlyUpdateStore',
-			value: function secretlyUpdateStore(value) {
-				var state = void 0,
-				    imval = FromJS(value || {});
-				state = FromJS(this.state).mergeDeep(imval);
-				this.setState(state.toJS());
-			}
-		}, {
-			key: 'reset',
-			value: function reset() {
-				this.state = this.temps;
-			}
-		}]);
-
-		return AppMix;
-	}(Reflux.Store);
-
-	/////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// STORE.APP     ////////////////////////////////////////////////////////////////////////////////////////
+	Stores.App = function App(LID) {
+		if (!!!Stores.Apps[LID]) {
+			Stores.Apps[LID] = function (_Reflux$Store) {
+				_inherits(_class, _Reflux$Store);
 
+				function _class() {
+					_classCallCheck(this, _class);
 
-	Stores.App = function (_AppMix) {
-		_inherits(_class, _AppMix);
+					var _this = _possibleConstructorReturn(this, (_class.__proto__ || Object.getPrototypeOf(_class)).call(this));
 
-		function _class() {
-			_classCallCheck(this, _class);
-
-			var _this2 = _possibleConstructorReturn(this, (_class.__proto__ || Object.getPrototypeOf(_class)).call(this, {
-				ready: function ready() {
-					var Store = Stores.App.singleton.state,
-					    Chekd = !!Store.header.checked,
-					    Built = !!Store.content.built,
-					    Ident = !!Store.header.identified,
-					    Pause = !!Store.paused;
-					return Chekd && Built && !(!Ident && Pause);
-				},
-				status: 1, // 1 = Welcome, 2 = Login, 3 = Expired, 4 = Disconnected
-				paused: false,
-				progress: 0,
-				page: { num: 0, pth: [] },
-				style: '',
-				header: {
-					title: '',
-					checked: true,
-					identified: false,
-					user: {
-						Account: '--{{ACCOUNT}}--',
-						Profile: {
-							Photo: '--{{PHOTO}}--',
-							Name: {
-								First: '--{{NAME.FIRST}}--',
-								Last: '--{{NAME.LAST}}--'
-							},
-							Age: 0,
-							Sex: 'I',
-							Email: '--{{EMAIL}}--',
-							Location: {
-								City: '--{{LOCATION.CITY}}--',
-								Region: '--{{LOCATION.REGION}}--',
-								Country: '--{{LOCATION.COUNTRY}}--'
-							}
+					var defaults = {
+						ready: function ready() {
+							var Store = Stores.Apps[LID].singleton.state,
+							    Chekd = !!Store.header.checked,
+							    Built = !!Store.content.built,
+							    Ident = !!Store.header.identified,
+							    Pause = !!Store.paused;
+							return Chekd && Built && !(!Ident && Pause);
 						},
-						Scopes: {},
-						Token: null
-					},
-					messages: {},
-					alerts: {},
-					admin: {},
-					searches: []
-				},
-				content: { built: false, nav: {}, buttons: {}, forms: {} },
-				footer: {
-					credits: {
-						author: 'Arian Johnson',
-						company: 'eVectr Inc.',
-						website: 'eVectr.com',
-						contact: 'arian.johnson@evectr.com'
-					},
-					chats: [{ kind: 'user', name: { First: 'Arian', Last: 'Johnson' } }, { kind: 'user', name: { First: 'Darren', Last: 'Sun' } }, { kind: 'user', name: { First: 'Marc', Last: 'Djoudi' } }, { kind: 'user', name: { First: 'Sarah', Last: 'Jefferson' } }, { kind: 'user', name: { First: 'Ricardo', Last: 'Mora' } }, { kind: 'user', name: { First: 'Sean', Last: 'Kim' } }, { kind: 'user', name: { First: 'Yosef', Last: 'Ben Zaid' } }, { kind: 'user', name: { First: 'Farhan', Last: 'Bhatti' } }, { kind: 'user', name: { First: 'Rodrigo', Last: 'Lopez' } }, { kind: 'user', name: { First: 'Pritesh', Last: 'Patel' } }]
+						status: 1, // 1 = Welcome, 2 = Login, 3 = Expired, 4 = Disconnected
+						paused: false,
+						progress: 0,
+						page: { num: 0, pth: [] },
+						style: '',
+						header: {
+							title: '',
+							checked: true,
+							identified: false,
+							user: {
+								Account: '--{{ACCOUNT}}--',
+								Profile: {
+									Photo: '--{{PHOTO}}--',
+									Name: {
+										First: '--{{NAME.FIRST}}--',
+										Last: '--{{NAME.LAST}}--'
+									},
+									Age: 0,
+									Sex: 'I',
+									Email: '--{{EMAIL}}--',
+									Location: {
+										City: '--{{LOCATION.CITY}}--',
+										Region: '--{{LOCATION.REGION}}--',
+										Country: '--{{LOCATION.COUNTRY}}--'
+									}
+								},
+								Scopes: {},
+								Token: null
+							},
+							messages: {},
+							alerts: {},
+							admin: {},
+							searches: []
+						},
+						content: { built: false, nav: {}, buttons: {}, forms: {} },
+						footer: {
+							credits: {
+								author: 'Arian Johnson',
+								company: 'eVectr Inc.',
+								website: 'eVectr.com',
+								contact: 'arian.johnson@evectr.com'
+							},
+							chats: [{ kind: 'user', name: { First: 'Arian', Last: 'Johnson' } }, { kind: 'user', name: { First: 'Darren', Last: 'Sun' } }, { kind: 'user', name: { First: 'Marc', Last: 'Djoudi' } }, { kind: 'user', name: { First: 'Sarah', Last: 'Jefferson' } }, { kind: 'user', name: { First: 'Ricardo', Last: 'Mora' } }, { kind: 'user', name: { First: 'Sean', Last: 'Kim' } }, { kind: 'user', name: { First: 'Yosef', Last: 'Ben Zaid' } }, { kind: 'user', name: { First: 'Farhan', Last: 'Bhatti' } }, { kind: 'user', name: { First: 'Rodrigo', Last: 'Lopez' } }, { kind: 'user', name: { First: 'Pritesh', Last: 'Patel' } }]
+						}
+					};
+					_this.temps = FromJS(defaults);
+					_this.state = _this.setInitialState(defaults);
+					_this.listenables = [Actions.App];
+					return _this;
 				}
-			}));
 
-			_this2.listenables = [Actions.App];
-			return _this2;
-		}
-
-		_createClass(_class, [{
-			key: 'isIdentified',
-			value: function isIdentified() {
-				return this.state.header.identified;
-			}
-		}, {
-			key: 'onConnect',
-			value: function onConnect() {
-				this.updateStore({ status: 2 });
-			}
-		}, {
-			key: 'onPause',
-			value: function onPause(pause) {
-				this.updateStore({ paused: !!pause });
-			}
-		}, {
-			key: 'onProgress',
-			value: function onProgress(prog, extra) {
-				var config = {};extra = extra || {};
-				switch (true) {
-					case !!!prog:
-						config = { progress: 0 };break;;
-					default:
-						config = {
-							progress: prog + '%',
-							paused: prog < 100
+				_createClass(_class, [{
+					key: 'isIdentified',
+					value: function isIdentified() {
+						return this.state.header.identified;
+					}
+				}, {
+					key: 'onConnect',
+					value: function onConnect() {
+						this.updateStore({ status: 2 });
+					}
+				}, {
+					key: 'onPause',
+					value: function onPause(pause) {
+						this.updateStore({ paused: !!pause });
+					}
+				}, {
+					key: 'onProgress',
+					value: function onProgress(prog, extra) {
+						var config = {};extra = extra || {};
+						switch (true) {
+							case !!!prog:
+								config = { progress: 0 };break;;
+							default:
+								config = {
+									progress: prog + '%',
+									paused: prog < 100
+								};
+						};this.updateStore(Assign(config, extra));
+					}
+				}, {
+					key: 'onIdentify',
+					value: function onIdentify(ret) {
+						var THS = this,
+						    loc = window.location,
+						    pay = ret.payload,
+						    opt = pay.options,
+						    usr = {},
+						    qry = opt.query || opt.body,
+						    res = pay.result,
+						    nxt = res.next,
+						    rdr = null,
+						    dsp;
+						IOs.Access.emit(nxt[0], nxt[1]);
+						switch (qry.path) {
+							case RLogin:
+								usr = pay.result.user || {};
+								dsp = usr.Scopes.display_name;
+								rdr = '/' + dsp.toLowerCase();
+							case RCheck:
+								THS.updateStore({
+									status: 1, paused: false,
+									header: {
+										identified: true,
+										checked: true,
+										user: usr
+									} });
+								!!rdr && (loc.href = rdr);
+								break;;
+							case RLogout:
+								THS.onDisconnect(pay);
+								loc.href = '/login';
+								break;;
 						};
-				};this.updateStore(Assign(config, extra));
-			}
-		}, {
-			key: 'onIdentify',
-			value: function onIdentify(ret) {
-				var THS = this,
-				    loc = window.location,
-				    pay = ret.payload,
-				    opt = pay.options,
-				    usr = {},
-				    qry = opt.query || opt.body,
-				    res = pay.result,
-				    nxt = res.next,
-				    rdr = null,
-				    dsp;
-				IOs.Access.emit(nxt[0], nxt[1]);
-				switch (qry.path) {
-					case RLogin:
-						usr = pay.result.user || {};
-						dsp = usr.Scopes.display_name;
-						rdr = '/' + dsp.toLowerCase();
-					case RCheck:
-						THS.updateStore({
-							status: 1, paused: false,
-							header: {
-								identified: true,
-								checked: true,
-								user: usr
-							} });
-						!!rdr && (loc.href = rdr);
-						break;;
-					case RLogout:
-						THS.onDisconnect(pay);
-						loc.href = '/login';
-						break;;
-				};
-			}
-		}, {
-			key: 'onDisconnect',
-			value: function onDisconnect(pay) {
-				var code = (pay.result || {}).code,
-				    status = !isNaN(code),
-				    idented = this.isIdentified(),
-				    store = {
-					paused: false, header: {
-						identified: false, checked: true,
-						user: this.temps.header.user
-					}, status: 2
-				};
-				if (status && (code != 3 || idented)) store.status = code;
-				this.updateStore(store);
-			}
-		}, {
-			key: 'getPage',
-			value: function getPage(path) {
-				if (isNaN(parseInt(path))) {
-					var nav = FromJS(this.state.content.nav);
-					return nav.find(function (b) {
-						return b.get('path') === path;
-					}).get('page');
-				} else {
-					return path;
-				}
-			}
-		}, {
-			key: 'getPath',
-			value: function getPath(path) {
-				var nav = FromJS(this.state.content.nav),
-				    gtr = isNaN(parseInt(path)) ? 'path' : 'page';
-				return TC(nav.find(function (b) {
-					return b.get(gtr) === path;
-				}).get('path')).match(/\b(\w+)/g);
-			}
-		}]);
+					}
+				}, {
+					key: 'onDisconnect',
+					value: function onDisconnect(pay) {
+						var code = (pay.result || {}).code,
+						    status = !isNaN(code),
+						    idented = this.isIdentified(),
+						    store = {
+							paused: false, header: {
+								identified: false, checked: true,
+								user: this.temps.getIn(['header', 'user']).toJS()
+							}, status: 2
+						};
+						if (status && (code != 3 || idented)) store.status = code;
+						this.updateStore(store);
+					}
+				}, {
+					key: 'getPage',
+					value: function getPage(path) {
+						if (isNaN(parseInt(path))) {
+							var nav = FromJS(this.state.content.nav);
+							return nav.find(function (b) {
+								return b.get('path') === path;
+							}).get('page');
+						} else {
+							return path;
+						}
+					}
+				}, {
+					key: 'getPath',
+					value: function getPath(path) {
+						var nav = FromJS(this.state.content.nav),
+						    gtr = isNaN(parseInt(path)) ? 'path' : 'page';
+						return TC(nav.find(function (b) {
+							return b.get(gtr) === path;
+						}).get('path')).match(/\b(\w+)/g);
+					}
+				}, {
+					key: 'setInitialState',
+					value: function setInitialState(defaults) {
+						var dflts = FromJS(defaults),
+						    inits = FromJS(Stores.ISO),
+						    state = dflts.mergeDeep(inits);
+						return state.toJS();
+					}
+				}, {
+					key: 'updateStore',
+					value: function updateStore(value, receive) {
+						this.secretlyUpdateStore(value);
+						if (!!receive) return this.state;
+					}
+				}, {
+					key: 'secretlyUpdateStore',
+					value: function secretlyUpdateStore(value) {
+						var state = void 0,
+						    imval = FromJS(value || {});
+						state = FromJS(this.state).mergeDeep(imval);
+						this.setState(state.toJS());
+					}
+				}, {
+					key: 'reset',
+					value: function reset() {
+						this.state = this.temps.toJS();
+					}
+				}]);
 
-		return _class;
-	}(AppMix);Stores.App.id = 'App';
+				return _class;
+			}(Reflux.Store);Stores.Apps[LID].id = LID;
+		};return Stores.Apps[LID];
+	};
 
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// STORE.NAV     ////////////////////////////////////////////////////////////////////////////////////////
@@ -320,17 +304,17 @@ module.exports = function (Reflux, Actions, Spaces, IOs) {
 		function _class2() {
 			_classCallCheck(this, _class2);
 
-			var _this3 = _possibleConstructorReturn(this, (_class2.__proto__ || Object.getPrototypeOf(_class2)).call(this));
+			var _this2 = _possibleConstructorReturn(this, (_class2.__proto__ || Object.getPrototypeOf(_class2)).call(this));
 
-			_this3.listenables = [Actions.Nav];
-			return _this3;
+			_this2.listenables = [Actions.Nav];
+			return _this2;
 		}
 
 		_createClass(_class2, [{
 			key: 'onSelect',
 			value: function onSelect(page) {
 				// --------------------------------------------------------
-				var app = Stores.App.singleton,
+				var app = Stores.Apps[LOCKER].singleton,
 				    start = NOW(),
 				    num = app.getPage(page),
 				    finish,
@@ -358,18 +342,18 @@ module.exports = function (Reflux, Actions, Spaces, IOs) {
 		function _class3() {
 			_classCallCheck(this, _class3);
 
-			var _this4 = _possibleConstructorReturn(this, (_class3.__proto__ || Object.getPrototypeOf(_class3)).call(this));
+			var _this3 = _possibleConstructorReturn(this, (_class3.__proto__ || Object.getPrototypeOf(_class3)).call(this));
 
-			_this4.state = {};
-			_this4.listenables = [Actions.Content];
-			return _this4;
+			_this3.state = {};
+			_this3.listenables = [Actions.Content];
+			return _this3;
 		}
 
 		_createClass(_class3, [{
 			key: 'onSetup',
 			value: function onSetup() {
 				try {
-					var built = Stores.App.singleton.state.content.built;
+					var built = Stores.Apps[LOCKER].singleton.state.content.built;
 					if (!!!built) IOs.Socket.emit('setup');
 				} catch (e) {
 					IOs.Socket.emit('setup');
@@ -379,7 +363,7 @@ module.exports = function (Reflux, Actions, Spaces, IOs) {
 			key: 'onBuild',
 			value: function onBuild(res) {
 				console.log('Build', res);
-				Stores.App.singleton.updateStore(res);
+				Stores.Apps[LOCKER].singleton.updateStore(res);
 				requestAnimationFrame(function () {
 					// var accss =  Spaces['accessor'],
 					// 	space = (Spaces[NMESPC.name]||Spaces['default']);
@@ -402,10 +386,10 @@ module.exports = function (Reflux, Actions, Spaces, IOs) {
 		function _class4() {
 			_classCallCheck(this, _class4);
 
-			var _this5 = _possibleConstructorReturn(this, (_class4.__proto__ || Object.getPrototypeOf(_class4)).call(this));
+			var _this4 = _possibleConstructorReturn(this, (_class4.__proto__ || Object.getPrototypeOf(_class4)).call(this));
 
-			_this5.prefix = ["payload", "result"];
-			_this5.statDef = FromJS({
+			_this4.prefix = ["payload", "result"];
+			_this4.statDef = FromJS({
 				Request: {
 					Emmitted: {},
 					Received: {},
@@ -420,13 +404,13 @@ module.exports = function (Reflux, Actions, Spaces, IOs) {
 					End: null
 				}
 			});
-			_this5.stats = {};
-			_this5.defaults = { store: { status: 200, payload: {} } };
-			_this5.temps = Imm.fromJS({});
-			_this5.state = {};
-			_this5.jids = {};
-			_this5.listenables = [Actions.Data];
-			return _this5;
+			_this4.stats = {};
+			_this4.defaults = { store: { status: 200, payload: {} } };
+			_this4.temps = Imm.fromJS({});
+			_this4.state = {};
+			_this4.jids = {};
+			_this4.listenables = [Actions.Data];
+			return _this4;
 		}
 
 		_createClass(_class4, [{

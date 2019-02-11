@@ -5,41 +5,199 @@ module.exports = {
 	Data:  [
 		function (path, req) { 
 			return   {
-				"user_id": 0,
-				"display_name": "",
-				"email_address": "",
-				"name": { "first": "", "last": "" },
-				"photos": {
-					"profile": "",
-					"cover": ""
+				"user_id": null,
+				"display_name": null,
+				"email_address": null,
+				"name": { "first": null, "last": null },
+				"birth_date": null,
+				"photos": { "profile": null, "cover": null },
+				"location": {
+					"id": null,
+					"label": "",
+					"codes": { "region": "", "country": "" }
 				},
 				"details": {
-					"hobbies": null,
-					"languages": null,
-					"nationalities": null,
-					"religion": null,
+					"hobbies": [],
+					"languages": [],
+					"nationalities": [],
+					"religion": { "value": null, "label": null },
 					"identity": {
 						"sex": null,
 						"marital": null,
-						"gender": null,
-						"orient": null,
+						"gender": { "value": null, "label": null },
+						"orient": { "value": null, "label": null }
 					},
 					"misc": {
 						"description": null,
-						"education": {
-							"institutions": null,
-							"description": null
-						}
+						"education": { "institutions": null, "description": null }
 					}
 				},
-				"location": {
-					"id": 0, "label": "",
-					"codes": { "region": "", "country": "" }
-				},
+				"provider_id": null,
 				"services": [],
-				"checks": { "verified": 0, "status": 0, },
-				"birth_date": "",
-				"member_since": "",
+				"settings": {
+					"email": 	  null,
+					"timezone":   null,
+					"language":   null,
+					"visibility": {
+						"items": [
+							{
+								"id": 2,
+								"kind": "column",
+								"field": "email_address",
+								"name": "Email Address",
+								"level": 4,
+								"value": 1,
+								"follows": "",
+								"status": false
+							},
+							{
+								"id": 6,
+								"kind": "column",
+								"field": "birth_date",
+								"name": "Age & Birthday",
+								"level": 2,
+								"value": 16,
+								"follows": "",
+								"status": false
+							},
+							{
+								"id": 3,
+								"kind": "column",
+								"field": "first_name",
+								"name": "First Name",
+								"level": 2,
+								"value": 2,
+								"follows": "",
+								"status": false
+							},
+							{
+								"id": 4,
+								"kind": "column",
+								"field": "last_name",
+								"name": "Last Name",
+								"level": 2,
+								"value": 4,
+								"follows": "first_name",
+								"status": false
+							},
+							{
+								"id": 7,
+								"kind": "column",
+								"field": "location",
+								"name": "Location",
+								"level": 3,
+								"value": 32,
+								"follows": "",
+								"status": false
+							},
+							{
+								"id": 10,
+								"kind": "table",
+								"field": "user_hobbies",
+								"name": "Hobbies",
+								"level": 5,
+								"value": 64,
+								"follows": "",
+								"status": false
+							},
+							{
+								"id": 11,
+								"kind": "table",
+								"field": "user_languages",
+								"name": "Languages",
+								"level": 5,
+								"value": 128,
+								"follows": "",
+								"status": false
+							},
+							{
+								"id": 12,
+								"kind": "table",
+								"field": "user_nationalities",
+								"name": "Nationalities",
+								"level": 5,
+								"value": 256,
+								"follows": "",
+								"status": false
+							},
+							{
+								"id": 13,
+								"kind": "table",
+								"field": "user_religion",
+								"name": "Spirituality",
+								"level": 5,
+								"value": 512,
+								"follows": "",
+								"status": false
+							},
+							{
+								"id": 16,
+								"kind": "column",
+								"field": "profile_sex",
+								"name": "Sex",
+								"level": 2,
+								"value": 2048,
+								"follows": "",
+								"status": false
+							},
+							{
+								"id": 14,
+								"kind": "table",
+								"field": "user_gender",
+								"name": "Gender Indentity",
+								"level": 5,
+								"value": 1024,
+								"follows": "profile_sex",
+								"status": false
+							},
+							{
+								"id": 15,
+								"kind": "table",
+								"field": "user_orient",
+								"name": "Orientation",
+								"level": 5,
+								"value": 1024,
+								"follows": "profile_sex",
+								"status": false
+							},
+							{
+								"id": 17,
+								"kind": "column",
+								"field": "profile_marital_status",
+								"name": "Marital Status",
+								"level": 5,
+								"value": 4096,
+								"follows": "",
+								"status": false
+							},
+							{
+								"id": 18,
+								"kind": "column",
+								"field": "profile_education",
+								"name": "Education",
+								"level": 4,
+								"value": 8192,
+								"follows": "",
+								"status": false
+							}
+						],
+						"value": 0
+					},
+					"modes": 	 { 
+						"admin": 		 0, 
+						"transactional": 0, 
+						"provider": 	 0 
+					}
+				},
+				"checks": { 
+					"tour_done": 	0,
+					"status": 		0, 
+					"verified": 	0, 
+					"identified": 	0, 
+					"accredited": 	0, 
+					"rating": 		null
+				},
+				"member_since": null
 			};
 		},
 	],
@@ -48,21 +206,26 @@ module.exports = {
 			method:	'GET',
 			path: 	'/user',
 			params: { uids: user.Scopes.user_id },
-			query:	Assign({},{single:true,links:true},query||{}),
+			query:	Assign({},{
+						uuid: user.Scopes.user_id,
+						single:true,links:true,
+					}, query||{}),
 			body:	body||{},
 			files:	files||[]
 		};
 	},
-	Build: function (Actions, Stores) {
+	Build: function (Actions, Stores, LID) {
 		var THS = this;
 		return function (res) {
 			var PNL 	= { from: 'Evectr', name: ['Content','Panel'	] },
 				BLK 	= { from: 'Evectr', name: ['Content','Block'	] },
-				NPUT 	= { from: 'Evectr', name: [   'Form','Xput'		] },
+				XPUT 	= { from: 'Evectr', name: [   'Form','Xput'		] },
+				NPUT	= { from: 'Evectr', name: [   'Form','Input'    ] },
 				CHKBOX 	= { from: 'Evectr', name: [   'Form','Checkbox'	] },
 				SBMT 	= { from: 'Evectr', name: [   'Form','Button'	] },
 				BR  	= { tag: 'br' },
 				HR  	= { tag: 'hr', props: { className: 'MTB spread' } },
+				FLT 	= function FLT(v) { return !!v },
 				SUBMIT 	= function SUBMIT(label, style, start, size) { 
 					return {	
 						tag:	'div',
@@ -92,12 +255,12 @@ module.exports = {
 				email 			= settings.email,
 				timezone 		= settings.timezone,
 				language 		= settings.language,
-				visibility		= 0,
 				visivalue		= 'user-vis-value',
-				visibilities 	= (settings.visibility||{})
+				visible 		= (settings.visibility||{}),
+				visibilities 	= (visible.items||[])
 									.map(function mapVis(v) { 
 										var grp = 'user-vis', checked = eval(v.status);
-										visibility += (checked?v.value:0);
+										visibility += (checked?(visibility|v.value):0);
 										return {
 											tag: 	'div', 
 											props:	{ className: 'half' }, 
@@ -117,9 +280,10 @@ module.exports = {
 													follows:	  v.follows||null,
 											}	}]
 									};	}),
+				visibility		= (visible.value||0),
 				modes 			= settings.modes||{};
 			// -----
-			return Stores.App.singleton.updateStore({
+			return Stores.Apps[LID].singleton.updateStore({
 				header:		{
 					title: 	{
 						cover: 	photos.cover,
@@ -199,12 +363,15 @@ module.exports = {
 													{ 	tag:	'div',
 														props:	{ className: 'half' },
 														items: 	[{	
-															tag:	NPUT, props:	{
+															tag:	XPUT, props:	{
 																id: 		'user-prefered-tz',
 																name: 		'eTZone',
 																icon:		'clock',
 																placeholder:'Prefered Site Timezone',
-																tokens:		[{ label: timezone, value: timezone }],
+																tokens:		[!!timezone ? { 
+																	label: timezone, 
+																	value: timezone 
+																} : null].filter(FLT),
 																limit:		 1,
 																duplicate:	 true,
 																data:		{
@@ -217,12 +384,15 @@ module.exports = {
 													{ 	tag:	'div',
 														props:	{ className: 'half' },
 														items: 	[{
-															tag:	NPUT, props:	{
+															tag:	XPUT, props:	{
 																id: 		'user-prefered-lang',
 																name: 		'eLang',
 																icon:		'language',
 																placeholder:'Prefered Site Language',
-																tokens:		[{ label: language, value: language }],
+																tokens:		[!!language ? { 
+																	label: language.label, 
+																	value: language.value, 
+																} : null].filter(FLT),
 																limit:		 1,
 																duplicate:	 true,
 																data:		{
@@ -270,13 +440,13 @@ module.exports = {
 												]	},
 										]	}	}
 									].concat(visibilities, [ 
-										{ 	tag:	'input',
+										{ 	tag:	NPUT,
 											props:	{
-												type:		'hidden',
+												kind:		'hidden',
 												name: 		'eVisibles',
 												id: 		 visivalue,
 												required:	 true,
-												value:		 visibility,
+												value:  	 visibility,
 										}	},	HR,
 									]),	
 								}
@@ -304,7 +474,7 @@ module.exports = {
 												{ 	tag:	'div',
 													props:	{ className: 'most' },
 													items: 	[{
-														tag:	NPUT, props:	{
+														tag:	XPUT, props:	{
 															id: 		'user-email',
 															kind:		'email',
 															name: 		'eEmail',
@@ -336,7 +506,7 @@ module.exports = {
 												{ 	tag:	'div',
 													props:	{ className: 'spread' },
 													items: 	[{
-														tag:	NPUT, props:	{
+														tag:	XPUT, props:	{
 															id: 		'user-pass-current',
 															kind:		'password',
 															name: 		'Current',
@@ -352,7 +522,7 @@ module.exports = {
 												{ 	tag:	'div',
 													props:	{ className: 'half' },
 													items: 	[{
-														tag:	NPUT, props:	{
+														tag:	XPUT, props:	{
 															id: 		'user-pass-new',
 															kind:		'password',
 															name: 		'Password',
@@ -369,7 +539,7 @@ module.exports = {
 												{ 	tag:	'div',
 													props:	{ className: 'half' },
 													items: 	[{
-														tag:	NPUT, props:	{
+														tag:	XPUT, props:	{
 															id: 		'user-pass-confirm',
 															kind:		'password',
 															name: 		'ConfPass',
