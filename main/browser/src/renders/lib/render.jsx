@@ -2,6 +2,7 @@
 
 module.exports = function Elem(global) {
 
+		// require('../../utils.js')(global);
 
 	////////////////////////////////////////////////////////////////////////
 	// VARIABLES -----------------------------------------------------------
@@ -12,7 +13,7 @@ module.exports = function Elem(global) {
 		const	Reflux 	= require('reflux');
 		const  Actions 	= require('../../actions')(Reflux);
 
-		const  COMPS 	= require('./components')(global, Reflux, Actions, IOs, LOCKER);
+		const  COMPS 	= require('./components')(global, Reflux, Actions, IOs);
 
 		COMPS.Stores.Run.Socket();
 };

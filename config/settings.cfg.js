@@ -1,15 +1,34 @@
 
 module.exports = {
-	Debug: 		false,
+	Debug: 		true,
 	Port: 		8443,
 	SSL:		{
-		Cert: 	"../SSL/evectr.2018-2020.certificate.pem",
-		Key: 	"../SSL/evectr.2018-2020.privatekey.pem",
+		CA: 	"../SSL/evectr.com.ca-bundle",
+		Cert: 	"../SSL/evectr.com.chain.pem",
+		Key: 	"../SSL/evectr.com.key.pem",
+		DHP:	"/opt/local/etc/nginx/ssl/dhparam.pem",
 	},
 	Services: 	[
-		'https://localhost:8443/gbl-accessor',
-		'https://localhost:8443/gbl-rest',
+		'https://evectr.com/gbl-accessor',
+		'https://evectr.com/gbl-rest',
 	],
+	APIDoc:		{
+		info: {
+			title: "eVectr.API",
+			description: "The official eVectr™ API.",
+			termsOfService: "https://evectr.com/terms",
+			contact: { 
+				name: "eVectr™ Support",
+				email: "support@evectr.com",
+				url: "https://evectr.com/help",
+			},
+			version: "1.0.0"
+		},
+		externalDocs: {},
+		servers: [
+			{ url: "https://evectr.com" }
+		],
+	},
 	Folders: 	{
 		Uploads: 	{
 			Folder:  'storage',
@@ -36,14 +55,14 @@ module.exports = {
 				Port: 		6379,
 				Password: 	'Pion33r247',
 			},
-			Main:	'Client',
+			Main:	{ Index: 0, Name: 'Client' },
 			Stores: [
-				'Users',
-				'Limits',
-				'Lockers',
-				'Messages',
-				'Alerts',
-				'Comments',
+				{ Index: 1, Name: 'Users'   },
+				{ Index: 2, Name: 'Limits'  },
+				{ Index: 3, Name: 'Lockers' },
+				{ Index: 4, Name: 'Messages' },
+				{ Index: 5, Name: 'Alerts'   },
+				{ Index: 6, Name: 'Comments' },
 			]
 		},
 		Auth: 	{
@@ -79,9 +98,7 @@ module.exports = {
 					"FROM       users                 u",
 					"INNER JOIN user_profile_details  d ON u.user_id    = d.user_fk",
 					"INNER JOIN user_settings         s ON u.user_id    = s.user_fk",
-					"LEFT  JOIN locale_search         l ON d.location   = l.city_id",
-					"LEFT  JOIN locale_regions        r ON l.region_id  = r.id",
-					"LEFT  JOIN locale_countries      f ON l.country_id = f.id",
+					"LEFT  JOIN locale_search         l ON u.location   = l.city_id",
 					"WHERE      email_address = ?"
 				].join('\n')
 			},
@@ -102,11 +119,11 @@ module.exports = {
 		},
 		Limits: {
 			All: {
-				"IP/Day": {
+				"IP/Day": 			{
 					total: 5000, method: 'all',
 					lookup: ['connection.remoteAddress'],
 				},
-				"API/Second": {
+				"API/Second": 		{
 					total: 50,   method: 'all',
 					lookup: ['connection.remoteAddress'],
 					omit: [
@@ -123,29 +140,91 @@ module.exports = {
 						'/genders/search/'
 					]
 				},
-				"TokenIP/Day": {
+				"TokenIP/Day": 		{
 					total: 2500, method: 'all', 
 					lookup: ['headers.token', 'connection.remoteAddress']
 				}
 			},
 			Optional: {
-				"New/Day": {
+				"New/Day": 			{
 					total: 3,    method: 'post',
 					lookup: ['connection.remoteAddress']
 				},
-				"Tries/Day": {
+				"Tries/Second": 	{
+					total: 1,    method: 'post', 
+					lookup: ['connection.remoteAddress']
+				},
+				"Tries/Day": 		{
 					total: 5,    method: 'post', 
 					lookup: ['connection.remoteAddress']
 				},
-				"Tries/Second": {
+				"Tries/Second": 	{
 					total: 5,     method: 'post', 
 					lookup: ['connection.remoteAddress']
 				},
-				"Constant/Second": {
+				"Constant/Second": 	{
 					total: 200,   method: 'get',
 					lookup: ['connection.remoteAddress']
 				}
 			}
 		}
-	}
+	},
+	Plugins:	{
+		Stripe: 	function Stripe() {
+						let apiKey = "sk_test_ilOh0bPhIuDC0beq97wPf8Zr",
+							StrSig = 'whsec_5TnyhyT1O9QXq45Iz3zLn6Na0510ARJu',
+							Stripe = require("stripe")(apiKey),
+							PlugIn = {};
+						// -------------------------------------------------------------- //
+							DEFINE(PlugIn, { Signature: HIDDEN({
+								get() { return StrSig; }
+							}, 1) });
+						// -------------------------------------------------------------- //
+							function Asyncify(MODL) {
+								let result = {};
+								// -------------------------------------------------------------- //
+									function Traverse(obj, level = []) {
+										var rslt = {}, idn = '    '.dup(level);
+										for (let p in obj) {
+											let prop = `${idn}${p.padEnd(25)} : `,
+												valu = obj[p], typs = ISS(valu);
+											switch (typs) {
+												case   'object':
+													if (p[0] !== '_') {
+														let subobj = Traverse(valu,[...level,p]);
+														DEFINE(rslt, { [p]: HIDDEN({ get() { return subobj; } },1) }); 
+													}; 	break;;
+												case 'function':
+													let fstr = valu.toString();
+													if ((fstr.has('stripeMethod') || fstr.has('Promise'))) {
+														DEFINE(rslt, { 
+															[p]: HIDDEN(async (...args) => {
+																return new Promise((resolve, reject) => {
+																	valu.bind(obj)(...args)
+																		.then(payload=>resolve(payload))
+																		.catch(errors=>{
+																			LG.Error(errors.message, 'STRIPE', 'Asyncify')
+																			reject(errors)
+																		})
+																});
+															})
+														});
+														// LG.Server([...level,p].join('.'), 'STRIPE', 'Exposed', 'blue');
+													};	break;;
+												default:break;;
+											}
+										};
+										return Object.freeze(rslt);
+									}
+								// -------------------------------------------------------------- //
+									result = Traverse(MODL); 
+								// -------------------------------------------------------------- //
+									return result;
+							}
+						// -------------------------------------------------------------- //
+							PlugIn = Asyncify(Stripe);
+						// -------------------------------------------------------------- //
+							return PlugIn;
+					},
+	},
 };

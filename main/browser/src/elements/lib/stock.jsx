@@ -46,6 +46,17 @@ module.exports = function Comps(COMPS) {
 		const 	 onShould 	= { P: onShouldP, S: onShouldS };
 
 	////////////////////////////////////////////////////////////////////////
+	// FIXES ---------------------------------------------------------------
+
+		// console.log('BFORE:',Object.keys(Reflux.Component.prototype));
+		// // console.log('FUNCT: %s',Reflux.Component.prototype.componentWillMount);
+		// let ReFroto = Reflux.Component.prototype;
+		// // ReFroto.UNSAFE_componentWillMount = ReFroto.componentWillMount;
+		// ReFroto.componentDidMount = ReFroto.componentWillMount;
+		// delete ReFroto.componentWillMount;
+		// console.log('AFTER:',Object.keys(Reflux.Component.prototype));
+
+	////////////////////////////////////////////////////////////////////////
 	// MIXINS --------------------------------------------------------------
 
 		const Elements 	= COMPS.Elements;
@@ -1085,7 +1096,7 @@ module.exports = function Comps(COMPS) {
 									backgroundImage: iURL(Photo),
 								});
 					return (
-						<div id={id} style={style} className={classes}>
+						<div id={id} style={style} className={classes} role="img">
 							{!!!Photo ? (<i {...{
 								'className':    FA(Icons[Kind]),
 								'data-initial':	this.getInitials(Name),

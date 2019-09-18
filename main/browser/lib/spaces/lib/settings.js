@@ -303,12 +303,174 @@ module.exports = {
 					built: 		true,
 					segments: 	{
 						copy: [
-							{ 	  // GENERAL
+							(!!modes.provider ? { 	// BUSINESS
+								tag:	PNL, props: 	{ 
+									name:	'settings-business',
+									header: { label: 'Provider',  icon: 'briefcase', subs: [
+										{ name: 'user-biz-contact', label: 'Business Contact' },
+										{ name: 'user-biz-contact', label: 'Business Bank'    },
+									]	},
+									align:	'gridSlice',
+									form: 	{
+										'id':			'user-business',
+										'data-action': 	'/edit/settings',
+										'method':		'PUT',
+										'buttons':		[
+											{ kind:'submit',label:'Update Provider Details',style:'good' },
+										],
+									},
+									body:	[
+										{	tag:	BLK, props:  { 
+											name: 	'user-biz-contact', 
+											header: { fixed: true, label: 'Business Contact' },
+											align:	'spread gridSlice',
+											items: 	[
+												{ 	tag:	'div',
+													props:	{ className: 'half' },
+													items: 	[{
+														tag:	XPUT, props:	{
+															id: 		'user-biz-st1',
+															name: 		'Street1',
+															icon:		'map-pin',
+															kind:		'text',
+															placeholder:'Street 1',
+															value:		 null,
+															priority:	'*',
+															validate: 	{
+																pattern: /^(?:[A-z0-9'\/#+-]+\b[?,.]?(?: \b|$))+$/,
+																invalid: 'Please specify a valid Street Address for your Service(s).',
+															},
+														}
+												}]	},
+												{ 	tag:	'div',
+													props:	{ className: 'half' },
+													items: 	[{
+														tag:	XPUT, props:	{
+															id: 		'user-biz-st2',
+															name: 		'Street2',
+															kind:		'text',
+															placeholder:'Street 2',
+															value:		 null,
+															validate: 	{
+																pattern: /^(?:[A-z0-9'\/#+-]+\b[?,.]?(?: \b|$))+$/,
+																invalid: 'Please specify a valid Unit/Apt/Suite for your Service(s).',
+															},
+														}
+												}]	},
+												{ 	tag:	'div',
+													props:	{ className: 'spread' },
+													items: 	[{
+														tag:	{ from: 'Evectr', name: ['Form','Xput'] },
+														props:	{
+															id: 		'user-biz-locale',
+															name: 		'LID',
+															kind:		'text',
+															icon:		'location-arrow',
+															placeholder:'Your Location',
+															priority:	'*',
+															hide: 		 true,
+															value:		{
+																value: res.location.id,
+																label: res.location.label,
+															},
+															data:		{
+																id:   'user-locale-sgst', 
+																url:  '/search/for/locale',
+																list: '/locale',
+															},
+															validate: 	{
+																pattern: /[\w\d% ,;.-]+/,
+																invalid: 'Please specify a City, Region and/or Country and choose your Service\'s Locale from the list.',
+															},
+														}
+												}]	},
+												{ 	tag:	'div',
+													props:	{ className: 'half' },
+													items: 	[{
+														tag:	XPUT, props:	{
+															id: 		'user-biz-postal',
+															name: 		'Street1',
+															icon:		'mail-bulk',
+															kind:		'text',
+															placeholder:'Postal/Zip Code',
+															value:		 null,
+															priority:	'~',
+															validate: 	{
+																pattern: /^(?:[A-Z0-9]+\b(?:[ -]\b|$))+$/,
+																invalid: 'Please specify a valid Postal/Zip Code for your Service(s).',
+															},
+														}
+												}]	},
+												{ 	tag:	'div',
+													props:	{ className: 'half' },
+													items: 	[{
+														tag:	XPUT, props:	{
+															id: 		'user-biz-phone',
+															name: 		'Phone',
+															icon: 		'phone',
+															kind:		'tel',
+															placeholder:'Phone Number',
+															value:		 null,
+															priority:	'*',
+															validate: 	{
+																pattern: /^(?:[0-9]){1,14}[0-9]$/,
+																invalid: 'Please specify a valid Phone Humber for your Service(s).',
+															},
+														}
+												}]	},
+											]
+										}	},
+										{ 	tag:   'hr', props:  { className: 'spread' } }, 
+										{	tag:	BLK, props:  { 
+											name: 	'user-biz-bank', 
+											header: { fixed: true, label: 'Business Bank' },
+											align:	'spread gridSlice',
+											items: 	[
+												{ 	tag:	'div',
+													props:	{ className: 'half' },
+													items: 	[{
+														tag:	XPUT, props:	{
+															id: 		'user-biz-chequing',
+															name: 		'AcctNo',
+															icon:		'university',
+															kind:		'text',
+															placeholder:'Account Number',
+															value:		 null,
+															priority:	'*',
+															validate: 	{
+																pattern: /^[0-9]+$/,
+																invalid: 'Please specify a valid Account Number for your Service(s) Bank.',
+															},
+														}
+												}]	},
+												{ 	tag:	'div',
+													props:	{ className: 'half' },
+													items: 	[{
+														tag:	XPUT, props:	{
+															id: 		'user-biz-routing',
+															name: 		'RouteNo',
+															icon:		'random',
+															kind:		'text',
+															placeholder:'Transit and/or Routing No.',
+															value:		 null,
+															priority:	'*',
+															validate: 	{
+																pattern: /^\b[0-9-]+\b$/,
+																invalid: 'Please specify a valid Transit and/or Routing Number for your Service(s).',
+															},
+														}
+												}]	},
+											]
+										}	},
+										{ 	tag:   'hr', props:  { className: 'spread' } }, 
+									]	
+								}
+							}  : null),	{ 	  		// GENERAL
 								tag:	PNL, props: 	{ 
 									name:	'settings-general',
 									header: { label: 'General',  icon: 'cog', subs: [
-										{ name: 'user-modes',   label: 'User Mode' 	},
-										{ name: 'user-general', label: 'General' 	},
+										{ name: 'user-modes',    label: 'User Mode'     },
+										{ name: 'user-general',  label: 'Site Configs' 	},
 									]	},
 									align:	'gridSlice',
 									form: 	{
@@ -332,7 +494,7 @@ module.exports = {
 															tag:	{ from: 'Evectr', name: ['Form','Checkbox'] },
 															props:	{
 																id: 		'user-is-transactional',
-																name: 		'eTransact',
+																name: 		'Transact',
 																label:		'You are a Transactional User:',
 																checked:	 Boolean(modes.transactional),
 																value:		 1,
@@ -345,7 +507,7 @@ module.exports = {
 															tag:	{ from: 'Evectr', name: ['Form','Checkbox'] },
 															props:	{
 																id: 		'user-is-provider',
-																name: 		'eProvider',
+																name: 		'Provider',
 																label:		'You are a Service Provider:',
 																checked:	 Boolean(modes.provider),
 																value:		 1,
@@ -357,7 +519,7 @@ module.exports = {
 										{ 	tag:   'hr', props:  { className: 'spread' } }, 
 										{	tag:	BLK, props:  { 
 												name: 	'user-general', 
-												header: { fixed: true, label: 'General' },
+												header: { fixed: true, label: 'Site Configuration' },
 												align:	'spread gridSlice',
 												items: 	[
 													{ 	tag:	'div',
@@ -365,7 +527,7 @@ module.exports = {
 														items: 	[{	
 															tag:	XPUT, props:	{
 																id: 		'user-prefered-tz',
-																name: 		'eTZone',
+																name: 		'TZone',
 																icon:		'clock',
 																placeholder:'Prefered Site Timezone',
 																tokens:		[!!timezone ? { 
@@ -386,7 +548,7 @@ module.exports = {
 														items: 	[{
 															tag:	XPUT, props:	{
 																id: 		'user-prefered-lang',
-																name: 		'eLang',
+																name: 		'LGID',
 																icon:		'language',
 																placeholder:'Prefered Site Language',
 																tokens:		[!!language ? { 
@@ -398,7 +560,7 @@ module.exports = {
 																data:		{
 																	id:   		'user-prefered-lang-sgst', 
 																	url:  		'/search/for/languages',
-																	list: 		'/get/languages',
+																	list: 		'/list/languages',
 																},
 														}	}]	
 													},
@@ -408,7 +570,7 @@ module.exports = {
 										{ 	tag:   'hr', props:  { className: 'spread' } }, 
 									]	
 								}
-							},	{ // PRIVACY
+							},	{ 					// PRIVACY
 								tag:	PNL, props: 	{ 
 									name:	'settings-privacy',
 									header: { label: 'Privacy', icon: 'user-secret' },
@@ -443,14 +605,14 @@ module.exports = {
 										{ 	tag:	NPUT,
 											props:	{
 												kind:		'hidden',
-												name: 		'eVisibles',
+												name: 		'Visibles',
 												id: 		 visivalue,
 												required:	 true,
 												value:  	 visibility,
 										}	},	HR,
 									]),	
 								}
-							},	{ // SECURITY
+							},	{ 					// SECURITY
 								tag:	PNL, props: 	{ 
 									name:	'settings-security',
 									header: { label: 'Security',  icon: 'fingerprint', subs: [
@@ -477,7 +639,7 @@ module.exports = {
 														tag:	XPUT, props:	{
 															id: 		'user-email',
 															kind:		'email',
-															name: 		'eEmail',
+															name: 		'Email',
 															icon:		'envelope',
 															placeholder:'Email',
 															value:		 email,

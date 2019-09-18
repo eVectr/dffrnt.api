@@ -132,13 +132,13 @@ module.exports = {
 									form: 	{
 										'id':			'add-service-form',
 										'rid':			'services',
-										'data-action': 	'/add/service',
+										'data-action': 	'/provider/service',
 										'method':		'POST',
 										'clear':		 true,
 										'buttons':		[
 											{ kind:'submit',label:'Add Service',style:'norm' },
 										],
-										'params':		{},
+										'params':		{ pdid: pdid },
 										'query':		{ uids: user_id },
 									},
 									body:	[
@@ -170,7 +170,7 @@ module.exports = {
 													title:		'Select a Service Type',
 													priority:	'*',
 													options:	[],
-													data:		{ url: '/get/services', id: 'select-type' },
+													data:		{ url: '/list/services', id: 'select-type' },
 										}	}	]	},
 										{ 	tag:	'div',
 											props:	{ className: 'eight some' },
@@ -185,7 +185,7 @@ module.exports = {
 													title:		'Rate',
 													priority:	'*',
 													options:	[],
-													data:		{ url: '/get/rate', id: 'select-rate' },
+													data:		{ url: '/list/rates', id: 'select-rate' },
 													input:			{
 														kind: 		'number',
 														id: 		'svc-charge',

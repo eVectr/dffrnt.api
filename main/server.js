@@ -14,14 +14,51 @@
 		const 	express 		  = require('express');
 		const { Routes, Session } = require('dffrnt.route');
 		const { SSL, Port 		} = Settings;
-		const { createServer 	} = require(!!SSL?'https':'http');
+		const { createServer 	} = require(!!SSL?'spdy':'http');
+
+		function getSSL(file) { try {
+			return fs.readFileSync(`${ROOTD}/${file}`,'utf8');
+		} catch (e) { return null; } }
 
 	// Setup Requires
 		let api 	= 	express(),
-			server 	= 	createServer(!!SSL ? {
-							key:  fs.readFileSync(`${ROOTD}/${SSL.Key}`,  'utf8'),
-							cert: fs.readFileSync(`${ROOTD}/${SSL.Cert}`, 'utf8'),
-						} : {}, api),
+			server 	= 	createServer(...(!!SSL ? [{
+							ca:   		getSSL(SSL.CA),
+							key:  		getSSL(SSL.Key),
+							cert: 		getSSL(SSL.Cert),
+							dhparam:	getSSL(SSL.DHP),
+							minVersion: 'TLSv1.1',
+							honorCipherOrder: true,
+							ciphers: 	[
+								"EECDH+ECDSA+AESGCM",
+								"EECDH+aRSA+AESGCM",
+								"EECDH+ECDSA+SHA512",
+								"EECDH+ECDSA+SHA384",
+								"EECDH+ECDSA+SHA256",
+								"ECDH+AESGCM",
+								"ECDH+AES256",
+								"DH+AESGCM",
+								"DH+AES256",
+								"RSA+AESGCM",
+								// "ECDHE-RSA-AES256-SHA384",
+								// "DHE-RSA-AES256-SHA384",
+								// "ECDHE-RSA-AES256-SHA256",
+								// "DHE-RSA-AES256-SHA256",
+								// "ECDHE-RSA-AES128-SHA256",
+								// "DHE-RSA-AES128-SHA256",
+								"HIGH",
+								"!aNULL",
+								"!eNULL",
+								"!EXPORT",
+								"!RSA",
+								"!DES",
+								"!RC4",
+								"!MD5",
+								"!PSK",
+								"!SRP",
+								"!CAMELLIA",
+							].join(':'),
+						}, api] : [api])),
 			sess 	= 	Session(server, api);
 
 // ----------------------------------------------------------------------------------------------

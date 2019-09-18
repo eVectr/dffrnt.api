@@ -1,5 +1,16 @@
 
 module.exports = {
+    PUSH:       [
+        // { enc: 'Base64', path: '/public/images/Logo.footer.png' },
+        // { enc: 'Base64', path: '/public/images/Logo.stock.png' },
+        // { enc: 'utf8',   path: '/public/js/vendor.js' },
+        // { enc: 'utf8',   path: '/public/js/engine.js' },
+        // { enc: 'utf8',   path: '/public/comps/font-awesome/web-fonts-with-css/css/fontawesome-all.min.css' },
+        // { enc: 'utf8',   path: '/public/css/style.css' },
+        // { enc:  null,    path: '/public/comps/font-awesome/web-fonts-with-css/webfonts/fa-solid-900.woff2' },
+        // { enc:  null,    path: '/public/comps/font-awesome/web-fonts-with-css/webfonts/fa-regular-400.woff2' },
+        //     // { as: 'image', enc: 'Base64', mime: 'image/x-icon', path: '/public/images/icons/favicon.ico' },
+    ],
     Global:     { // RESERVED ~ !!!
         config:     {
             name:        'global',
@@ -14,6 +25,7 @@ module.exports = {
         ],
     },
     Accessor:   { // RESERVED ~ !!!
+        type:       'auth',
         config:     {
             name:        'accessor',
             title:       'API Authoriser',
@@ -23,21 +35,17 @@ module.exports = {
         },
     },
     REST:       { // RESERVED ~ !!!
+        type:       'rest',
         config:     {
             name:        'rest',
             title:       'API Explorer',
             description: 'Querying Data',
             accessor:     false,
-            page:        {
-                title:      () => 'API Explorer',
-                CSS:        ['explorer'],
-                styles:      true,
-                main:       'explorer',
-                type:       'cover',
-            },
+            page:         null
         },
     },
     Error:      {
+        type:       'page',
         config:     {
             name:        'error',
             scheme:      '/404/',
@@ -55,6 +63,7 @@ module.exports = {
         },
     },
     Main:       {
+        type:       'page',
         config:     {
             name:        'main',
             scheme:      '/\\b(home|log(in|out))\\b/',
@@ -72,6 +81,7 @@ module.exports = {
         },
     },
     Static:     {
+        type:       'page',
         config:     {
             name:        'static',
             scheme:      '/\\b(about|help|safety|privacy|terms)\\b/',
@@ -95,6 +105,7 @@ module.exports = {
         },
     },
     Search:     {
+        type:       'page',
         config:     {
             name:        'results',
             scheme:      '/results/',
@@ -111,7 +122,26 @@ module.exports = {
             },
         },
     },
+    Defined:    {
+        type:       'page',
+        config:     {
+            name:        'defined',
+            scheme:      '/defined/',
+            title:       'Defined Search',
+            description: 'Defined Search',
+            accessor:     false,
+            restrict:    { true: null, false: 'login' },
+            page:        {
+                title:      (path) => 'Defined Search',
+                CSS:        ['style'],
+                styles:      false,
+                main:       'evectr',
+                type:       'stock',
+            },
+        },
+    },
     Settings:   {
+        type:       'page',
         config:     {
             name:        'settings',
             scheme:      '/settings/',
@@ -128,7 +158,8 @@ module.exports = {
             },
         },
     },
-    Update:   {
+    Update:     {
+        type:       'page',
         config:     {
             name:        'update',
             scheme:      '/update/',
@@ -146,6 +177,7 @@ module.exports = {
         },
     },
     Services:   {
+        type:       'page',
         config:     {
             name:        'services',
             scheme:      '/services/',
@@ -163,6 +195,7 @@ module.exports = {
         },
     },
     Profile:    {
+        type:       'page',
         config:     {
             name:        'profile',
             scheme:      '/(([\\w_-]|\\.(?!html?|je?pg|pdf|gif|svg|ico|png|(doc|xls|ppt)x?))+|profile)/',

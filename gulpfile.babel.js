@@ -35,11 +35,17 @@
 
 	// Configs ----------------------------------------------------------------------------------
 
-		const 	cfgfld	 = './config';
+		const 	cfgfld	= './config';
 		const 	pubFld 	= './public';
 		const 	brwFld 	= './main/browser';
+		const   brwexs  = !!fs.existsSync(brwFld);
 		const 	libFld 	= `${brwFld}/lib`;
 		const 	opsys 	= { linux: 'nix', darwin: 'nix', win32: 'win' }[os.platform()];
+		const 	spce 	= {
+					folder:   `${libFld}/spaces/lib`,
+					options:  { cwd: `./` },
+					location: `./spaces`
+				};
 		const 	frwk 	= {
 					folders: [ `./node_modules/dffrnt.*` ],
 					options: { cwd: `./` },
@@ -50,18 +56,42 @@
 					options: { cwd: `./` },
 					location: cfgfld
 				};
+		const 	browReq	= [
+					'socket.io-client',
+					'reflux',
+					'react',
+					'react-dom',
+					'react-stripe-elements',
+				];
+		const 	browExl	= [
+					'./lib/iso',
+				];
 		const 	brow 	= {
-					source: 	'bundle.js',
 					options:  	{
-						entries: [ `${brwFld}/main.js` ],
 						cache: {},
 						packageCache: {},
 						fullPaths: false,
-						debug: false
+						debug: true,
 					},
+					entries: [
+						{
+							source: 	'vendor.js',
+							require:	browReq,
+						},
+						{
+							source: 	'engine.js',
+							entries: 	[ `${brwFld}/main.js` ],
+							external:	browReq.concat(browExl),
+							exclude: 	[
+								`${libFld}/src/renders/lib/iso.jsx`,
+								// `${libFld}/spaces/lib/*.js`,
+							],
+						},
+					],
 					mini:  {
-						map: false, uglify: {
-							mangle: true,
+						// map: false, 
+						uglify: {
+							mangle: false,
 							compress: {
 								sequences: true,
 								dead_code: true,
@@ -97,7 +127,7 @@
 					location: `${pubFld}/css`
 				};
 		const 	redfl 	= {
-					cwd: '/opt/REDIS',
+					cwd: '../REDIS',
 					cmd: 'redis-server',
 					cfg: 'redis.conf'
 				};
@@ -126,7 +156,9 @@
 			watchify 	 = require('watchify');
 			map 		 = require('map-stream');
 			redis 		 = require('redis');
-		} catch (e) {};	}; Ready();
+		} catch (e) {
+			console.log('\n[ ERROR ]:', e, '\n');
+		};	}; Ready();
 
 // ----------------------------------------------------------------------------------------------
 // Handle Bundle Gulp ---------------------------------------------------------------------------
@@ -147,6 +179,16 @@
 					})); 	done();
 			});
 
+		// Initialize Spaces Directory; if necessary
+			gulp.task( 'spaces', (done) => {
+				if (!!!brwexs) { done(); return; }
+				let loc = spce.location, pth = spce.folder;
+				if (!fs.existsSync(loc)) {
+					gulp.src(pth).pipe(gulp.symlink(loc));
+					LOG(`Created Spaces Directory.`);
+				};	done();
+			});
+
 		// Initialize Configs; if necessary
 			gulp.task( 'config', (done) => {
 				let max = 0, fld = conf.location;
@@ -165,7 +207,7 @@
 					})); 	done();
 			});
 
-		gulp.task( 'init', SERIES('framework','config'));
+		gulp.task( 'init', SERIES('framework','config','spaces'));
 
 		// Install NPM Packages
 			gulp.task(  'npm', (done) => {
@@ -178,6 +220,7 @@
 
 		// Install Bower Components
 			gulp.task( 'bower', (done) => {
+				if (!!!brwexs) { done(); return; }
 				exec('bower --allow-root install', (err, stdo, stde) => {
 					if (!!err) LOG(`Bower.ERR: ${JSNS(err)}`);
 					else LOG(stdo||stde);
@@ -192,7 +235,7 @@
 		//  ES6 to ES5 Conversion/Watch
 			gulp.task('es6-make',	(done) => {
 				gulp.src(es6.source)
-					.pipe( babel({ presets: es6.presets, compact: false }))
+					.pipe( babel({ presets: es6.presets, compact: true }))
 					.on( 'error', (e) => { LOG('>>> ERROR', e); this.emit('end'); })
 					.pipe(gulp.dest(es6.location));
 				done();
@@ -203,7 +246,7 @@
 		//  JSX to  JS Conversion/Watch
 			gulp.task('jsx-make',	(done) => {
 				gulp.src(jsx.source)
-					.pipe( babel({ presets: jsx.presets, compact: false }))
+					.pipe( babel({ presets: jsx.presets, compact: true }))
 					.on( 'error', (e) => { LOG('>>> ERROR', e); this.emit('end'); })
 					.pipe(gulp.dest(jsx.location));
 				done();
@@ -213,26 +256,44 @@
 
 		// Browserify Concatenation
 			gulp.task( 'brow', (done) => {
-				var BUND = new browserify(brow.options),
-					file = `${brow.location}/${brow.source}`,
-					args = process.argv.slice(2), C = 0,
+				let args = process.argv.slice(2), C = 0,
 					verb = (args.slice(-1)[0]||'')=='--verbose';
 
-				function doBundle() {
-					LOG(`BUNDLE: ${brow.source} to ${brow.location} ...`);
-					BUND.bundle()
-						.pipe(source(brow.source))
-						// .pipe( babel({ presets: ['env'], compact: false }))
-						.pipe(gulp.dest(brow.location));
-					return BUND;
+				function getBundle(entry) {
+					let BUND = new browserify(Assign({}, {
+							entries: entry.entries,
+						},	brow.options)),
+						SMAP = `${entry.source}.map`,
+						MINI = Assign({ 
+							map: `${pubFld.slice(1)}/js/${SMAP}`, 
+							output: `${pubFld}/js/${SMAP}`, 
+							compressPath: p => (path.relative(`${__dirname}/..`, p)) 
+						}, 	brow.mini);
+
+					function doBundle() {
+						LOG(`BUNDLE: ${entry.source} to ${brow.location} ...`);
+						BUND.bundle()
+							.pipe(source(entry.source))
+							// .pipe( babel({ presets: ['env'], compact: false }))
+							.pipe(gulp.dest(brow.location));
+						return BUND;
+					};
+
+					if (!!entry.require ) BUND.require( entry.require );
+					if (!!entry.external) BUND.external(entry.external);
+					if (!!entry.exclude ) BUND.exclude( entry.exclude );
+
+					BUND.on('update', doBundle)
+						.plugin('watchify', { delay: 100, ignoreWatch: ['**/node_modules/**'] })
+						.plugin('minifyify', MINI)
+						.on('log', msg => { LOG(`BUNDLE: ${msg}`); done() });
+
+					if (verb) BUND.on('file', (f,i)=>{ C++; LOG(`FILE ${C}: ${f} | ${i}`); });
+
+					doBundle();
 				}
 
-				BUND.on('update', doBundle)
-					.plugin('watchify', { delay: 100, ignoreWatch: ['**/node_modules/**'] })
-					.plugin('minifyify', Assign({ compressPath: p => path.relative(`${__dirname}/..`, p) }, brow.mini))
-					.on('log', msg => { LOG(`BUNDLE: ${msg}`); done() });
-				if (verb) BUND.on('file', (f,i,par) => { C++; LOG(`FILE ${C}: ${f} | ${i}`); });
-				doBundle();
+				brow.entries.map(getBundle);
 			});
 
 		gulp.task('bundle', SERIES('es6', 'jsx', 'brow'));
@@ -305,13 +366,20 @@
 
 	// StartUp ----------------------------------------------------------------------------------
 
-		gulp.task('development', SERIES('init','convert','system'));
-		// gulp.task('production',  SERIES('init','system'));
-			gulp.task('production', SERIES('init','convert','system'));
+		switch (true) {
+			case !!!brwexs:
+				gulp.task('development', SERIES('init','system'));
+				gulp.task('production',  SERIES('init','system'));
+				break;;
+			default:
+				gulp.task('development', SERIES('init','convert','system'));
+				gulp.task('production',  SERIES('init','convert','system'));
+				break;;
+		}
 
 		switch (process.env.NODE_ENV) {
-			case 'production': 	gulp.task('default', SERIES('production' ));
-			default: 			gulp.task('default', SERIES('development'));
+			case 'production': 	gulp.task('default', SERIES('production' )); break;;
+			default: 			gulp.task('default', SERIES('development')); break;;
 		}
 
 // ----------------------------------------------------------------------------------------------

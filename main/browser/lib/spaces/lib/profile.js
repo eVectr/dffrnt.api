@@ -79,48 +79,62 @@ module.exports = {
 	Build: function Build(Actions, Stores, LID) {
 		var THS = this;
 		return function (res) {
-
-			// res = {};
-
-
-			var dta = Imm.fromJS(THS.Data[0]()),
-				mrg = Imm.fromJS(res),
-				FLT = function FLT(v) { return !!v },
-				PNL = { from: 'Evectr', name: ['Content','Panel'] },
-				MLT = { from: 'Evectr', name: ['Content','Multis'] },
-				BDG = {
-					provider: { kind: 'norm', icon: 'handshake'  },
-					verified: { kind: 'good', icon: 'shield-alt' },
-				};
-			// -----
-			// res = dta.mergeDeepWith(
-				// function(o,n,k) { 
-					// return (IS(n)=='socket'?o||null:n);
-				// }, 	mrg
-			// ).toJS();
+			var FLT  = 	function FLT(v) { return !!v }, 
+				DSV  = 	function DML(v) {
+							var asg = Assign,
+								chk = !!v && !isNaN(v),
+								num = (chk ? (v>5?5:v) : null),
+								mpr = function(v,i){return asg({id:i},dfl);},
+								fil = function(n,m){return Array(n).fill(1).map(m);},
+								dfl = {
+									kind:		 '...',
+									name:		 '...',
+									description: '...',
+									charge:		 0,
+									rate:		 'Free',
+								};
+							return (chk?fil(num,mpr):v);
+						},
+				DML  = 	function DML(v, e, o, s) {
+							var asg = Assign,
+								slc = IS(s)=='object'?s:null,
+								bse = {label:'...',value:0},
+								ext = {adjct:'',level:{K:1,V:1}},
+								dfl = asg(bse,!!e?ext:{}),
+								mpr = function(v,i){return asg({},dfl);},
+								chk = !!v && !isNaN(v),
+								drs = (chk ? Array(v).fill(1).map(mpr) : null);
+							return (!!drs?(!!o?drs[0]:drs):(!!slc?slc[v]:v));
+						},
+				PNL  = 	{ from: 'Evectr', name: ['Content','Panel'] },
+				MLT  = 	{ from: 'Evectr', name: ['Content','Multis'] },
+				BDG  = 	{
+							provider: { kind: 'norm', icon: 'handshake'  },
+							verified: { kind: 'good', icon: 'shield-alt' },
+						};
 			// -----
 			var photos 			= res.photos||{},
 				details 		= res.details||{},
 				settings 		= res.settings||{},
 				checks 			= res.checks||{},
 				misc			= details.misc||{},
-				description		= misc.description||'',
+				description		= misc.description||"...",
 				education		= misc.education||{},
 				institutions	= education.institutions,
 				edudesc			= education.edudesc,
-				hobbies			= details.hobbies,
-				languages		= details.languages,
-				nationalities	= details.nationalities,
-				religion		= details.religion,
+				hobbies			= DML(details.hobbies||5, 1),
+				languages		= DML(details.languages, 1),
+				nationalities	= DML(details.nationalities),
+				religion		= DML(details.religion, 0, 1),
 				identity		= details.identity||{},
-				marital			= { 
+				marital			= DML(identity.marital||1, 0, 1, { 
 									M: { value: 'M', label: 'Married'			},
 									S: { value: 'S', label: 'Single'			},
 									R: { value: 'R', label: 'In a Relationship'	},
-								}[identity.marital],
-				gender			= null, //identity.gender,
-				orient			= identity.orient,
-				services 		= res.services||[],
+								}),
+				gender			= null, /*DML(identity.gender,0,1),*/
+				orient			= DML(identity.orient, 0, 1),
+				services 		= DSV(res.services||5),
 				modes			= settings.modes||{},
 				provider 		= !!modes.provider && services.length,
 				verified		= !!checks.verified;
@@ -165,17 +179,15 @@ module.exports = {
 											xerox: 	true,
 											props:	{ className: 'text' },
 											items: 	description.split(/\n/g),
-										}, { tag: 'br' }, !!hobbies ? {
-											tag:	{ 
-												from: 'Evectr', name: ['Content','Multis'] 
-											},
+										}, { tag: 'br' }, ( !!hobbies ? {
+											tag:	{ from: 'Evectr', name: ['Content','Multis'] },
 											props:	{ 
 												name: 	'hobbies',
 												kind:	'good',
 												size:	 1,
 												items: 	hobbies.map(function (v,k) {
 													var url = '/hobbies/'+v.label;
-													return Assign({},v,{
+													return Assign({}, v, {
 														href: url, level: {
 															href: 	url+'/'+v.level.K,
 															label:	v.level.K,
@@ -183,7 +195,7 @@ module.exports = {
 													})
 												}),
 											},
-										} : null,
+										} : null ),
 									].filter(FLT),		
 								}
 							}, 
@@ -212,9 +224,9 @@ module.exports = {
 												header:	{ label: 'Language' },
 												kind:	'info',
 												size:	 1,
-												items: 	languages.map(function (v,k) {
+												items: 	languages.map(function (v) {
 													var url = '/languages/'+v.label;
-													return Assign({},v,{
+													return Assign({}, v, {
 														href: url, level: {
 															href: 	url+'/'+v.level.K,
 															label:	v.level.K,
@@ -229,7 +241,7 @@ module.exports = {
 												header:	{ label: 'Background' },
 												kind:	'info',
 												size:	 1,
-												items: 	nationalities.map(function (v,k) {
+												items: 	nationalities.map(function (v) {
 													return Assign({},v,{href: '/nationalities/'+v.label})
 												}),
 											},

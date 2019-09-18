@@ -15,6 +15,7 @@ module.exports = function (Reflux) {
 		]),
 		Content: 	Reflux.createActions([
 			"setup",
+			"state",
 			"build",
 		]),
 		Data: 		Reflux.createActions([

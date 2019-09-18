@@ -1,6 +1,6 @@
 'use strict';
 
-module.exports = function Comps(COMPS, LID) {
+module.exports = function Comps(COMPS) {
 
 	////////////////////////////////////////////////////////////////////////
 	// CONSTANTS -----------------------------------------------------------
@@ -20,8 +20,14 @@ module.exports = function Comps(COMPS, LID) {
 		const 	FA 			= COMPS.FA;
 		const 	iURL 		= COMPS.iURL;
 		const 	joinV 		= COMPS.joinV;
-		const 	PAGE 		= NMESPC.page;
 		const 	DATA_TMR 	= {};
+
+		const { StripeProvider,
+				injectStripe,
+				PaymentRequestButtonElement,
+				CardElement,
+				Elements
+		} = COMPS.Elements.StripeJS;
 
 		const 	EV 			= {};
 
@@ -68,8 +74,17 @@ module.exports = function Comps(COMPS, LID) {
 		// APP     /////////////////////////////////////////////////////////
 			EV.App 				= class App 		extends Mix('Reflux',MX.General) {
 				constructor(props) {
-					super(props); this.name  = 'APP'; this.mode  = PAGE.type||'';
-					this.store = COMPS.Stores.App(LID); 
+					super(props); this.name  = 'APP'; 
+					this.state = { stripe: null };
+					this.mode  = NMESPC.page.type||'';
+					this.store = COMPS.Stores.App(props.LID); 
+				}
+
+				componentDidMount() {
+					// Create Stripe instance in componentDidMount
+					// (componentDidMount only fires in browser/DOM environment)
+					let pubKey = 'pk_test_O3cwbaxfELRW69hj3mpwJpOB';
+					this.setState({ stripe: window.Stripe(pubKey) });
 				}
 
 				getHeader(mode, title, searches = []) {
@@ -130,18 +145,20 @@ module.exports = function Comps(COMPS, LID) {
 					COMPS.IsAuthd 	= header.identified;
 					COMPS.UID 		= scopes.user_id; 
 					return (
-						<main id="content" className={classes}>
-							{this.getHeader(mode,title,search)}
-							<Foot {...footer} />
-							<Content {...content} />
-							<Head home={footer.credits.website} 
-								  user={user.Profile.Name} 
-								  alerts={header.alerts}
-								  messages={header.messages} 
-								  admin={header.admin}
-								  title={title} />
-							{this.getThreads(mode,footer)}
-						</main>
+						<StripeProvider stripe={props.stripe}>
+							<main id="content" className={classes}>
+								{this.getHeader(mode,title,search)}
+								<Foot {...footer} />
+								<Content {...content} />
+								<Head home={footer.credits.website} 
+									user={user.Profile.Name} 
+									alerts={header.alerts}
+									messages={header.messages} 
+									admin={header.admin}
+									title={title} />
+								{this.getThreads(mode,footer)}
+							</main>
+						</StripeProvider>
 					);
 				}
 			};
@@ -382,6 +399,7 @@ module.exports = function Comps(COMPS, LID) {
 					let THS 	= this,
 						props 	= THS.props,
 						name  	= THS.id,
+						tab 	= props.tabIndex,
 						autoc 	= 'autocomp',
 						source 	= '#',
 						attrs 	= {
@@ -392,6 +410,7 @@ module.exports = function Comps(COMPS, LID) {
 							'method':		'POST',
 							'target':		 autoc,
 							'onSubmit': 	 THS.handleLogout,
+							'tabIndex': 	 (tab||'').toString(),
 						};
 					return (<form key='auth' {...attrs}>{props.children}</form>);
 				}
@@ -422,7 +441,7 @@ module.exports = function Comps(COMPS, LID) {
 			EV.Head 			= class Head 		extends Mix('Pure',  MX.Static) {
 				constructor(props) {
 					super(props); this.name = 'HEAD';
-					this.mode  = PAGE.type||'';
+					this.mode  = NMESPC.page.type||'';
 				}
 
 				render() {
@@ -484,6 +503,8 @@ module.exports = function Comps(COMPS, LID) {
 					let props = this.props, 
 						group = props.group, 
 						id 	  = props.id, 
+						lid   = `${id}-lbl`, 
+						mid   = `${id}-mnu`, 
 						tab   = props.tab, 
 						icon  = props.icon,
 						label = props.label,
@@ -496,16 +517,16 @@ module.exports = function Comps(COMPS, LID) {
 						DItem = Head.Drop[props.kind];
 					return (
 						<div className="gridDrop">
-							<input type="radio" className="reveal" name={group} id={id} aria-hidden="true" tabIndex={tab} />
-							<label className="reveal" role="menuitem" aria-expanded="false" htmlFor={id}>
-								<i className={FA(icon)}></i>
-								{!!label?(<span className="hidden-xs hidden-sm">{label}</span>):null}
+							<input type="radio" className="reveal" name={group} id={id} aria-hidden="true" role="presentation"/>
+							<label id={lid} className="reveal" htmlFor={id} tabIndex={tab} role="menuitem" aria-haspopup="true" aria-controls={mid}>
+								<i className={FA(icon)} role="none"></i>
+								{!!label?(<span className="hidden-xs hidden-sm" role="none">{label}</span>):null}
 							</label>
-							<div className="drop reveal" role="menu">
-								<div className="menu">
+							<div id={mid} className="drop reveal" role="presentation">
+								<div className="menu" aria-labelledby={lid} role="menu">
 									{items.map((v,i) => {
 										let id = `${igroup}-${i}`;
-										return (<DItem key={id} id={id} tab={tab} {...v}/>);
+										return (<DItem key={id} id={id} group={igroup} tab={tab} {...v}/>);
 									}).concat(!!all?[
 										<Head.Drop.ALL key={all.id} id={all.id} group={igroup} tab={tab} />
 									]:[])}
@@ -525,35 +546,48 @@ module.exports = function Comps(COMPS, LID) {
 				items:	[],
 				all:	'',
 			};
+
+			EV.Head.Drop.MItem 	= class MItem		extends Mix('Pure',  MX.Static) {
+				constructor(props) { super(props); this.name = 'MItem'; }
+
+				getMenuItem(MenuItem, BtnElem, hasOpt = true) {
+					let { group, id, tab, href } = this.props,
+						BProps  = BtnElem.props||{},
+						BTag    = Tag(BtnElem.tag);
+					
+							// console.log(`${this.name}.getMenuItem()`, {
+								// props: 		this.props,
+								// MenuItem: 	MenuItem,
+								// BtnElem: 	BtnElem,
+								// hasOpt: 	hasOpt,
+							// })
+					
+					return (<Frag>
+						{ !!hasOpt ? <input type="radio" className="ctrl" name={group} id={id} aria-hidden="true" role="presentation"/> 
+						: null }<BTag {...BProps} href={href} tabIndex={tab} role="menuitem">{MenuItem}</BTag>
+					</Frag>);
+				}
+			};
 			
-			EV.Head.Drop.MSG 	= class MSG			extends Mix('Pure',  MX.Static) {
+			EV.Head.Drop.MSG 	= class MSG			extends EV.Head.Drop.MItem {
 				constructor(props) { super(props); this.name = 'MSG'; }
 
 				render() {
 					let props 	= this.props, 
-						group 	= props.group,
-						id 		= props.id,
-						tab 	= props.tab,
-						label 	= props.label, 
+						label 	= props.label,
 						time 	= props.time,
-						detail 	= props.detail,
-						href 	= props.href;
-					return (
-						<Frag>
-							<input type="radio" className="ctrl" name={group} id={id} aria-hidden="true" tabIndex={tab} />
-							<a role="menuitem" href={href}>
-								<div className="message prev">
-									<header>
-										<strong>{label}</strong>
-										<span className="pull-right muted">
-											<em>{time}</em>
-										</span>
-									</header>
-									<div>{detail}</div>
-								</div>
-							</a>
-						</Frag>
-					);
+						detail 	= props.detail;
+					return this.getMenuItem((
+						<div className="message prev">
+							<header>
+								<strong>{label}</strong>
+								<span className="pull-right muted">
+									<em>{time}</em>
+								</span>
+							</header>
+							<div>{detail}</div>
+						</div>
+					), { tag: 'a' });
 				}
 			};
 			EV.Head.Drop.MSG.defaultProps = {
@@ -562,34 +596,25 @@ module.exports = function Comps(COMPS, LID) {
 				tab:	'0', 
 				icon:	null, 
 				label:	'',
+				href:	'#',
 				time:	'',
 				detail:	'',
-				href:	'#',
 			};
 
-			EV.Head.Drop.ALRT 	= class ALRT		extends Mix('Pure',  MX.Static) {
+			EV.Head.Drop.ALRT 	= class ALRT		extends EV.Head.Drop.MItem {
 				constructor(props) { super(props); this.name = 'ALRT'; }
 
 				render() {
 					let props 	= this.props, 
-						group 	= props.group,
-						id 		= props.id,
-						tab 	= props.tab,
-						icon 	= props.icon,
-						time 	= props.time,
 						label 	= props.label,
-						href 	= props.href;
-					return (
-						<Frag>
-							<input type="radio" className="ctrl" name={group} id={id} aria-hidden="true" tabIndex={tab} />
-							<a role="menuitem" href={href}>
-								<div className="notification">
-									<i className={FA(icon)}></i>{` ${label.trim()}`}
-									<span className="pull-right muted small">{time}</span>
-								</div>
-							</a>
-						</Frag>
-					);
+						time 	= props.time,
+						icon 	= props.icon;
+					return this.getMenuItem((
+						<div className="notification">
+							<i className={FA(icon)}></i>{` ${label.trim()}`}
+							<span className="pull-right muted small">{time}</span>
+						</div>
+					), { tag: 'a' });
 				}
 			};
 			EV.Head.Drop.ALRT.defaultProps = {
@@ -597,12 +622,12 @@ module.exports = function Comps(COMPS, LID) {
 				id:		null, 
 				tab:	'0', 
 				icon:	null, 
-				time:	'',
 				label:	'',
 				href:	'#',
+				time:	'',
 			};
 
-			EV.Head.Drop.BTN 	= class BTN			extends Mix('Pure',  MX.Static) {
+			EV.Head.Drop.BTN 	= class BTN			extends EV.Head.Drop.MItem {
 				constructor(props) { 
 					super(props); this.name = 'BTN'; 
 					this.Kinds = { a: 'a',  button: 'button', submit: 'submit' };
@@ -613,30 +638,24 @@ module.exports = function Comps(COMPS, LID) {
 				render() {
 					let props 	= this.props, 
 						kind	= this.Kinds[props.kind||'a'],
-						Elem 	= this.Elems[kind],
-						group 	= props.group,
 						id 		= props.id,
-						tab 	= props.tab,
-						icon 	= props.icon, 
 						label 	= props.label,
-						href 	= props.href,
-						Wrap 	= props.wrap, WTag,
-						attrs 	= { role:'menuitem', href:href, type: this.Types[kind] }, 
+						icon 	= props.icon, 
+						Wrap 	= props.wrap,
+						hasWrap = !!Wrap,
+						iattrs  = { 
+							tag: 	this.Elems[kind], 
+							props: 	{ type: this.Types[kind] }	
+						},
+						attrs  = (hasWrap ? Wrap : iattrs), 
 						item 	= (
-							<Elem {...attrs}>
-								<label htmlFor={id}>
-									<i className={FA(icon)}></i>{` ${label.trim()}`}
-								</label>
-							</Elem>
+							<label htmlFor={id}>
+								<i className={FA(icon)}></i>{` ${label.trim()}`}
+							</label>
 						);
-					return (
-						<Frag>
-							<input type="radio" className="ctrl" name={group} id={id} aria-hidden="true" tabIndex={tab} />
-							{!!Wrap ? (WTag = Tag(Wrap.tag),
-								<WTag {...attrs} {...Wrap.props||{}}>{item}</WTag> ) 
-							: 	item}
-						</Frag>
-					);
+					return this.getMenuItem((
+						hasWrap ? this.getMenuItem(item, iattrs, false) : item
+					), 	attrs);
 				}
 			};
 			EV.Head.Drop.BTN.defaultProps = {
@@ -648,25 +667,16 @@ module.exports = function Comps(COMPS, LID) {
 				href:	'#',
 			};
 
-			EV.Head.Drop.ALL 	= class ALL			extends Mix('Pure',  MX.Static) {
+			EV.Head.Drop.ALL 	= class ALL			extends EV.Head.Drop.MItem {
 				constructor(props) { super(props); this.name = 'ALL'; }
 
 				render() {
-					let props 	= this.props, 
-						group 	= props.group,
-						id 		= props.id,
-						tab 	= props.tab,
-						icon 	= props.icon,
+					let props 	= this.props,
 						label 	= props.label,
-						href 	= props.href;
-					return (
-						<Frag>
-							<input type="radio" className="ctrl" name={group} id={id} aria-hidden="true" tabIndex={tab} />
-							<a href={href} className="seeAll" role="menuitem" >
-								<div className="msg all"><strong>{label}</strong> <i className={FA(icon)}></i></div>
-							</a>
-						</Frag>
-					);
+						icon 	= props.icon;
+					return this.getMenuItem((
+						<div className="msg all"><strong>{label}</strong> <i className={FA(icon)}></i></div>
+					), { tag: 'a' });
 				}
 			};
 			EV.Head.Drop.ALL.defaultProps = {
@@ -694,8 +704,8 @@ module.exports = function Comps(COMPS, LID) {
 						tokens	=   props.tokens||[],
 						isSrch	=   NMESPC.name == 'results';
 					return ( COMPS.IsAuthd ?
-						<form {...attrs} className={classN('norm-b',...classes)}>
-							<div className="tkn norm"><span><i className={FA('search')}></i></span></div>
+						<form {...attrs} className={classN('norm-b',...classes)} role="search">
+							<div className="tkn norm" role="presentation"><span><i className={FA('search')}></i></span></div>
 							<Form.Tokens {...{
 								kind:			 "token",
 								search:			  true,
@@ -720,7 +730,7 @@ module.exports = function Comps(COMPS, LID) {
 							<button type="submit" id="search-go"  className="tkn norm">
 								<span>GO</span>{ !isSrch ? <Frag> <a>Defined Search</a></Frag> : null }
 							</button>
-						</form> : <div className={classN(...classes)}></div>
+						</form> : <div className={classN(...classes)} role="presentation"></div>
 					);
 				}
 			}
@@ -738,8 +748,8 @@ module.exports = function Comps(COMPS, LID) {
 							backgroundImage: `url('${img}')` 
 						} : null);
 					return (
-						<header className="gridItemCover">
-							<div className="gpu" style={style}></div>
+						<header className="gridItemCover" role="complementary">
+							<div className="gpu" style={style} role="img"></div>
 						</header>
 					);
 				}
@@ -797,7 +807,7 @@ module.exports = function Comps(COMPS, LID) {
 						):null);
 					
 					return (size!='small' ? (
-						<header {...attrs}>
+						<header {...attrs} role="complementary">
 							<div className={shadow}>
 								<h1 id={isShadow?null:id} className="gpu">
 									<span className="trunc">{title}</span>
@@ -807,7 +817,7 @@ module.exports = function Comps(COMPS, LID) {
 						</header>
 					) : (
 						<Frag>
-							<h3 className="gpu"><span className="trunc">{title}</span></h3>
+							<h3 className="gpu" role="complementary"><span className="trunc">{title}</span></h3>
 							<h3>{subs}</h3>
 						</Frag>
 					));
@@ -844,7 +854,7 @@ module.exports = function Comps(COMPS, LID) {
 					let props 	= this.props,
 						mode	= props.mode||'show',
 						pic		= props.photo,
-						uname	= props.uname||['',''],
+						uname	= props.uname||'',
 						fname	= props.name,
 						badges	= props.badges||[],
 						locale	= props.locale,
@@ -855,10 +865,10 @@ module.exports = function Comps(COMPS, LID) {
 					return (
 						<Frag>
 							{/* <!-- PROFILE PHOTO --> */}
-								<header className="gridItemPic d">
+								<header className="gridItemPic d" role="complementary">
 									<Bubble kind="user" name={fname} img={pic} opts={['small','er','lite']} />
 								</header>
-								<header className="gridItemPic">
+								<header className="gridItemPic" role="complementary">
 									<Bubble kind="user" name={fname} img={pic} opts={['huge','cutout']} id="profile_picture"/>
 								</header>
 							{/* <!-- PROFILE INFO  --> */}
@@ -869,7 +879,7 @@ module.exports = function Comps(COMPS, LID) {
 									title: 		 joinV(props.name),
 									subtitle: 	{ label: uname, badges: badges },
 								}}/>
-								<header className="gridItemInfo PLR">
+								<header className="gridItemInfo PLR" role="complementary">
 									<div className="noShadow">
 										<h4>{locale}</h4>
 										<h6>{!!sex?<i className={FA(sex)}></i>:null}
@@ -881,7 +891,7 @@ module.exports = function Comps(COMPS, LID) {
 								</header>
 							{/* <!-- PROFILE JOIN  --> */}
 								{mode=='show' ? (
-								<header className="gridItemJoin">
+								<header className="gridItemJoin" role="complementary">
 									<div className="cutout">
 										<button className="tkn good large block" type="submit">
 											<span><i className={FA('user-plus')}></i> Join my Community</span>
@@ -1009,9 +1019,9 @@ module.exports = function Comps(COMPS, LID) {
 						sgmnt = this.getSegments(props.segments),
 								{ copy, other } = sgmnt,
 						sideb = this.getSideBar(sgmnt),
-						jumbo = PAGE.type=='jumbo';
+						jumbo = NMESPC.page.type=='jumbo';
 					return (
-						<section className="gridItemContent gridContent">
+						<section className="gridItemContent gridContent" role="main">
 							{!jumbo?<SideBar {...sideb} />:null}
 									<Copy    {...copy } />
 							{!jumbo?<Other   {...other} />:null}
@@ -1028,7 +1038,7 @@ module.exports = function Comps(COMPS, LID) {
 				render() {
 					let props = this.props, name = props.name, bttns = props.items;
 					return (
-						<nav id={name} className="gridItemSidebar gridMenu">
+						<nav id={name} className="gridItemSidebar gridMenu" aria-controls="copy other">
 							{bttns.map((v,i) => (
 								<Frag key={i}>
 									<label key={`sbttn-${i}`} className={classN("btn",!!v.small?'sub':null)}>
@@ -1334,7 +1344,7 @@ module.exports = function Comps(COMPS, LID) {
 						btns  = { font:'.8em' },
 						form  = {
 							'id':			`${id}-form`,
-							'data-action': 	`/edit/service`,
+							'data-action': 	`/service`,
 							'method':		'PUT',
 							'className':	'gridSlice spread reveal top',
 							'buttons':		[
@@ -1390,7 +1400,7 @@ module.exports = function Comps(COMPS, LID) {
 										title:		 'Rate',
 										priority:	 '*',
 										options:	[],
-										data:		{ url:'/get/rate',id:'select-rate' },
+										data:		{ url:'/list/rates',id:'select-rate' },
 										value:		  rate,
 										input:		{
 											kind: 		'number',
@@ -1484,7 +1494,7 @@ module.exports = function Comps(COMPS, LID) {
 							if (!!stamp&&stamp!==THS.state.stamp) return { 
 								stamp: stamp, loaded: true, 
 								tabs:  (items[0]||{}).services,	
-							}; 	else return null;	
+							}; 	else return null;
 						}	);
 				}
 
@@ -1495,7 +1505,7 @@ module.exports = function Comps(COMPS, LID) {
 							send = Actions.Data.send,
 							load = !!prop.loaded;
 						if (!!document&&!load) {
-							let url  = '/provider/service/files',
+							let url  = '/service/files',
 								svid = prop.svid, id = this.dtid; 
 							setTimeout(() => send(url, {
 								method:	'GET', headers: { token: COMPS.Token },
@@ -1557,10 +1567,21 @@ module.exports = function Comps(COMPS, LID) {
 						which = THS.which;
 						THS.mapStoreToState(COMPS.Stores.Data, store => {
 							let id = THS.fid, {stamp,items=[]} = (store[id]||{});
-							if (!!stamp&&stamp!==THS.state.stamp) return { 
-								stamp:  stamp,  loaded: true, 
-								status: 'done', files:  ((items[0]||{}).services||{})[which],
-							}; 	else return null;	
+							if (!!stamp&&stamp!==THS.state.stamp) {
+								let files = Imm.List(THS.state.files),
+									rslts = (((items[0]||{}).services||{})[which]||[]),
+									findr = (n)=>([files.findKey((o)=>o.id==n.id),n]),
+									mergr = (f)=>(files=funcs[!!f[0]](f)),
+									funcs = { 
+										true:  (f)=>(files.set(f[0],f[1])),
+										false: (f)=>(files.push(f[1])),
+									};
+								rslts.map(findr).map(mergr);
+								return { 
+									stamp: stamp, loaded: true, status: 'done', 
+									files: files.toJS(),	
+								}; 	
+							} else return null;
 						}	);
 				}
 
@@ -1612,7 +1633,7 @@ module.exports = function Comps(COMPS, LID) {
 											href: THS.getLink(c), target: '_blank'
 										},	key: `text@${c.id}` }
 									].concat(edit ? [{ text: (<Frag>
-										<input key="1" type="hidden" name={`scid@${c.id}`} value={c.id} data-param/>
+										<input key="1" type="hidden" name={`scids@${c.id}`} value={c.id} data-param/>
 										<Form.Area 	key={`Descr@${c.id}`} id={`Descr@${c.id}`} value={c.description} 
 													placeholder="Description" rows="1"/>
 									</Frag>)}] : [{ 
@@ -1628,10 +1649,10 @@ module.exports = function Comps(COMPS, LID) {
 								'id':			`${fid}-form`,
 								'rid':			`${fid}`,
 								'method':		'PUT',
-								'data-action': 	`/edit/service/${wich}`,
+								'data-action': 	`/files/${wich}`,
 								'data-differ':	 true,
 								'params':		{},
-								'query':		{ uid: COMPS.UID, sid: svid },
+								'query':		{ uid: COMPS.UID },
 								'stamp':		 THS.state.stamp,
 								'status':		 THS.state.status,
 							}	} : {}));
@@ -1725,7 +1746,7 @@ module.exports = function Comps(COMPS, LID) {
 						if (!!editable) {
 							if (!!!THS.adder) THS.adder = (
 								<div key="add" className="gridSlice PTB">
-									<input key="sid" type="hidden" name="sid" value={svid} data-param/>
+									<input key="sid" type="hidden" name="sids" value={svid} data-param/>
 										{ tnme == 'urls' ? 
 									<div key="nme" className="some"><Form.Xput icon="signature" kind="text" placeholder="URL Name" id="name" data-rel="*"/></div>
 										: null }
@@ -1739,8 +1760,8 @@ module.exports = function Comps(COMPS, LID) {
 										'id':			 adid,
 										'rid':			 edid,
 										'method':		'POST',
-										'data-action': 	`/add/service/${fnme}`.toLowerCase(),
-										'params':		{ sids: svid },
+										'data-action': 	`/service/${fnme}`.toLowerCase(),
+										'params':		{ },
 										'query':		{ uid: COMPS.UID },
 										'stamp':		 props.stamp,
 										'status':		 props.status,
@@ -1776,6 +1797,12 @@ module.exports = function Comps(COMPS, LID) {
 						return Upload(svid,which);
 					}
 			};
+
+		// STRIPE  /////////////////////////////////////////////////////////
+
+			EV.PoS = {};
+
+			//
 
 		// FORMS   /////////////////////////////////////////////////////////
 
@@ -1880,16 +1907,20 @@ module.exports = function Comps(COMPS, LID) {
 				// EVENTS    /////////////////////////////////////////////////////////
 
 					handleSubmit(e) {
-						e.stopPropagation(); e.preventDefault();
-						let THS 	= this,
-							send 	= Actions.Data.send,
-							current = Map(THS.getSnapShot()),
-							snapsht = Map(THS.SnapShot);
-						if (ImmIs(current,snapsht)===false) {
-							let url = THS.action, req = THS.request;
-							console.info('REQUEST:', url, req);
-							setTimeout(()=>send(url,req),0);
-							THS.setState({status:'load'});
+						if (!!this.props['data-action']) {
+							e.stopPropagation(); e.preventDefault(); 
+							let THS 	= this,
+								send 	= Actions.Data.send,
+								current = Map(THS.getSnapShot()),
+								snapsht = Map(THS.SnapShot);
+							if (ImmIs(current,snapsht)===false) {
+								let url = THS.action, req = THS.request;
+								console.info('REQUEST:', url, req);
+								setTimeout(()=>send(url,req),0);
+								THS.setState({status:'load'});
+							}
+						} else {
+							e.submit();
 						}
 					}
 
@@ -1931,8 +1962,12 @@ module.exports = function Comps(COMPS, LID) {
 					}
 
 					getAttrs(props) {
-						let filtr = (v,k)=>(k=='style'||!['object','array'].has(IS(v))),
+						let mappr = (v,k)=>(IS(v)=="boolean"),
+							filtr = (v,k)=>(k=='style'||!['object','array'].has(IS(v))),
 							attrs = Map(props).filter(filtr).toJS();
+						// if (Map(props).has('clear')) {
+							// console.log('FORM PROPS:',props);
+						// }
 						attrs.className = classN(attrs.className,'loaded'); 
 						return Assign({onSubmit:this.handleSubmit},attrs);
 					}
@@ -2084,8 +2119,20 @@ module.exports = function Comps(COMPS, LID) {
 					super(props); this.name = 'INPUT';
 				}
 
+				getAttrs(props = {}, calculated = {}) {
+					let omits = [true,false], 
+						regex = /^(on([A-Z][a-z]+)+|data-\w+)$/,
+						filtr = (p,n)=>(!omits.has(p)&&!!n.match(regex));
+					return Assign(
+						{}, calculated,
+						Map(props).filter(filtr).toJS(),
+						this.getDefault(props.value)
+					);
+				}
+
 				render() {
-					let props  = this.props, 
+					let THS    = this,
+						props  = THS.props, 
 						kind   = props.kind, 
 						token  = kind=='tokens',
 						num    = kind=='number',
@@ -2093,9 +2140,8 @@ module.exports = function Comps(COMPS, LID) {
 						id     = props.id, 
 						name   = props.name||id, 
 						valid  = props.validate||{},
-						autoc  = this.getAutoComp(name,props),
-						value  = this.getDefault(props.value),
-						attrs  = Assign({ 
+						autoc  = THS.getAutoComp(name,props),
+						attrs  = THS.getAttrs(props, { 
 							type: 			!!!kind||search||token?'text':kind,
 							id: 			id, 
 							name: 			name, 
@@ -2112,9 +2158,7 @@ module.exports = function Comps(COMPS, LID) {
 							min:			!!num ? props.min  : null,
 							max:			!!num ? props.max  : null,
 							step:			!!num ? props.step : null,
-						}, Map(props).filter(
-							(e,n)=>!!n.match(/^(on([A-Z][a-z]+)+|data-\w+)$/)
-						).toJS(), value);
+						});
 					return (<Frag>
 						<input ref={props.forRef} {...attrs}/>
 							{ !!valid.invalid ?
@@ -2970,7 +3014,7 @@ module.exports = function Comps(COMPS, LID) {
 							labelr 	= {
 								true:  (s)=>(<Frag><i>{`${s.verb} `}</i><b>{s.label}</b></Frag>),
 								false: (s)=>(<Frag>{s.label}</Frag>),
-							}[this.verbs];
+							}[!!(THS.verbs)];
 						THS.lock = false;
 						return (
 							<div id={id} className={classN("suggest",{open:open})} onBlur={THS.handleClose}>
@@ -3762,7 +3806,7 @@ module.exports = function Comps(COMPS, LID) {
 					let props = this.props, crdts = props.credits,
 						bgImg = { backgroundImage: `url('public/images/Logo.footer.png')` };
 					return (
-						<footer className="gridItemFooter">
+						<footer className="gridItemFooter" role="contentinfo">
 							<section className="gridFooter noSelect gpu" style={bgImg}>
 								{/* <!-- CONTACT --> */}
 								<section id="contact" className="gridItemContact gridContact">
@@ -3816,7 +3860,7 @@ module.exports = function Comps(COMPS, LID) {
 			
 			const { 
 				App, Head, Search, Cover, Title, Plaque, 
-				Content, Service, Services, Form, 
+				Content, Service, Services, PoS, Form, 
 				Trusts, Foot, Threads 
 			} = EV;
 

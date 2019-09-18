@@ -5,47 +5,88 @@ module.exports = function (Reflux, Actions, Spaces, IOs) {
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// SOCKET HANDLES ///////////////////////////////////////////////////////////////////////////////////////////////
 
+		const IOptions = {
+			reconnectionDelay: 		2500,
+			reconnectionDelayMax:	10000,
+			rememberUpgrade:		true,
+		};
+
 		function SockAuthRoom  (res) { LOG("ROOM | %s", res); 				 }
 		function SockConnErr (error) { LOG('CONNECTION ERROR!!', 	 error); }
 		function SockConnTO(timeout) { LOG('CONNECTION TIMEOUT!!', timeout); }
 		function SockError	 (error) { LOG('SOCKET ERROR!!', 		 error); }
 		function SockRConnErr(error) { Actions.App.disconnect({result:{code:4}}); }
 
+		function hasIOs() {
+			return (!!IOs && !!IOs.IO);
+		}
+		function chkIO(name) {
+			try { return IOs[name].connected; } 
+			catch(e) { return false; }
+		}
+
 		function runAccess() {
-			try { if (IOs.Access.connected) return; } catch(e) {}
-			IOs.Access = IOs.IO(`${NMESPC.host}/accessor`);
-			if (IOs.Access) {
-				IOs.Access.on('connect', 		Actions.App.connect);
-				IOs.Access.on('room', 			SockAuthRoom);
-				IOs.Access.on('receive', 		Actions.Data.receive);
-				IOs.Access.on('disconnect', 	Actions.App.disconnect);
-					// IOs.Access.on('connet_error',    SockConnErr);
-					// IOs.Access.on('connect_timeout',	SockConnErr);
-					// IOs.Access.on('error',           SockConnErr);
-				IOs.Access.on('reconnect_error',SockRConnErr);
+			if (hasIOs() && !chkIO('Access')) {
+
+					console.log('RUNNING ACCESS...');
+				
+				IOs.Access = IOs.IO(`${NMESPC.host}/accessor`);
+				if (!!IOs.Access) {
+
+						console.log(`Connected to Accessor`);
+
+					IOs.Access.on('connect', 		Actions.App.connect);
+					IOs.Access.on('room', 			SockAuthRoom);
+					IOs.Access.on('receive', 		Actions.Data.receive);
+					IOs.Access.on('disconnect', 	Actions.App.disconnect);
+						// IOs.Access.on('connet_error',    SockConnErr);
+						// IOs.Access.on('connect_timeout',	SockConnErr);
+						// IOs.Access.on('error',           SockConnErr);
+					IOs.Access.on('reconnect_error',SockRConnErr);
+				}
+			}
+		}
+		function runAPI() {
+			if (hasIOs() && !chkIO('API')) {
+				
+					console.log('RUNNING API...');
+
+				IOs.API = IOs.IO(`${NMESPC.host}/rest`);
+				if (!!IOs.API) {
+					
+						console.log(`Connected to API`);
+					IOs.API.on('connect',         Actions.Content.build);
+					IOs.API.on('receive',         Actions.Data.receive);
+				}
 			}
 		}
 		function runSocket() {
-			if (!!IOs && !!IOs.IO) {
+			if (hasIOs() && !chkIO('Socket')) {
+
+					console.log('NMESPC:',NMESPC);
+					console.log('RUNNING BUILD...');
+
 				IOs.Socket = IOs.IO(`${NMESPC.host}/${NMESPC.name}`);
 				if (!!IOs.Socket) {
+					
+						console.log(`Connected to Space, "${NMESPC.name}"`);
+
 					Reflux.initStore(Stores.App(LOCKER));
 					Reflux.initStore(Stores.Nav);
 					Reflux.initStore(Stores.Content);
 					Reflux.initStore(Stores.Data);
 
-					IOs.Socket.on('connect', 		Actions.Content.setup);
-					IOs.Socket.on('build', 	 		Actions.Content.build);
-					IOs.Socket.on('receive', 		Actions.Data.receive);
-						// IOs.Socket.on('uploaded', 		Actions.Data.receive);
+					IOs.Socket.on('connect',         Actions.Content.setup);
+					IOs.Socket.on('state',           Actions.Content.state);
+					IOs.Socket.on('receive',         Actions.Data.receive);
+						// IOs.Socket.on('uploaded',        Actions.Data.receive);
 						// ?????
-							// Socket.on('connet_error', 	SockConnErr);
-							// Socket.on('connect_timeout',SockConnErr);
-							// Socket.on('error', 			SockConnErr);
+							// IOs.Socket.on('connet_error',    SockConnErr);
+							// IOs.Socket.on('connect_timeout', SockConnErr);
+							// IOs.Socket.on('error',           SockConnErr);
 				}
 			}
 		}
-
 
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// VARIABLES ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -58,14 +99,13 @@ module.exports = function (Reflux, Actions, Spaces, IOs) {
 		const 	RRenew   = '/auth/renew';
 		const 	RSave    = '/auth/save';
 		const 	RRegen 	 = '/auth/regenerate';
-		const 	Build 	 = {};
 
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// STORES ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
 		const Stores = { 
 			Apps: {}, App: null, Nav: null, Content: null, Data: null, 
-			Run: { Access: runAccess, Socket: runSocket },
+			Run: { Access: runAccess, API: runAPI,  Socket: runSocket },
 			ISO: {}, 
 		};
 
@@ -172,7 +212,8 @@ module.exports = function (Reflux, Actions, Spaces, IOs) {
 								case RLogin: 	usr = (pay.result.user||{});
 												dsp = usr.Scopes.display_name;
 												rdr = `/${dsp.toLowerCase()}`;
-								case RCheck:	THS.updateStore({
+								case RCheck:	Stores.Run.API();
+												THS.updateStore({
 													status: 1, paused: false, 
 													header: {
 														identified: true, 
@@ -276,17 +317,15 @@ module.exports = function (Reflux, Actions, Spaces, IOs) {
 						if (!!!built) IOs.Socket.emit('setup');
 					} catch (e) { IOs.Socket.emit('setup'); }
 				}
-				onBuild 		(res) { 
-					console.log('Build', res);
+				onState 		(res) { 
+					Stores.Run.Access(); 
 					Stores.Apps[LOCKER].singleton.updateStore(res)
+				}
+				onBuild 		() {
 					requestAnimationFrame(function () {
-						// var accss =  Spaces['accessor'],
-						// 	space = (Spaces[NMESPC.name]||Spaces['default']);
-						// accss.Build(Actions, Stores)(usr, TITLE);
-						// space.Build(Actions, Stores)(Build);
-						Stores.Content.render();
+						console.log('Building...');
+						Stores.Content.render(LOCKER);
 					});
-					runAccess(); 
 				}
 
 			}; Stores.Content.id 	= 'Content';
@@ -294,6 +333,7 @@ module.exports = function (Reflux, Actions, Spaces, IOs) {
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////
 		// STORE.DATA    ////////////////////////////////////////////////////////////////////////////////////////
 			Stores.Data 	= class extends Reflux.Store {
+
 				constructor		() {
 					super();
 					this.prefix   	 = ["payload","result"];
@@ -328,10 +368,11 @@ module.exports = function (Reflux, Actions, Spaces, IOs) {
 					}).bind(this));
 				}
 				onSend  		(point, data, noProg) {
+					console.log(point)
 					this.time(data);
 					requestAnimationFrame((function () {
 						!!!noProg && Actions.App.progress(99);
-						IOs.Socket.emit(point, data);
+						IOs.API.emit(point, data);
 					}).bind(this));
 				}
 				onReceive 		(data) {
@@ -412,7 +453,7 @@ module.exports = function (Reflux, Actions, Spaces, IOs) {
 									// ).toJS();
 							res = ste.setIn([id], Map({
 								stamp: new Date(), 
-								items: dta
+								items: dta,
 							}	)	).toJS();
 						// ---------------------------------------------
 							return res;

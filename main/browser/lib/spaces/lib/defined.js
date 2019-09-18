@@ -137,21 +137,6 @@ module.exports = {
 				};
 			// -----
 			return Stores.Apps[LID].singleton.updateStore({
-				header:		{
-					title: 	{
-						cover: 	photos.cover,
-						user:	{
-							mode:	'edit',
-							photo: 	photos.profile,
-							uname: 	'',
-							name: 	{ First: 'My', Last: 'Profile' },
-							badges: [],
-							locale: null,
-							sex:	null,
-							age: 	null,
-						},
-					},
-				},
 				content: 	{
 					built: 		true,
 					segments: 	{
@@ -159,12 +144,12 @@ module.exports = {
 							{	 // BASIC INFO
 								tag:	{ from: 'Evectr', name: ['Content','Panel'] },
 								props: 	{ 
-									name:	'user-info',
-									header: { label: 'Basic Info', icon: 'user' },
+									name:	'defined-info',
+									header: { label: 'Defined Search', icon: 'user' },
 									form: 	{
-										'id':			'form-user-info',
-										'data-action': 	'/edit',
-										'method':		'PUT',
+										'id':		'form-defined-info',
+										'action': 	'/results',
+										'method':	'POST',
 									},
 									body:	[
 										{	tag: BLK, props: { 
@@ -177,7 +162,7 @@ module.exports = {
 														tag:	{ from: 'Evectr', name: ['Form','Xput'] },
 														props:	{
 															id: 		'user-name-first',
-															name: 		'FirstName',
+															name: 		'eFirstName',
 															kind:		'text',
 															placeholder:'First Name',
 															value:		 res.name.first,
@@ -194,7 +179,7 @@ module.exports = {
 														tag:	{ from: 'Evectr', name: ['Form','Xput'] },
 														props:	{
 															id: 		'user-name-last',
-															name: 		'LastName',
+															name: 		'eLastName',
 															kind:		'text',
 															placeholder:'Last Name',
 															value:		 res.name.last,
@@ -211,7 +196,7 @@ module.exports = {
 														tag:	{ from: 'Evectr', name: ['Form','Xput'] },
 														props:	{
 															id: 		'user-display-name',
-															name: 		'UserName',
+															name: 		'eUserName',
 															kind:		'text',
 															icon:		'at',
 															placeholder:'Username',
@@ -235,7 +220,7 @@ module.exports = {
 														tag:	{ from: 'Evectr', name: ['Form','DateTime'] },
 														props:	{
 															id: 		'user-bd',
-															name: 		'BirthDate',
+															name: 		'eBirthDate',
 															icon:		'birthday-cake',
 															limit:		{ min: 1900, max: 2003 },
 															value:		res.birth_date,
@@ -253,7 +238,7 @@ module.exports = {
 														tag:	{ from: 'Evectr', name: ['Form','Xput'] },
 														props:	{
 															id: 		'user-locale',
-															name: 		'LID',
+															name: 		'eLocation',
 															kind:		'text',
 															icon:		'location-arrow',
 															placeholder:'Your Location',
@@ -333,7 +318,7 @@ module.exports = {
 																data:		{
 																	id:   		'user-hobbies-sgst', 
 																	url:  		'/search/for/hobbies',
-																	list: 		'/list/hobbies',
+																	list: 		'/get/hobbies',
 																	context:     true,
 																},
 																remove:		 true,
@@ -370,7 +355,7 @@ module.exports = {
 																data:		{
 																	id:   		'user-lang-sgst', 
 																	url: 		'/search/for/languages',
-																	list: 		'/list/languages',
+																	list: 		'/get/languages',
 																	context:     true,
 																},
 																help:		{ text: [
@@ -403,7 +388,7 @@ module.exports = {
 																data:		{
 																	id:   		'user-nations-sgst', 
 																	url:  		'/search/for/nationalities',
-																	list: 		'/list/nationalities',
+																	list: 		'/get/nationalities',
 																	context:     true,
 																},
 																help:		{ text: [
@@ -432,7 +417,7 @@ module.exports = {
 																data:		{
 																	id:   'user-religion-sgst', 
 																	url:  '/search/for/religions',
-																	list: '/list/religions',
+																	list: '/get/religions',
 																},
 																help:		{ kind: 'warn', text: [{tag: 'p', items: [
 																	'Something about Religion!!!',
@@ -462,7 +447,7 @@ module.exports = {
 																	data:		{
 																		id:   'user-orient-sgst', 
 																		url:  '/search/for/orientations',
-																		list: '/list/orientations',
+																		list: '/get/orientations',
 																	},
 																},
 																help:		{ text: [{tag: 'p', items: [

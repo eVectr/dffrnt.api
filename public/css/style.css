@@ -173,6 +173,7 @@
 				font-size: .65rem;
 				white-space: pre;
 				margin: 0 !important;
+				padding: 0 .5em;
 				-webkit-margin-before: 0 !important;
 				-webkit-margin-after:  0 !important;
 				-webkit-margin-start:  0 !important;
@@ -1545,6 +1546,16 @@
 				grid-template-columns: 	 2fr auto;
 				grid-template-areas: 	"branding navigation";
 			}
+				.gridHeader::after {
+					position: absolute;
+					background-color: black;
+					width: 100vw; height: 120vh;
+					top: -20vh; left: 0;
+					content: '';
+					transition: opacity .25s ease-in-out, visibility 0s; 
+					visibility: hidden;
+					opacity: 0;
+				}
 			.gridMain:not(.jumbo) .gridItemHeader {
 				background: #f8f8f8;
 				box-shadow: 0px 11px 3px -8px rgba(0, 0, 0, 0.15);
@@ -1567,7 +1578,6 @@
 			.gridItemSearch {
 				grid-area: search; 
 				background-color: white;
-				/* overflow: hidden; */
 			}
 				div.gridItemSearch  { z-index: 3; }
 				form.gridItemSearch { box-shadow: inset 0px 0px 6px 3px rgba(0,0,0,0.25); }
@@ -1638,9 +1648,6 @@
 						justify-self: stretch;
 						width: 100%;
 					}
-					/* .gridItemSearchBox.tags > label.tag::before {
-						top: -.2em;
-					} */
 					.gridItemSearchBox > input[type="text"] {
 						padding: 0 .5em;
 					}
@@ -1653,8 +1660,9 @@
 				.gridSearch>button {
 					display: flex;
 					align-items: center;
-					height: 110%;
+					height: 100%;
 					opacity: .65;
+					border-radius: 0; 
 				}
 				.gridSearch>button>a {
 					display: flex;
@@ -1664,6 +1672,35 @@
 				}
 				.gridSearch>button>a:hover {
 					color: white !important;
+				}
+
+			.gridSearch:focus-within {
+				z-index: 9999;
+				position: sticky;
+				top: 3.4rem;
+			}
+				.gridSearch:focus-within ~ * {
+					pointer-events: none;
+				}
+				.gridSearch:focus-within ~ header.gridHeader {
+					z-index: 5;
+				}
+				.gridSearch:focus-within ~ header.gridHeader::after {
+					transition: opacity .25s ease-in-out, visibility 0s; 
+					visibility: visible;
+					opacity: 0.5;
+				}
+				.gridSearch:focus-within ~ section.gridContent {
+					margin-bottom: 0;
+					overflow: hidden;
+				}
+				.gridMain.cover .gridSearch:focus-within ~ section.gridContent {
+					max-height: calc(100vh - 3.4rem - 3.4rem - 41vmin);
+					min-height: calc(100vh - 3.4rem - 3.4rem - 41vmin);
+				}
+				.gridMain.stock .gridSearch:focus-within ~ section.gridContent {
+					max-height: calc(100vh - 3.4rem - 3.4rem);
+					min-height: calc(100vh - 3.4rem - 3.4rem);
 				}
 
 		/******************************************************************/
