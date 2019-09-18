@@ -1,12 +1,16 @@
 /.docs/*
 /config/database.cfg.js
 /framework
+/spaces
 /main/browser/lib/*/lib/*.js
 /main/browser/lib/*.js
 /node_modules
 /public/comps/*
 /public/css/*.min.css
-/public/js/bundle.js
+/public/js/engine.js
+/public/js/engine.js.map
+/public/js/vendor.js
+/public/js/vendor.js.map
 /storage/*/*
 /*.sublime-*
 **/package-lock.json
