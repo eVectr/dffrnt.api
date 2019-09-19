@@ -41,15 +41,15 @@
 		const   brwexs  = !!fs.existsSync(brwFld);
 		const 	libFld 	= `${brwFld}/lib`;
 		const 	opsys 	= { linux: 'nix', darwin: 'nix', win32: 'win' }[os.platform()];
-		const 	spce 	= {
-					folder:   `${libFld}/spaces/lib`,
-					options:  { cwd: `./` },
-					location: `./spaces`
-				};
 		const 	frwk 	= {
 					folders: [ `./node_modules/dffrnt.*` ],
 					options: { cwd: `./` },
 					location: `./framework`
+				};
+		const 	spce 	= {
+					folder:   `${libFld}/spaces/lib`,
+					options:  { cwd: `./` },
+					location: `./spaces`
 				};
 		const 	conf 	= {
 					files: [ `./node_modules/dffrnt.confs/lib/*.cfg.js` ],
