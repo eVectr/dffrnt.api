@@ -302,6 +302,7 @@ module.exports = function Comps(COMPS) {
 					var REF = this.REFS, usr = REF.username, pss = REF.password,
 						enc = `'Basic ${btoa(`${usr.value}:${pss.value}`)}`,
 						req = { 
+							method: 'POST',
 							headers: { authorization: enc },
 							body: { id: this.id }
 						};
@@ -388,6 +389,7 @@ module.exports = function Comps(COMPS) {
 				handleLogout(e) {
 					e.preventDefault(); e.stopPropagation();
 					let req = { 
+							method: 'POST',
 							headers: { token: COMPS.Token },
 							body: { id: this.id }
 						};

@@ -12,9 +12,9 @@ module.exports = function (Reflux, Actions, Spaces, IOs) {
 		};
 
 		function SockAuthRoom  (res) { LOG("ROOM | %s", res); 				 }
-		function SockConnErr (error) { LOG('CONNECTION ERROR!!', 	 error); }
+		function SockConnErr (error) { LOG('CONNECTION ERROR!!',     error); }
 		function SockConnTO(timeout) { LOG('CONNECTION TIMEOUT!!', timeout); }
-		function SockError	 (error) { LOG('SOCKET ERROR!!', 		 error); }
+		function SockError	 (error) { LOG('SOCKET ERROR!!',         error); }
 		function SockRConnErr(error) { Actions.App.disconnect({result:{code:4}}); }
 
 		function hasIOs() {
@@ -35,10 +35,10 @@ module.exports = function (Reflux, Actions, Spaces, IOs) {
 
 						console.log(`Connected to Accessor`);
 
-					IOs.Access.on('connect', 		Actions.App.connect);
-					IOs.Access.on('room', 			SockAuthRoom);
-					IOs.Access.on('receive', 		Actions.Data.receive);
-					IOs.Access.on('disconnect', 	Actions.App.disconnect);
+					IOs.Access.on('connect',        Actions.App.connect);
+					IOs.Access.on('room',           SockAuthRoom);
+					IOs.Access.on('receive',        Actions.Data.receive);
+					IOs.Access.on('disconnect',     Actions.App.disconnect);
 						// IOs.Access.on('connet_error',    SockConnErr);
 						// IOs.Access.on('connect_timeout',	SockConnErr);
 						// IOs.Access.on('error',           SockConnErr);
@@ -55,6 +55,7 @@ module.exports = function (Reflux, Actions, Spaces, IOs) {
 				if (!!IOs.API) {
 					
 						console.log(`Connected to API`);
+
 					IOs.API.on('connect',         Actions.Content.build);
 					IOs.API.on('receive',         Actions.Data.receive);
 				}
@@ -186,7 +187,9 @@ module.exports = function (Reflux, Actions, Spaces, IOs) {
 						}
 
 						isIdentified 	() { return this.state.header.identified; }
-						onConnect 		() { this.updateStore({ status: 2 }); }
+						onConnect 		() { 
+							this.updateStore({ status: 2 }); 
+						}
 						onPause 		(pause) { this.updateStore({ paused: !!pause }); }
 						onProgress	 	(prog, extra) {
 							var config = {}; extra = (extra||{});
@@ -207,7 +210,7 @@ module.exports = function (Reflux, Actions, Spaces, IOs) {
 								res = pay.result,
 								nxt = res.next,
 								rdr = null, dsp;
-							IOs.Access.emit(nxt[0], nxt[1]);
+							!!nxt && IOs.Access.emit(nxt[0], nxt[1]);
 							switch (qry.path) {
 								case RLogin: 	usr = (pay.result.user||{});
 												dsp = usr.Scopes.display_name;
@@ -319,7 +322,7 @@ module.exports = function (Reflux, Actions, Spaces, IOs) {
 				}
 				onState 		(res) { 
 					Stores.Run.Access(); 
-					Stores.Apps[LOCKER].singleton.updateStore(res)
+					Stores.Apps[LOCKER].singleton.updateStore(res);
 				}
 				onBuild 		() {
 					requestAnimationFrame(function () {
@@ -361,6 +364,7 @@ module.exports = function (Reflux, Actions, Spaces, IOs) {
 				}
 				
 				onAuth  		(point, data, noProg) {
+					console.log(point)
 					this.time(data);
 					!!!noProg && Actions.App.progress(99, { paused:true });
 					requestAnimationFrame((function () {
@@ -380,6 +384,7 @@ module.exports = function (Reflux, Actions, Spaces, IOs) {
 						qry = opt.query||opt.body,
 						pth = qry.path, id = qry.id, 
 						str, tme;
+					console.log(data)
 					switch (pth) {
 						case RError: 	console.log("Error:", data);
 										alert(data.payload.result.message);

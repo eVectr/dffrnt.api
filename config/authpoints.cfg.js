@@ -208,7 +208,7 @@ const { RouteAU, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 							Proc: 		{
 								Error: 		'ERROR',
 								NoData: 	'INVALID',
-								async Main  (req) {
+								async Main  (req) { 
 									let THS  = this; try {
 										let sess = req.session,
 											sid  = req.sessionID,
@@ -219,7 +219,14 @@ const { RouteAU, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 										// ----------------------------------------------------------
 										switch (true) {
 											case !!!sess.user.token:
-												throw [MSG.EXISTS, SSD, (acct||''), Assing(OUT, bdy)];
+												throw {
+													send: [
+														MSG.EXISTS, 
+														SSD, (acct||''), 
+														Assing(OUT, bdy),
+													],
+													next: ['Destroy'],
+												};
 											default:
 												THS.sid = req.sessionID;
 												user = await THS.Profile(acct, true);
@@ -233,7 +240,9 @@ const { RouteAU, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 												};
 										};	
 									// Handle Errors --------------------------------------------
-									} catch (err) { console.log(err); throw err; }
+									} catch (err) { 
+										console.log(err); throw err; 
+									}
 								}
 							}
 						};	},
