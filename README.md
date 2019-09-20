@@ -1,7 +1,7 @@
 # evectr.api
 The official **eVectr™** `API`.
 
-![Sourcegraph for Repo Reference Count](https://img.shields.io/badge/latest-v3.0.3-blue.svg?longCache=true)
+![Sourcegraph for Repo Reference Count](https://img.shields.io/badge/latest-v3.0.4-blue.svg?longCache=true)
 ![Sourcegraph for Repo Reference Count](https://img.shields.io/badge/node-%3E=v10.16.2-lightgrey.svg?longCache=true)
 ![Sourcegraph for Repo Reference Count](https://img.shields.io/badge/npm-%3E=v6.9.0-lightgrey.svg?longCache=true)
 ![Sourcegraph for Repo Reference Count](https://img.shields.io/badge/mysql-%3E=v5.6.0-lightgrey.svg?longCache=true)
