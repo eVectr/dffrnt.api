@@ -1,6 +1,6 @@
 
 module.exports = {
-	Debug: 		true,
+	Debug: 		false,
 	Port: 		8443,
 	SSL:		{
 		CA: 	"../SSL/evectr.com.ca-bundle",
@@ -9,24 +9,24 @@ module.exports = {
 		DHP:	"/opt/local/etc/nginx/ssl/dhparam.pem",
 	},
 	Services: 	[
-		'https://evectr.com/gbl-accessor',
-		'https://evectr.com/gbl-rest',
+		'https://evectr.com:8443/gbl-accessor',
+		'https://evectr.com:8443/gbl-rest',
 	],
 	APIDoc:		{
 		info: {
 			title: "eVectr.API",
 			description: "The official eVectr™ API.",
-			termsOfService: "https://evectr.com/terms",
+			termsOfService: "https://evectr.com:8443/terms",
 			contact: { 
 				name: "eVectr™ Support",
-				email: "support@evectr.com",
-				url: "https://evectr.com/help",
+				email: "support@evectr.com:8443",
+				url: "https://evectr.com:8443/help",
 			},
 			version: "1.0.0"
 		},
 		externalDocs: {},
 		servers: [
-			{ url: "https://evectr.com" }
+			{ url: "https://evectr.com:8443" }
 		],
 	},
 	Folders: 	{

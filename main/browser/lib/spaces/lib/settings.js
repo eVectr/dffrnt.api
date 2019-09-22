@@ -240,6 +240,52 @@ module.exports = {
 							},
 					}]	
 				};	},
+				WALLET  = function WALLET() {
+					return {
+						tag:	PNL, props: 	{ 
+							name:	'settings-wallet',
+							header: { label: 'Transactions',  icon: 'money-bill-alt', subs: [
+								{ name: 'user-pay-method', label: 'Payments' },
+							]	},
+							align:	'gridSlice',
+							form: 	{
+								'id':			'user-wallet',
+								'data-action': 	'/pos/method',
+								'method':		'PUT',
+								'buttons':		[
+									{ kind:'submit',label:'Update Pay Method',style:'good' },
+								],
+							},
+							body:	[
+								{	tag:	BLK, props:  { 
+									name: 	'user-pay-method', 
+									header: { fixed: true, label: 'Payment Method' },
+									align:	'spread gridSlice',
+									items: 	[
+										{ 	tag:	'div',
+											props:	{ className: 'half' },
+											items: 	[{
+												tag:	XPUT, props:	{
+													id: 		'user-pay-st1',
+													name: 		'Street1',
+													icon:		'map-pin',
+													kind:		'text',
+													placeholder:'0000 0000 0000 0000',
+													value:		 null,
+													priority:	'*',
+													validate: 	{
+														pattern: /^(?:\d{4} ?){4}$/,
+														invalid: 'Please specifiy a valid Credit Card Number.',
+													},
+												}
+										}]	},
+									]
+								}	},
+								{ 	tag:   'hr', props:  { className: 'spread' } }, 
+							]	
+						}
+					}
+				},
 				passpat = /[~{(\[!"#$%&'\w|*+,./\:;?@^_`\])}-]{8,}/,
 				dta 	= Imm.fromJS(THS.Data[0]()),
 				mrg 	= Imm.fromJS(res);
@@ -281,7 +327,9 @@ module.exports = {
 											}	}]
 									};	}),
 				visibility		= (visible.value||0),
-				modes 			= settings.modes||{};
+				modes 			= settings.modes||{},
+				provider		= modes.provider,
+				transact		= modes.transactional;
 			// -----
 			return Stores.Apps[LID].singleton.updateStore({
 				header:		{
@@ -302,8 +350,8 @@ module.exports = {
 				content: 	{
 					built: 		true,
 					segments: 	{
-						copy: [
-							(!!modes.provider ? { 	// BUSINESS
+						copy: (
+							!!provider ? [{ 	// BUSINESS
 								tag:	PNL, props: 	{ 
 									name:	'settings-business',
 									header: { label: 'Provider',  icon: 'briefcase', subs: [
@@ -313,7 +361,7 @@ module.exports = {
 									align:	'gridSlice',
 									form: 	{
 										'id':			'user-business',
-										'data-action': 	'/edit/settings',
+										'data-action': 	'/user/settings',
 										'method':		'PUT',
 										'buttons':		[
 											{ kind:'submit',label:'Update Provider Details',style:'good' },
@@ -465,7 +513,9 @@ module.exports = {
 										{ 	tag:   'hr', props:  { className: 'spread' } }, 
 									]	
 								}
-							}  : null),	{ 	  		// GENERAL
+							}, WALLET()] : ( 
+								!!transact ? [WALLET()] : null
+							)).concat([{ 		// GENERAL
 								tag:	PNL, props: 	{ 
 									name:	'settings-general',
 									header: { label: 'General',  icon: 'cog', subs: [
@@ -475,7 +525,7 @@ module.exports = {
 									align:	'gridSlice',
 									form: 	{
 										'id':			'user-other',
-										'data-action': 	'/edit/settings',
+										'data-action': 	'/user/settings',
 										'method':		'PUT',
 										'buttons':		[
 											{ kind:'submit',label:'Update Settings',style:'norm' },
@@ -570,14 +620,14 @@ module.exports = {
 										{ 	tag:   'hr', props:  { className: 'spread' } }, 
 									]	
 								}
-							},	{ 					// PRIVACY
+							},	{ 				// PRIVACY
 								tag:	PNL, props: 	{ 
 									name:	'settings-privacy',
 									header: { label: 'Privacy', icon: 'user-secret' },
 									align:	'gridSlice',
 									form: 	{
 										'id':			 'user-privacy',
-										'data-action': 	 '/edit/settings/visibility',
+										'data-action': 	 '/user/settings/visibility',
 										'method':		 'PUT',
 										'buttons':		[
 											{ kind:'submit',label:'Update Privacy',style:'good',start:  'one',size:'half' },
@@ -612,7 +662,7 @@ module.exports = {
 										}	},	HR,
 									]),	
 								}
-							},	{ 					// SECURITY
+							},	{ 				// SECURITY
 								tag:	PNL, props: 	{ 
 									name:	'settings-security',
 									header: { label: 'Security',  icon: 'fingerprint', subs: [
@@ -626,7 +676,7 @@ module.exports = {
 											align:	'gridSlice',
 											form: 	{
 												'id':			'form-user-email',
-												'data-action': 	'/edit/settings/email',
+												'data-action': 	'/user/settings/email',
 												'method':		'PUT',
 												'buttons':		[
 													{ kind:'submit',label:'Change Email',style:'nope',start:'nine',size:'third' },
@@ -658,7 +708,7 @@ module.exports = {
 											align:	'gridSlice',
 											form: 	{
 												'id':			'form-user-password',
-												'data-action': 	'/edit/settings/password',
+												'data-action': 	'/user/settings/password',
 												'method':		'PUT',
 												'buttons':		[
 													{ kind:'submit',label:'Change Password',style:'nope',start:'one',size:'spread' },
@@ -720,7 +770,7 @@ module.exports = {
 									]
 								}
 							}, 
-						],
+						]),
 						other: [
 							{ 	 // TIPS
 								tag:	PNL, props: 	{ 

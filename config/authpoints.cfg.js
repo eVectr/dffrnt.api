@@ -219,14 +219,7 @@ const { RouteAU, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 										// ----------------------------------------------------------
 										switch (true) {
 											case !!!sess.user.token:
-												throw {
-													send: [
-														MSG.EXISTS, 
-														SSD, (acct||''), 
-														Assing(OUT, bdy),
-													],
-													next: ['Destroy'],
-												};
+												throw [MSG.EXISTS, SSD, (acct||''), Assing(OUT, bdy)]
 											default:
 												THS.sid = req.sessionID;
 												user = await THS.Profile(acct, true);
