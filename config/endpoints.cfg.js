@@ -257,7 +257,7 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 			__DEFAULTS: 	{
 				Headers:	{
 					[SSIG]:	new GNParam({
-						Name: 		'Stripe™ Signature',	
+						Name: 		'Stripeï¿½ Signature',	
 						Default:	'', 
 						Format 		() {},
 						Desc: 		new GNDescr({ 
@@ -266,7 +266,7 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 											let { head } = v, sig = head[SSIG];
 											return sig==Plugins.Stripe.Signature;
 									} 	}), 
-							description: "A verification {{Signature}} for Stripe™ messages", 
+							description: "A verification {{Signature}} for Stripeï¿½ messages", 
 							required: true, 
 							to: 'header'
 						}),
@@ -1279,7 +1279,7 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 									}),
 					// STRIPE EVENT =============================================================
 						ID: 		['STRIPE', {
-										Name:	 'Stripe™ User ID',
+										Name:	 'Stripeï¿½ User ID',
 										Default: null,
 										Format	 (cls) { return cls.id; },
 										Desc: 	 new GNDescr({ 
@@ -1291,7 +1291,7 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 										})
 									}],
 						Created: 	new GNParam({
-										Name:	 'Stripe™ Event Date',
+										Name:	 'Stripeï¿½ Event Date',
 										Default: null,
 										Format	 (cls) { return cls.created; },
 										Desc: 	 new GNDescr({
@@ -1303,7 +1303,7 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 										})
 									}),
 						LiveMode: 	new GNParam({
-										Name:	 'Stripe™ Live Mode Flag',
+										Name:	 'Stripeï¿½ Live Mode Flag',
 										Default: false,
 										Format	 (cls) { return cls.livemode; },
 										Desc: 	 new GNDescr({
@@ -1315,7 +1315,7 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 										})
 									}),
 						Type: 		new GNParam({
-										Name:	 'Stripe™ Event Type',
+										Name:	 'Stripeï¿½ Event Type',
 										Default: '',
 										Format	 (cls) { return cls.type; },
 										Desc: 	 new GNDescr({
@@ -1327,7 +1327,7 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 										})
 									}),
 						Object: 	new GNParam({
-										Name:	 'Stripe™ Object Type',
+										Name:	 'Stripeï¿½ Object Type',
 										Default: {},
 										Format	 (cls) { return cls.object; },
 										Desc: 	 new GNDescr({
@@ -1339,7 +1339,7 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 										})
 									}),
 						Request: 	new GNParam({
-										Name:	 'Stripe™ Object Type',
+										Name:	 'Stripeï¿½ Object Type',
 										Default: null,
 										Format	 (cls) { return cls.request; },
 										Desc: 	 new GNDescr({
@@ -1351,7 +1351,7 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 										})
 									}),
 						PendHooks: 	new GNParam({
-										Name:	 'Stripe™ Pending WebHooks',
+										Name:	 'Stripeï¿½ Pending WebHooks',
 										Aliases: ['Pending_Webhooks'],
 										Default: 0,
 										Format	 (cls) { return cls['pending_webhooks']; },
@@ -1364,7 +1364,7 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 										})
 									}),
 						APIVer: 	new GNParam({
-										Name:	 'Stripe™ API Version',
+										Name:	 'Stripeï¿½ API Version',
 										Aliases: ['api_version'],
 										Default: 0,
 										Format	 (cls) { return cls['api_version']; },
@@ -1377,7 +1377,7 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 										})
 									}),
 						Data: 		new GNParam({
-										Name:	 'Stripe™ Data Object',
+										Name:	 'Stripeï¿½ Data Object',
 										Default: 0,
 										Format	 (cls) { return cls.data; },
 										Desc: 	 new GNDescr({
@@ -4776,7 +4776,7 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 							Doc: 		{
 								Headers: 	{ Token: true },
 								Examples: 	{
-									"/:uid:14": "Retrieves a Stripe™ account for the {{User}} with the {{User ID}}",
+									"/:uid:14": "Retrieves a Stripeï¿½ account for the {{User}} with the {{User ID}}",
 								},
 							},
 							async Query	(cls) { 
@@ -4829,7 +4829,7 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 							Doc: 		{
 								Headers: 	{ Token: true },
 								Examples: 	{
-									"/:uid:14": "Creates a Stripe™ account for the {{User}} with the {{User ID}}",
+									"/:uid:14": "Creates a Stripeï¿½ account for the {{User}} with the {{User ID}}",
 								},
 							},
 							async Query	(cls) { 
@@ -4922,7 +4922,7 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 							Doc: 		{
 								Headers: 	{ Token: true },
 								Examples: 	{
-									"/:uid:14": "Deletes the Stripe™ accounts for the {{User}} with the specified {{User ID}}",
+									"/:uid:14": "Deletes the Stripeï¿½ accounts for the {{User}} with the specified {{User ID}}",
 								},
 							},
 							async Query	(cls) { 
@@ -5008,6 +5008,46 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 				},
 				Errors: 	{ BAD_REQ: ['/'] }
 			},
+			Contactreason: {
+				Actions: 	{
+					// ======================================================================
+					"/": 			new RouteDB({
+						Methods: 	Docs.Kinds.GET,
+						Scheme: 	'/',
+						GET			() { return {
+							Doc: 		{
+								Headers: 	{  },
+								Examples: 	{
+									"/": "Get Contact Categories",
+								},
+							},
+							async Query (cls) {
+								console.log("TRYING MONGO AWAIT");
+								//console.log(Plugins);
+								try {
+									
+									//console.log(Mongo.ContactCategory);
+									let Mongo = await Plugins.Mongo;
+									//console.log(Mongo);
+									let result = await Mongo.ContactCategory({
+										"Tempate_name": "Mandatory Uploads",
+									});
+									console.log("QUERY RESULT:");
+									console.log(result);
+									return [null,result];
+
+								} catch (error) {
+									console.log(error)
+									throw error
+								}
+							}
+						};	},
+						Params: {},
+						
+					})
+				},
+				Errors: 	{}
+			}
 		};	
 	};
 

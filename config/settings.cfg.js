@@ -1,32 +1,26 @@
 
 module.exports = {
 	Debug: 		false,
-	Port: 		8443,
-	SSL:		{
-		CA: 	"../SSL/evectr.com.ca-bundle",
-		Cert: 	"../SSL/evectr.com.chain.pem",
-		Key: 	"../SSL/evectr.com.key.pem",
-		DHP:	"/opt/local/etc/nginx/ssl/dhparam.pem",
-	},
+	Port: 		8080,
 	Services: 	[
-		'https://evectr.com:8443/gbl-accessor',
-		'https://evectr.com:8443/gbl-rest',
+		'http://localhost:8080/gbl-accessor',
+		'http://localhost:8080/gbl-rest',
 	],
 	APIDoc:		{
 		info: {
 			title: "eVectr.API",
 			description: "The official eVectr™ API.",
-			termsOfService: "https://evectr.com:8443/terms",
+			termsOfService: "http://localhost:8080/terms",
 			contact: { 
 				name: "eVectr™ Support",
-				email: "support@evectr.com:8443",
-				url: "https://evectr.com:8443/help",
+				email: "support@evectr.com",
+				url: "http://localhost:8080/help",
 			},
 			version: "1.0.0"
 		},
 		externalDocs: {},
 		servers: [
-			{ url: "https://evectr.com:8443" }
+			{ url: "http://localhost:8080" }
 		],
 	},
 	Folders: 	{
@@ -53,7 +47,7 @@ module.exports = {
 			Config: {
 				Host: 		'localhost',
 				Port: 		6379,
-				Password: 	'Pion33r247',
+				Password: 	'r4nd0m',
 			},
 			Main:	{ Index: 0, Name: 'Client' },
 			Stores: [
@@ -171,60 +165,119 @@ module.exports = {
 	},
 	Plugins:	{
 		Stripe: 	function Stripe() {
-						let apiKey = "sk_test_ilOh0bPhIuDC0beq97wPf8Zr",
-							StrSig = 'whsec_5TnyhyT1O9QXq45Iz3zLn6Na0510ARJu',
-							Stripe = require("stripe")(apiKey),
-							PlugIn = {};
-						// -------------------------------------------------------------- //
-							DEFINE(PlugIn, { Signature: HIDDEN({
-								get() { return StrSig; }
-							}, 1) });
-						// -------------------------------------------------------------- //
-							function Asyncify(MODL) {
-								let result = {};
-								// -------------------------------------------------------------- //
-									function Traverse(obj, level = []) {
-										var rslt = {}, idn = '    '.dup(level);
-										for (let p in obj) {
-											let prop = `${idn}${p.padEnd(25)} : `,
-												valu = obj[p], typs = ISS(valu);
-											switch (typs) {
-												case   'object':
-													if (p[0] !== '_') {
-														let subobj = Traverse(valu,[...level,p]);
-														DEFINE(rslt, { [p]: HIDDEN({ get() { return subobj; } },1) }); 
-													}; 	break;;
-												case 'function':
-													let fstr = valu.toString();
-													if ((fstr.has('stripeMethod') || fstr.has('Promise'))) {
-														DEFINE(rslt, { 
-															[p]: HIDDEN(async (...args) => {
-																return new Promise((resolve, reject) => {
-																	valu.bind(obj)(...args)
-																		.then(payload=>resolve(payload))
-																		.catch(errors=>{
-																			LG.Error(errors.message, 'STRIPE', 'Asyncify')
-																			reject(errors)
-																		})
-																});
+			let apiKey = "sk_test_ilOh0bPhIuDC0beq97wPf8Zr",
+				StrSig = 'whsec_5TnyhyT1O9QXq45Iz3zLn6Na0510ARJu',
+				Stripe = require("stripe")(apiKey),
+				PlugIn = {};
+			// -------------------------------------------------------------- //
+				DEFINE(PlugIn, { Signature: HIDDEN({
+					get() { return StrSig; }
+				}, 1) });
+			// -------------------------------------------------------------- //
+				function Asyncify(MODL) {
+					let result = {};
+					// -------------------------------------------------------------- //
+						function Traverse(obj, level = []) {
+							var rslt = {}, idn = '    '.dup(level);
+							for (let p in obj) {
+								let prop = `${idn}${p.padEnd(25)} : `,
+									valu = obj[p], typs = ISS(valu);
+								switch (typs) {
+									case   'object':
+										if (p[0] !== '_') {
+											let subobj = Traverse(valu,[...level,p]);
+											DEFINE(rslt, { [p]: HIDDEN({ get() { return subobj; } },1) }); 
+										}; 	break;;
+									case 'function':
+										let fstr = valu.toString();
+										if ((fstr.has('stripeMethod') || fstr.has('Promise'))) {
+											DEFINE(rslt, { 
+												[p]: HIDDEN(async (...args) => {
+													return new Promise((resolve, reject) => {
+														valu.bind(obj)(...args)
+															.then(payload=>resolve(payload))
+															.catch(errors=>{
+																LG.Error(errors.message, 'STRIPE', 'Asyncify')
+																reject(errors)
 															})
-														});
-														// LG.Server([...level,p].join('.'), 'STRIPE', 'Exposed', 'blue');
-													};	break;;
-												default:break;;
-											}
-										};
-										return Object.freeze(rslt);
-									}
-								// -------------------------------------------------------------- //
-									result = Traverse(MODL); 
-								// -------------------------------------------------------------- //
-									return result;
-							}
-						// -------------------------------------------------------------- //
-							PlugIn = Asyncify(Stripe);
-						// -------------------------------------------------------------- //
-							return PlugIn;
+													});
+												})
+											});
+											// LG.Server([...level,p].join('.'), 'STRIPE', 'Exposed', 'blue');
+										};	break;;
+									default:break;;
+								}
+							};
+							return Object.freeze(rslt);
+						}
+					// -------------------------------------------------------------- //
+						result = Traverse(MODL); 
+					// -------------------------------------------------------------- //
+						return result;
+				}
+			// -------------------------------------------------------------- //
+				PlugIn = Asyncify(Stripe);
+			// -------------------------------------------------------------- //
+				return PlugIn;
+		},
+		// MONGO DATABASE PLUGIN
+		Mongo: 		async function Mongo() {
+			let mongoose = require('mongoose'),
+				sch_path  = '../../../main/mongo/',
+				
+				// COLLECTION SCHEMAS
+				schemas  = {
+					ContactCategory: require(`${sch_path}/contactcategory.js`),
+				},
+				connstr  = 'mongodb://evectrContact:r4nd0m@localhost:27017/contact',
+				result   = false;
+			
+			// CONNECTION RESULT
+			result = await new Promise((resolve, reject) => mongoose.connect(connstr, err => {
+				if (err) {console.log("PROMISE ERROR MONGOOOSEEE"); console.log(err); reject(false);}
+				console.log('Mongoose connected')
+				console.log(mongoose)
+				resolve(mongoose);
+			})	);
+
+			if (Object.keys(result).length === 0) {
+				console.log("MONGOOSE FELL DOWN REALLY BAD");
+				throw result;
+				
+			} else {
+				console.log("THERE IS A VALID CONNEXXX");
+				console.log(result);
+				let MongoPromiseFactory = (name, filter) => {
+						return new Promise((resolve, reject) => {
+							schemas[name].find(filter, (error, result) => {
+								if (!!error) reject(error);
+								else resolve(result);
+							});
+						});
+					};
+				return {
+					result,
+					ContactCategory: (filter) => {
+						return MongoPromiseFactory('ContactCategory', filter);
 					},
+				};
+				//resolve(result);
+				/*/ RETURN PROMISE FOR GIVEN <name>
+				let MongoPromiseFactory = (name, filter) => {
+						return new Promise((resolve, reject) => {
+							schemas[name].find(filter, (error, result) => {
+								if (!!error) reject(error);
+								else resolve(result);
+							});
+						});
+					};
+				return {
+					mongoose,
+					ContactCategory: (filter) => {
+						return MongoPromiseFactory('ContactCategory', filter);
+					},
+				};*/
+			};
+		}
 	},
 };
