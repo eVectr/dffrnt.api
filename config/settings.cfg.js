@@ -236,48 +236,180 @@ module.exports = {
 			result = await new Promise((resolve, reject) => mongoose.connect(connstr, err => {
 				if (err) {console.log("PROMISE ERROR MONGOOOSEEE"); console.log(err); reject(false);}
 				console.log('Mongoose connected')
-				console.log(mongoose)
+				//console.log(mongoose)
 				resolve(mongoose);
 			})	);
-
+			// IF CONNECTRION OBJECT EMPTY
 			if (Object.keys(result).length === 0) {
 				console.log("MONGOOSE FELL DOWN REALLY BAD");
 				throw result;
 				
 			} else {
-				console.log("THERE IS A VALID CONNEXXX");
-				console.log(result);
-				let MongoPromiseFactory = (name, filter) => {
-						return new Promise((resolve, reject) => {
+				//console.log("THERE IS A VALID CONNEXXX");
+				//console.log(result);
+				let MongoPromiseFactory = (name, filter, type) => {
+					return new Promise((resolve, reject) => {
+						if(type === "find" || type === undefined) {
+							console.log("Finding collection data for "+name);
 							schemas[name].find(filter, (error, result) => {
 								if (!!error) reject(error);
 								else resolve(result);
 							});
-						});
-					};
+						} else {
+							console.log("Mongo Lookup failed for: "+name);
+						}
+						//if (type === "save") {}
+					});
+				};
 				return {
 					result,
 					ContactCategory: (filter) => {
-						return MongoPromiseFactory('ContactCategory', filter);
+						return MongoPromiseFactory('ContactCategory', filter, "find");
 					},
 				};
-				//resolve(result);
-				/*/ RETURN PROMISE FOR GIVEN <name>
-				let MongoPromiseFactory = (name, filter) => {
-						return new Promise((resolve, reject) => {
-							schemas[name].find(filter, (error, result) => {
-								if (!!error) reject(error);
-								else resolve(result);
-							});
-						});
-					};
-				return {
-					mongoose,
-					ContactCategory: (filter) => {
-						return MongoPromiseFactory('ContactCategory', filter);
-					},
-				};*/
 			};
+		},
+		// POPULATE STATIC MONGO DATA
+		MongoImport: 		async function MongoImport() {
+			var remakeCollections = false; // SET TO TRUE IF YOU WANT TO RE-IMPORT COLLECTIONS OR COLLECTIONS DONT ALREADY EXIST
+			if(remakeCollections === true) {
+				let mongoose = require('mongoose'),
+				connstr  = 'mongodb://evectrContact:r4nd0m@localhost:27017/contact',
+				result   = false;
+			
+			// CONNECTION RESULT
+			result = await new Promise((resolve, reject) => mongoose.connect(connstr, err => {
+				if (err) {console.log("MONGOOSE PROMISE ERRoR"); console.log(err); reject(false);}
+				console.log('Mongoose connected')
+				//console.log(mongoose)
+				resolve(mongoose);
+			})	);
+			// IF CONNECTION OBJECT EMPTY
+			if (Object.keys(result).length === 0) {
+				console.log("FAILED TO ESTABLISH MONGO CONNECTION");
+				throw result;
+			} else {
+				console.log("MongoImport: Re-creating collections");
+				var Schema = mongoose.Schema;
+		
+				var evContactReasonsSchema = new Schema({
+					reason_title:  String,
+					category: String,
+					form_type:   String,
+					date: { type: Date, default: Date.now },
+					hidden: Boolean
+				});
+	
+				var evContactReasonsModel = mongoose.model('evContactReasons', evContactReasonsSchema);
+				
+				// Drop all entries in evcontactreasons collection
+				var dropCollection = evContactReasonsModel.bulkWrite([
+					{
+						deleteMany: {
+							filter: {}
+						}
+					}
+				]).then(res => {
+					console.log("Removed "+ res.deletedCount+" documents from evcontactreasons collection.");
+				});
+
+				// DOCUMENT IMPORTS
+				
+				// GENERAL HELP REQUESTS
+				var loginIssue = new evContactReasonsModel({
+					reason_title: 'Login Issue', category: "General Help Request", form_type: "Standard"
+				}); loginIssue.save();
+
+				var deactivateAccount = new evContactReasonsModel({
+					reason_title: 'Request to Deactivate Account', category: "General Help Request", form_type: "Standard"
+				}); deactivateAccount.save();
+
+				var suspendedAccount = new evContactReasonsModel({
+					reason_title: 'Inquiry about Suspended or Locked Account', category: "General Help Request", form_type: "Standard"
+				}); suspendedAccount.save();
+
+				var restoreAccount = new evContactReasonsModel({
+					reason_title: 'Request to Restore an Account', category: "General Help Request", form_type: "Standard"
+				}); restoreAccount.save();
+
+				var hackedAccount = new evContactReasonsModel({
+					reason_title: 'Report a Hacked Account', category: "General Help Request", form_type: "MandatoryUploads"
+				}); hackedAccount.save();
+
+				var transactionalIssue = new evContactReasonsModel({
+					reason_title: 'Report Transaction related issue', category: "General Help Request", form_type: "OptionalUploads"
+				}); transactionalIssue.save();
+
+				var otherGeneralQuestion = new evContactReasonsModel({
+					reason_title: 'Other Questions or Concerns', category: "General Help Request", form_type: "Standard"
+				}); otherGeneralQuestion.save();
+
+				
+				// REPORT A VIOLATION
+				var impersonation = new evContactReasonsModel({
+					reason_title: 'Impersonation', category: "Report a Violation", form_type: "MandatoryUploads"
+				}); impersonation.save();
+
+				var copyrightViolation = new evContactReasonsModel({
+					reason_title: 'Report Trademarks and Copyright Inftringement', category: "Report a Violation", form_type: "MandatoryUploads"
+				}); copyrightViolation.save();
+
+				var harassment = new evContactReasonsModel({
+					reason_title: 'Harassment', category: "Report a Violation", form_type: "MandatoryUploads"
+				}); harassment.save();
+
+				var privacyInformation = new evContactReasonsModel({
+					reason_title: 'Privacy Information', category: "Report a Violation", form_type: "MandatoryUploads"
+				}); privacyInformation.save();
+
+				var spamActivity = new evContactReasonsModel({
+					reason_title: 'Report Spamming Activity', category: "Report a Violation", form_type: "MandatoryUploads"
+				}); spamActivity.save();
+
+				var suspiciousAds = new evContactReasonsModel({
+					reason_title: 'Report Suspicious Ad(s)', category: "Report a Violation", form_type: "MandatoryUploads"
+				}); suspiciousAds.save();
+
+				var serviceProvider = new evContactReasonsModel({
+					reason_title: 'Report an issue with Service Provider', category: "Report a Violation", form_type: "OptionalUploads"
+				}); serviceProvider.save();
+
+				var serviceUser = new evContactReasonsModel({
+					reason_title: 'Report an issue with Service User', category: "Report a Violation", form_type: "OptionalUploads"
+				}); serviceUser.save();
+
+				var harassmentServiceProvider = new evContactReasonsModel({
+					reason_title: 'Report Harassment related to a Service Provider', category: "Report a Violation", form_type: "OptionalUploads"
+				}); harassmentServiceProvider.save();
+
+				var harassmentServiceUser = new evContactReasonsModel({
+					reason_title: 'Report Harassment related to a Service User', category: "Report a Violation", form_type: "OptionalUploads"
+				}); harassmentServiceUser.save();
+
+				var otherViolations = new evContactReasonsModel({
+					reason_title: 'Other Violations Related Questions or Concerns', category: "Report a Violation", form_type: "OptionalUploads"
+				}); otherViolations.save();
+
+				// REQUEST A PROFILE AUDIT
+				var fakeCredentials = new evContactReasonsModel({
+					reason_title: 'Report Fake Credentials', category: "Request a Profile Audit", form_type: "MandatoryUploads"
+				}); fakeCredentials.save();
+
+				var misleadingClaims = new evContactReasonsModel({
+					reason_title: 'Report Misleading Claims', category: "Request a Profile Audit", form_type: "MandatoryUploads"
+				}); misleadingClaims.save();
+
+				var otherSuspiciousActivity = new evContactReasonsModel({
+					reason_title: 'Other Suspicious Activity', category: "Request a Profile Audit", form_type: "MandatoryUploads"
+				}); otherSuspiciousActivity.save();
+
+				console.log("Finished impoorting Contact Reasons")
+				
+				return result;
+				}
+			} else {
+				return false;
+			}
 		}
 	},
 };
