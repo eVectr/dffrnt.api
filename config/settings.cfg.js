@@ -271,7 +271,7 @@ module.exports = {
 		},
 		// POPULATE STATIC MONGO DATA
 		MongoImport: 		async function MongoImport() {
-			var remakeCollections = false; // SET TO TRUE IF YOU WANT TO RE-IMPORT COLLECTIONS OR COLLECTIONS DONT ALREADY EXIST
+			var remakeCollections = true; // SET TO TRUE IF YOU WANT TO RE-IMPORT COLLECTIONS OR COLLECTIONS DONT ALREADY EXIST
 			if(remakeCollections === true) {
 				let mongoose = require('mongoose'),
 				connstr  = 'mongodb://evectrContact:r4nd0m@localhost:27017/contact',
@@ -314,96 +314,41 @@ module.exports = {
 				});
 
 				// DOCUMENT IMPORTS
-				
-				// GENERAL HELP REQUESTS
-				var loginIssue = new evContactReasonsModel({
-					reason_title: 'Login Issue', category: "General Help Request", form_type: "Standard"
-				}); loginIssue.save();
 
-				var deactivateAccount = new evContactReasonsModel({
-					reason_title: 'Request to Deactivate Account', category: "General Help Request", form_type: "Standard"
-				}); deactivateAccount.save();
+				var contactReasons = [
+					// GENERAL HELP REQUESTS
+					{reason_title: 'Login Issue', category: "General Help Request", form_type: "Standard"},
+                    {reason_title: 'Request to Deactivate Account', category: "General Help Request", form_type: "Standard"},
+					{reason_title: 'Inquiry about Suspended or Locked Account', category: "General Help Request", form_type: "Standard"},
+					{reason_title: 'Request to Restore an Account', category: "General Help Request", form_type: "Standard"},
+					{reason_title: 'Report a Hacked Account', category: "General Help Request", form_type: "MandatoryUploads"},
+					{reason_title: 'Report Transaction related issue', category: "General Help Request", form_type: "OptionalUploads"},
+					{reason_title: 'Other Questions or Concerns', category: "General Help Request", form_type: "Standard"},
+					// REPORT A VIOLATION
+					{reason_title: 'Impersonation', category: "Report a Violation", form_type: "MandatoryUploads"},
+					{reason_title: 'Report Trademarks and Copyright Inftringement', category: "Report a Violation", form_type: "MandatoryUploads"},
+					{reason_title: 'Harassment', category: "Report a Violation", form_type: "MandatoryUploads"},
+					{reason_title: 'Privacy Information', category: "Report a Violation", form_type: "MandatoryUploads"},
+					{reason_title: 'Report Spamming Activity', category: "Report a Violation", form_type: "MandatoryUploads"},
+					{reason_title: 'Report Suspicious Ad(s)', category: "Report a Violation", form_type: "MandatoryUploads"},
+					{reason_title: 'Report an issue with Service Provider', category: "Report a Violation", form_type: "OptionalUploads"},
+					{reason_title: 'Report an issue with Service User', category: "Report a Violation", form_type: "OptionalUploads"},
+					{reason_title: 'Report Harassment related to a Service Provider', category: "Report a Violation", form_type: "OptionalUploads"},
+					{reason_title: 'Report Harassment related to a Service User', category: "Report a Violation", form_type: "OptionalUploads"},
+					{reason_title: 'Other Violations Related Questions or Concerns', category: "Report a Violation", form_type: "OptionalUploads"},
+					// REQUEST A PROFILE AUDIT
+					{reason_title: 'Report Fake Credentials', category: "Request a Profile Audit", form_type: "MandatoryUploads"},
+					{reason_title: 'Report Misleading Claims', category: "Request a Profile Audit", form_type: "MandatoryUploads"},
+					{reason_title: 'Other Suspicious Activity', category: "Request a Profile Audit", form_type: "MandatoryUploads"},
+				];
 
-				var suspendedAccount = new evContactReasonsModel({
-					reason_title: 'Inquiry about Suspended or Locked Account', category: "General Help Request", form_type: "Standard"
-				}); suspendedAccount.save();
-
-				var restoreAccount = new evContactReasonsModel({
-					reason_title: 'Request to Restore an Account', category: "General Help Request", form_type: "Standard"
-				}); restoreAccount.save();
-
-				var hackedAccount = new evContactReasonsModel({
-					reason_title: 'Report a Hacked Account', category: "General Help Request", form_type: "MandatoryUploads"
-				}); hackedAccount.save();
-
-				var transactionalIssue = new evContactReasonsModel({
-					reason_title: 'Report Transaction related issue', category: "General Help Request", form_type: "OptionalUploads"
-				}); transactionalIssue.save();
-
-				var otherGeneralQuestion = new evContactReasonsModel({
-					reason_title: 'Other Questions or Concerns', category: "General Help Request", form_type: "Standard"
-				}); otherGeneralQuestion.save();
-
-				
-				// REPORT A VIOLATION
-				var impersonation = new evContactReasonsModel({
-					reason_title: 'Impersonation', category: "Report a Violation", form_type: "MandatoryUploads"
-				}); impersonation.save();
-
-				var copyrightViolation = new evContactReasonsModel({
-					reason_title: 'Report Trademarks and Copyright Inftringement', category: "Report a Violation", form_type: "MandatoryUploads"
-				}); copyrightViolation.save();
-
-				var harassment = new evContactReasonsModel({
-					reason_title: 'Harassment', category: "Report a Violation", form_type: "MandatoryUploads"
-				}); harassment.save();
-
-				var privacyInformation = new evContactReasonsModel({
-					reason_title: 'Privacy Information', category: "Report a Violation", form_type: "MandatoryUploads"
-				}); privacyInformation.save();
-
-				var spamActivity = new evContactReasonsModel({
-					reason_title: 'Report Spamming Activity', category: "Report a Violation", form_type: "MandatoryUploads"
-				}); spamActivity.save();
-
-				var suspiciousAds = new evContactReasonsModel({
-					reason_title: 'Report Suspicious Ad(s)', category: "Report a Violation", form_type: "MandatoryUploads"
-				}); suspiciousAds.save();
-
-				var serviceProvider = new evContactReasonsModel({
-					reason_title: 'Report an issue with Service Provider', category: "Report a Violation", form_type: "OptionalUploads"
-				}); serviceProvider.save();
-
-				var serviceUser = new evContactReasonsModel({
-					reason_title: 'Report an issue with Service User', category: "Report a Violation", form_type: "OptionalUploads"
-				}); serviceUser.save();
-
-				var harassmentServiceProvider = new evContactReasonsModel({
-					reason_title: 'Report Harassment related to a Service Provider', category: "Report a Violation", form_type: "OptionalUploads"
-				}); harassmentServiceProvider.save();
-
-				var harassmentServiceUser = new evContactReasonsModel({
-					reason_title: 'Report Harassment related to a Service User', category: "Report a Violation", form_type: "OptionalUploads"
-				}); harassmentServiceUser.save();
-
-				var otherViolations = new evContactReasonsModel({
-					reason_title: 'Other Violations Related Questions or Concerns', category: "Report a Violation", form_type: "OptionalUploads"
-				}); otherViolations.save();
-
-				// REQUEST A PROFILE AUDIT
-				var fakeCredentials = new evContactReasonsModel({
-					reason_title: 'Report Fake Credentials', category: "Request a Profile Audit", form_type: "MandatoryUploads"
-				}); fakeCredentials.save();
-
-				var misleadingClaims = new evContactReasonsModel({
-					reason_title: 'Report Misleading Claims', category: "Request a Profile Audit", form_type: "MandatoryUploads"
-				}); misleadingClaims.save();
-
-				var otherSuspiciousActivity = new evContactReasonsModel({
-					reason_title: 'Other Suspicious Activity', category: "Request a Profile Audit", form_type: "MandatoryUploads"
-				}); otherSuspiciousActivity.save();
-
-				console.log("Finished impoorting Contact Reasons")
+				var insertResult = evContactReasonsModel.insertMany(contactReasons, function(error, docs) {
+					if (error){
+						return console.error(error);
+					} else {
+						console.log("Finished impoorting Contact Reasons");
+					}
+				});
 				
 				return result;
 				}
