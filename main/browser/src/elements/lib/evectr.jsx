@@ -1817,6 +1817,128 @@ module.exports = function Comps(COMPS) {
 					}
 			};
 
+		// CONTACT METHODS /////////////////////////////////////////////////
+		EV.Contactmethods 	= class Contactmethods 	extends Mix('Reflux',MX.Static) {
+			constructor(props) {
+				super(props); this.name = 'SELECT';
+				// ------------------------------------------------------------
+					let THS = this, data = props.data, id;
+				// ------------------------------------------------------------
+					THS.handleChange = THS.handleChange.bind(THS);
+				// ------------------------------------------------------------
+					if (!!data&&data.id) { id = data.id;
+						THS.mapStoreToState(COMPS.Stores.Data, store => {
+							let data = store[id]||{}, stamp = data.stamp;
+							if (!!stamp&&stamp!==THS.state.stamp) return { 
+								stamp: stamp, loaded: true, options: data.items, 
+							}; 	else return null;	
+						}	);
+					}
+			}
+
+			// CYCLE     /////////////////////////////////////////////////////////
+
+				componentDidMount() {
+					let prop = this.state, 
+						send = Actions.Data.send,
+						data = prop.data,
+						load = !!prop.loaded;
+					if (!!data&&!!document&&!load) {
+						let url = data.url, id = data.id; 
+						if (!!!DATA_TMR[id]) DATA_TMR[id] = setTimeout(() => {
+							send(url, {
+								method:	'GET', headers: { token: COMPS.Token },
+								params:	{}, query: { id: id, limit: 100 },
+							}	); 
+							setTimeout(()=>(DATA_TMR[id]=null), 100);
+						}, 	50);	}
+				}
+
+			// GETTERS   /////////////////////////////////////////////////////////
+
+				get restrictions () { return this.props.restrict||[]; }
+				get selector	 () { return this.refs.slc; }
+				get selected 	 () { return this.selector.selectedOptions[0]; }
+				get value		 () { return this.selected.value; }
+
+			// EVENTS    /////////////////////////////////////////////////////////
+
+				handleChange(e) {
+					let strct = this.restrictions,
+						value = this.value,
+						will  = strct.has(value),
+						key   = 'restrict'; 
+					console.log('RESTRICT:', {
+						strict: strct,
+						value:	value,
+						will: 	will,
+					});
+					if (!will) {
+						delete this.selector.dataset[key];
+					} else {
+						this.selector.dataset[key] = "";
+					}
+				}
+
+			// FUNCTIONS /////////////////////////////////////////////////////////
+
+				//
+
+			// MAIN      /////////////////////////////////////////////////////////
+
+				render() {
+					let props 	= this.state, 
+						opts  	= props.options||[],
+						title 	= props.title,
+						attrs 	= {  
+							id: 			props.id, 
+							name: 			props.name, 
+							title: 			title, 
+							tabIndex: 		props.tab,
+							className:		props.className,
+							defaultValue:	props.value||'none',
+							onChange:		this.handleChange,
+						};
+					const listItems = opts.map((reason) =>
+						<option value="{reason._doc.reason_title}">{reason._doc.reason_title}</option>
+					);
+					console.log('OPTIONS::::');
+					console.log(opts);
+					return (
+						<select id="select-contact-reason">{listItems}</select>
+					);
+				}
+		};
+		/*EV.Contactmethods 		= class Contactmethods 	extends Mix('Reflux',MX.Static) {
+			constructor(props) {
+				super(props); let THS = this; THS.name = 'SERVICES';
+				// ---------------------------------------------------
+					THS.fid = 'services';
+				// ---------------------------------------------------
+					THS.mapStoreToState(COMPS.Stores.Data, store => {
+						let id = THS.fid, {stamp,items=[]} = (store[id]||{});
+						if (!!stamp&&stamp!==THS.state.stamp) return { 
+							stamp:  stamp,  loaded: true, 
+							status: 'done', services: (items[0]||{}).services,
+						}; 	else return null;	
+					}	);
+			}
+
+			// MAIN      /////////////////////////////////////////////////////////
+
+				render() {
+					let THS		= this,
+						props 	= THS.state,
+						edit  	= !!props.editable,
+						srvcs	= props.services||[];
+					return (
+						<Frag>{srvcs.map((s) => (
+							<Service key={`svc-slab-${s.id}`} {...s} editable={edit}/>
+						))}</Frag>
+					);
+				}
+		};*/
+
 		// STRIPE  /////////////////////////////////////////////////////////
 
 			EV.PoS = {};
