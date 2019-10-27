@@ -89,6 +89,10 @@ module.exports = {
 								href:	'/settings',
 								icon:	'cog',
 							}, {
+								label: 	' Contact Support',
+								href:	'/contactmethods',
+								icon:	'help',
+							}, {
 								label: 	' Logout',
 								icon:	'sign-out-alt',
 								kind:	'submit',

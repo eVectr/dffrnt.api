@@ -1817,26 +1817,96 @@ module.exports = function Comps(COMPS) {
 					}
 			};
 
+		
 		// CONTACT METHODS /////////////////////////////////////////////////
-		EV.Contactmethods 	= class Contactmethods 	extends Mix('Reflux',MX.Static) {
-			constructor(props) {
-				super(props); this.name = 'SELECT';
-				// ------------------------------------------------------------
+			EV.StandardForm = class StandardForm extends Mix('Reflux',MX.Static) {
+				constructor(props) {
+					super(props); this.name = 'STANDARDFORM';
+					// ------------------------------------------------------------
 					let THS = this, data = props.data, id;
-				// ------------------------------------------------------------
-					THS.handleChange = THS.handleChange.bind(THS);
-				// ------------------------------------------------------------
+					console.log(this.state.contactTemplate);
+					// ------------------------------------------------------------
+					this.handleChange = this.handleChange.bind(this);
+					this.handleSubmit = this.handleSubmit.bind(this);
+					this.handleCancel = this.handleCancel.bind(this);
+					// ------------------------------------------------------------
+					
 					if (!!data&&data.id) { id = data.id;
 						THS.mapStoreToState(COMPS.Stores.Data, store => {
 							let data = store[id]||{}, stamp = data.stamp;
-							if (!!stamp&&stamp!==THS.state.stamp) return { 
+							if (!!stamp&&stamp!==THS.state.stamp) return {
 								stamp: stamp, loaded: true, options: data.items, 
-							}; 	else return null;	
-						}	);
+							}; 	else return null;
+						});
+						THS.state = {
+							email: '',
+							password: '',
+							contactTemplate: true,
+						};
 					}
+				}
+
+				handleChange (event) {
+					// check it out: we get the event.target.name (which will be either "email" or "password")
+					// and use it to target the key on our `state` object with the same name, using bracket syntax
+					this.setState({ [event.target.name]: event.target.value });
+				}
+
+				handleSubmit(event) {
+					//const categories = this.state.ContactCategory.map;
+					alert('Email: ' + this.state.email);
+					event.preventDefault();
+				}
+
+				handleCancel(event) {
+					//const categories = this.state.ContactCategory.map;
+					this.setState({contactTemplate: null});
+					event.preventDefault();
+				}
+
+				render () {
+					return (
+						<form>
+							<label>Email</label>
+							<input type="text" name="email" onChange={this.handleChange} />
+
+							<label>Password</label>
+							<input type="password" name="password" onChange={this.handleChange} />
+							<button onClick={this.handleCancel}>Cancel</button> <button onClick={this.handleSubmit}>Submit</button>
+						</form>
+					);
+				}
 			}
 
-			// CYCLE     /////////////////////////////////////////////////////////
+
+			EV.Contactmethods 	= class Contactmethods 	extends Mix('Reflux',MX.Static) {
+				constructor(props) {
+					super(props); this.name = 'SELECT';
+					// ------------------------------------------------------------
+					let THS = this, data = props.data, id;
+					// ------------------------------------------------------------
+					this.handleChange = this.handleChange.bind(this);
+					this.handleCancel = this.handleCancel.bind(this);
+					this.handleSubmit = this.handleSubmit.bind(this);
+					this.handleInputChanges = this.handleInputChanges.bind(this);
+					// ------------------------------------------------------------
+					
+					if (!!data&&data.id) { id = data.id;
+						THS.mapStoreToState(COMPS.Stores.Data, store => {
+							let data = store[id]||{}, stamp = data.stamp;
+							if (!!stamp&&stamp!==THS.state.stamp) return {
+								stamp: stamp, loaded: true, options: data.items, 
+							}; 	else return null;	
+						});
+					}
+					
+					this.setState({
+						isSubmitButtonDisabled: false,
+						isSubmitted: false,
+					})
+				}
+
+				// CYCLE     /////////////////////////////////////////////////////////
 
 				componentDidMount() {
 					let prop = this.state, 
@@ -1844,100 +1914,395 @@ module.exports = function Comps(COMPS) {
 						data = prop.data,
 						load = !!prop.loaded;
 					if (!!data&&!!document&&!load) {
-						let url = data.url, id = data.id; 
+						let url = data.url, id = data.id;
 						if (!!!DATA_TMR[id]) DATA_TMR[id] = setTimeout(() => {
 							send(url, {
 								method:	'GET', headers: { token: COMPS.Token },
 								params:	{}, query: { id: id, limit: 100 },
-							}	); 
+							});
 							setTimeout(()=>(DATA_TMR[id]=null), 100);
-						}, 	50);	}
+						}, 	50);
+					}
 				}
 
-			// GETTERS   /////////////////////////////////////////////////////////
+				// GETTERS   /////////////////////////////////////////////////////////
 
 				get restrictions () { return this.props.restrict||[]; }
 				get selector	 () { return this.refs.slc; }
 				get selected 	 () { return this.selector.selectedOptions[0]; }
 				get value		 () { return this.selected.value; }
 
-			// EVENTS    /////////////////////////////////////////////////////////
+				// EVENTS    /////////////////////////////////////////////////////////
 
-				handleChange(e) {
-					let strct = this.restrictions,
-						value = this.value,
-						will  = strct.has(value),
-						key   = 'restrict'; 
-					console.log('RESTRICT:', {
-						strict: strct,
-						value:	value,
-						will: 	will,
-					});
-					if (!will) {
-						delete this.selector.dataset[key];
-					} else {
-						this.selector.dataset[key] = "";
+				handleChange(event) {
+					// Set template type
+					this.setState({contactTemplate: event.target.value});
+					
+					// Set the option text
+					var index = event.nativeEvent.target.selectedIndex;
+					this.setState({reasonText: event.nativeEvent.target[index].text});
+					
+					if(event.target.value==="Standard") {
+						this.setState({uploadRequired: ''});
+					} if(event.target.value==="OptionalUploads") {
+						this.setState({uploadRequired: 'Optional - '});
+					} if(event.target.value==="MandatoryUploads") {
+						this.setState({uploadRequired: 'Required - '});
 					}
+					console.log("Display "+event.target.value+" Form");
+					//alert(event.target.value);
 				}
 
-			// FUNCTIONS /////////////////////////////////////////////////////////
+				handleInputChanges(event) {
+					this.setState({ [event.target.name]: event.target.value });
+				}
 
-				//
+				handleCancel(event) {
+					//const categories = this.state.ContactCategory.map;
+					this.setState({contactTemplate: null, subject: '', message: '', contactError: '', contactSuccess: '', isSubmitButtonDisabled: false});
+					event.preventDefault();
+				}
 
-			// MAIN      /////////////////////////////////////////////////////////
+				handleSubmit(event) {
+					// Standard Form
+					if(this.state.contactTemplate === 'Standard') {
+						if(this.state.subject === undefined || this.state.subject.length <= 2) {
+							return this.setState({contactError: "please enter a valid subject"});
+						}
+						if(this.state.message === undefined || this.state.message.length <= 4) {
+							return this.setState({contactError: "please enter a valid message"});
+						}
+						
+						// Generate Case Number
+						let date = new Date();
+						let sec = date.getSeconds() + 1;
+					}
+					
+					// Optional Uploads
+					if(this.state.contactTemplate === 'OptionalUploads') {
+						if(this.state.subject === undefined || this.state.subject.length <= 2) {
+							return this.setState({contactError: "please enter a valid subject"});
+						}
+						if(this.state.message === undefined || this.state.message.length <= 4) {
+							return this.setState({contactError: "please enter a valid message"});
+						}
+						
+						// Generate Case Number
+						let date = new Date();
+						let sec = date.getSeconds() + 1;
+					}
+					
+					// Mandatory Uploads
+					if(this.state.contactTemplate === 'MandatoryUploads') {
+						if(this.state.subject === undefined || this.state.subject.length <= 2) {
+							return this.setState({contactError: "please enter a valid subject"});
+						}
+						if(this.state.message === undefined || this.state.message.length <= 4) {
+							return this.setState({contactError: "please enter a valid message"});
+						}
+
+						if(this.state.contactFiles === undefined || this.state.contactFiles.length <= 4) {
+							return this.setState({contactError: "Please submit at least one document, image or link"});
+						}
+						
+						// Generate Case Number
+						let date = new Date();
+						let sec = date.getSeconds() + 1;
+	
+						
+					}
+					
+					// Generate Case Number
+					let date = new Date();
+					let sec = date.getSeconds() + 1;
+					let caseNo = 'SS'.concat('0000').concat((Math.random() * 100000000).toFixed() * sec);
+
+					var submitData = {
+						subject: this.state.subject,
+						message: this.state.message,
+						resonText: this.state.reasonText,
+						caseNo: caseNo
+					}
+					
+					console.log(submitData);
+					
+					let result = fetch('/submitcontact', {
+						method: 'POST',
+						headers: {
+							'Accept': 'application/json',
+							'Content-Type': 'application/json',
+						},
+						body: JSON.stringify({
+							firstParam: 'yourValue',
+							secondParam: 'yourOtherValue',
+						})
+					});
+
+					console.log(result);
+
+					var successMessage = "Thank you, your message has been delivered. We will notify you when the status of your request has been changed. For tracking purposes your case number is: " + caseNo;
+					this.setState({
+						isSubmitButtonDisabled: true,
+						isSubmitted: true,
+						contactSuccess: successMessage,
+					});
+					event.preventDefault();
+				}
+				// FUNCTIONS /////////////////////////////////////////////////////////
+
+					//
+
+				// MAIN      /////////////////////////////////////////////////////////
 
 				render() {
-					let props 	= this.state, 
-						opts  	= props.options||[],
-						title 	= props.title,
-						attrs 	= {  
-							id: 			props.id, 
-							name: 			props.name, 
-							title: 			title, 
-							tabIndex: 		props.tab,
-							className:		props.className,
-							defaultValue:	props.value||'none',
-							onChange:		this.handleChange,
-						};
+					let props 	= this.state,
+					opts  	= props.options||[],
+					title 	= props.title,
+					attrs 	= {
+						id: 			props.id, 
+						name: 			props.name, 
+						title: 			title, 
+						tabIndex: 		props.tab,
+						className:		props.className,
+						defaultValue:	props.value||'none',
+						onChange:		this.handleChange,
+					};
+					
+					// Contact Reasons from Mongo (reason)
 					const listItems = opts.map((reason) =>
-						<option value="{reason._doc.reason_title}">{reason._doc.reason_title}</option>
+						<option value={reason._doc.form_type}>{reason._doc.reason_title}</option>
 					);
-					console.log('OPTIONS::::');
-					console.log(opts);
-					return (
-						<select id="select-contact-reason">{listItems}</select>
-					);
-				}
-		};
-		/*EV.Contactmethods 		= class Contactmethods 	extends Mix('Reflux',MX.Static) {
-			constructor(props) {
-				super(props); let THS = this; THS.name = 'SERVICES';
-				// ---------------------------------------------------
-					THS.fid = 'services';
-				// ---------------------------------------------------
-					THS.mapStoreToState(COMPS.Stores.Data, store => {
-						let id = THS.fid, {stamp,items=[]} = (store[id]||{});
-						if (!!stamp&&stamp!==THS.state.stamp) return { 
-							stamp:  stamp,  loaded: true, 
-							status: 'done', services: (items[0]||{}).services,
-						}; 	else return null;	
-					}	);
-			}
 
-			// MAIN      /////////////////////////////////////////////////////////
+					// STANDARD FORM
+					if(this.state.contactTemplate === 'Standard') {
+						let reasonText = this.state.reasonText;
+						let contactError = this.state.contactError;
+						let contactSuccess = this.state.contactSuccess;
+						return (
+							<div className='pading'>
+								<h3>{reasonText}</h3>
+								<div className='field'>
+									<div className='control has-icons-left has-icons-right'>
+										<label className='label left_align'>Subject</label>
+										<div className='control'>
+											<input className='input contact-input' type='text' name='subject' placeholder='Subject (Mandatory)' onChange={this.handleInputChanges} />
+										</div>
+									</div>
+								</div>
 
-				render() {
-					let THS		= this,
-						props 	= THS.state,
-						edit  	= !!props.editable,
-						srvcs	= props.services||[];
+								<div className='field'>
+									<label className='label left_align'>Write your message</label>
+									<div className='control'>
+										<textarea className='textarea contact-input' name='message' placeholder='Enter Message (Mandatory)' onChange={this.handleInputChanges} />
+									</div>
+								</div>
+								<div style={{paddingTop: '25px'}}>
+									<button className='contact-submit' onClick={this.handleSubmit} disabled={this.state.isSubmitButtonDisabled}>Send Message</button>
+									<button className='cancel-button' onClick={this.handleCancel}>Cancel</button>
+									<p className='error-message-text'>{contactError}</p>
+									<p className='success-message-text'>{contactSuccess}</p>
+								</div>
+							</div>
+							//<EV.StandardForm contactTemplate={this.state.contactTemplate} />
+						);
+					}
+
+					// WITH UPLOADS
+					if(this.state.contactTemplate === 'MandatoryUploads' || this.state.contactTemplate === 'OptionalUploads') {
+						let reasonText = this.state.reasonText;
+						let contactError = this.state.contactError;
+						let uploadRequired = this.state.uploadRequired;
+						return (
+							<div className='pading'>
+								<h3>{reasonText}</h3>
+								<div className='field'>
+									<div className='control has-icons-left has-icons-right'>
+									<label className='label left_align'>Subject</label>
+									<div className='control'>
+										<input className='input contact-input' type='text' name='subject' placeholder='Subject (Mandatory)' onChange={this.handleInputChanges} />
+										<span class='icon is-medium is-left icn'>
+										<i class='fas fa-id-card icn1' />
+										</span>
+									</div>
+									</div>
+								</div>
+								<div className='field'>
+									<label className='label left_align'>Your Message</label>
+									<div className='control'>
+										<textarea className='textarea contact-input' name='message' placeholder='Enter Message (Mandatory)' onChange={this.handleInputChanges} />
+									</div>
+								</div>
+
+								<hr style={{marginTop: '25px',marginBottom: '25px'}} />
+
+								<h3>{uploadRequired}Provide at least one document, image or link</h3>
+
+								<div className='field'>
+									<div class='control has-icons-left has-icons-right'>
+										<label className='label left_align'>Upload Documents or Images</label>
+										<div className='control'>
+											<input className='input contact-input' type='file' name='contactFiles' placeholder='Upload Documents or Images' onChange={this.handleInputChanges} />
+											<span class='icon is-medium is-left icn'>
+											<i class='fas fa-id-card icn1' />
+											</span>
+										</div>
+									</div>
+								</div>
+								<div style={{paddingTop: '25px'}}>
+									<button ref="submitContact" className='contact-submit' onClick={this.handleSubmit}>Send Message</button>
+									<button className='cancel-button' onClick={this.handleCancel}>Cancel</button>
+									<p className='error-message-text'>{contactError}</p>
+								</div>
+							</div>
+							//<EV.StandardForm contactTemplate={this.state.contactTemplate} />
+						);
+					}
+
+					// REASON SELECT
 					return (
-						<Frag>{srvcs.map((s) => (
-							<Service key={`svc-slab-${s.id}`} {...s} editable={edit}/>
-						))}</Frag>
+						//<form onSubmit={this.handleSubmit}>
+						<form>
+							<label>
+								<select id="select-contact-reason" className="contact-reason-select" onChange={this.handleChange}><option value="" SELECTED>Select a Reason</option>{listItems}</select>
+							</label>
+						</form>
 					);
+
+					/*const SelectReason = (props) => {
+						return (
+						<form>
+							<label>
+							<select id="select-contact-reason" class="fill grow" onChange={this.handleChange}><option value="" SELECTED>Select a Reason</option>{listItems}</select>
+							</label>
+						</form>
+						)
+					}
+
+					return (
+						<SelectReason/>
+					);*/
+
+					/*const ContactFormStandard = (props) => {
+						const { submitStandard } = props
+						return (
+							<div className='pading'>
+								<div className='field'>
+									<div class='control has-icons-left has-icons-right'>
+									<label className='label left_align'>Subject</label>
+									<div className='control'>
+										<input className='input contact-input' type='text' name='subject' placeholder='Subject (Optional)' />
+										<span class='icon is-medium is-left icn'>
+										<i class='fas fa-id-card icn1' />
+										</span>
+									</div>
+									</div>
+								</div>
+
+								<div className='field'>
+									<label className='label left_align'>Messages</label>
+									<div className='control'>
+									<textarea className='textarea' name='message' placeholder='Enter Message (Mandatory)' />
+									<p className='error-message-text'></p>
+									</div>
+								</div>
+								<button class='button is-success'>Send</button>
+							</div>
+						)
+					}
+
+					const ContactFormMandatoryUploads = (props) => {
+						const { submitMandatoryUploads } = props
+						return (
+							<div className='pading'>
+								<div className='field'>
+									<div class='control has-icons-left has-icons-right'>
+										<label className='label left_align'>Subject</label>
+										<div className='control'>
+											<input className='input contact-input' type='text' name='subject' placeholder='Subject (Optional)' />
+											<span class='icon is-medium is-left icn'>
+											<i class='fas fa-id-card icn1' />
+											</span>
+										</div>
+									</div>
+								</div>
+
+								<div className='field'>
+									<div class='control has-icons-left has-icons-right'>
+										<label className='label left_align'>Upload Screenshots, Conversasions, etc.</label>
+										<div className='control'>
+											<input className='input contact-input' type='text' name='File' placeholder='Select Files' />
+										</div>
+									</div>
+								</div>
+
+								<div className='field'>
+									<label className='label left_align'>Messages</label>
+									<div className='control'>
+										<textarea className='textarea' name='message' placeholder='Enter Message (Mandatory)' />
+										<p className='error-message-text'></p>
+									</div>
+								</div>
+								<button class='button is-success'>Send</button>
+							</div>
+						)
+					}
+
+					const SelectReason = (props) => {
+						return (
+						<form>
+							<label>
+							<select id="select-contact-reason" class="fill grow" onChange={this.handleChange}><option value="" SELECTED>Select a Reason</option>{listItems}</select>
+							</label>
+						</form>
+						)
+					}
+
+					return (<div>
+						<SelectReason/>
+						{this.state.contactTemplate === 'Standard' && <ContactFormStandard/>}
+						{this.state.contactTemplate === 'MandatoryUploads' && <ContactFormMandatoryUploads/>}
+						{this.state.contactTemplate === 'Standard' && <ContactFormStandard/>}
+					  </div>
+					)/*
+					/*
+
+					if(this.state.contactTemplate === 'Standard') {
+						return (
+							
+							<div className='pading'>
+								<div className='field'>
+									<div class='control has-icons-left has-icons-right'>
+									<label className='label left_align'>Subject</label>
+									<div className='control'>
+										<input className='input contact-input' type='text' name='subject' placeholder='Subject (Optional)' />
+										<span class='icon is-medium is-left icn'>
+										<i class='fas fa-id-card icn1' />
+										</span>
+									</div>
+									</div>
+								</div>
+
+								<div className='field'>
+									<label className='label left_align'>Messages</label>
+									<div className='control'>
+									<textarea className='textarea' name='message' placeholder='Enter Message (Mandatory)' />
+									<p className='error-message-text'></p>
+									</div>
+								</div>
+								<button class='button is-success'>Send</button>
+							</div>
+						);
+					}
+
+					else return (
+						<form onSubmit={this.handleSubmit}>
+							<label>
+							<select id="select-contact-reason" class="fill grow" onChange={this.handleChange}><option value="" SELECTED>Select a Reason</option>{listItems}</select>
+							</label>
+						</form>
+					);*/
 				}
-		};*/
+			};
 
 		// STRIPE  /////////////////////////////////////////////////////////
 
@@ -2402,6 +2767,7 @@ module.exports = function Comps(COMPS) {
 						: null );
 					};
 				// -----------------------------------------------------------------------
+				if(props.visible === undefined)
 					return (
 						<label {...attr}>
 							<Labl key="lbl" {...props}/>
@@ -2409,6 +2775,99 @@ module.exports = function Comps(COMPS) {
 							<Help key="hlp" {...props}/>
 						</label>
 					);
+				if(props.visible === true) return (
+					<label {...attr}>
+						<Labl key="lbl" {...props}/>
+						<Nput key="npt" {...props}/>
+						<Help key="hlp" {...props}/>
+					</label>
+				);
+				else return null;
+			};
+
+			EV.Form.StandardXput 		= function StandardXput(props) {
+				let id    = props.id, 
+					icon  = props.icon?`fa-${props.icon}`:'',
+					attr  = {
+						'htmlFor':	 !!!props.noFor?id:null,
+						'data-nfo':   !!props.help?'':null,
+						'data-rel': 	props.priority,
+						'className':	classN(...[
+											'input','MB'
+										].concat(
+											props.styles||[],
+											[!!icon?'glyph':'',icon],
+										)),
+					};
+				// -----------------------------------------------------------------------
+					function Labl(props) {
+						let label = props.label;
+						return ( !!label ?
+							<span key="lbl">{label}</span>
+						: null );
+					};
+					function Nput(props) {
+						let kids  = props.children,
+							token = props.hasOwnProperty('tokens'),
+							data  = props.data;
+						switch (true) {
+							case !!kids: return <Frag key="npt">{kids}</Frag>;
+							case  token: return <Form.Tokens   {...props}/>;
+							case !!data: return <Form.DataList {...props}/>;
+							default:     return <Form.Input    {...props}/>;
+						}
+					};
+					function Help(props) {
+						let help = props.help;
+						return ( !!help  ? 
+							<div  key="hlp" className={classN(["help",help.kind||"info"])}>
+								{help.text.map((t,i)=>Agnostic(t,i))}
+							</div> 
+						: null );
+					};
+				// -----------------------------------------------------------------------
+				if(props.visible === undefined)
+					return (
+						<label {...attr}>
+							<Labl key="lbl" {...props}/>
+							<Nput key="npt" {...props}/>
+							<Help key="hlp" {...props}/>
+						</label>
+					);
+				if(props.visible === true) return (
+					<label {...attr}>
+						<Labl key="lbl" {...props}/>
+						<Nput key="npt" {...props}/>
+						<Help key="hlp" {...props}/>
+					</label>
+				);
+				else return null;
+			};
+
+			EV.Form.StandardArea 		= class StandardArea 		extends Mix('Pure',  MX.Static, MX.Forms) {
+				constructor(props) {
+					super(props); this.name = 'STANDARDAREA';
+				}
+
+				render() {
+					let props 	= this.props, 
+						id      = props.id, 
+						name    = props.name||id, 
+						place 	= props.placeholder,
+						value   = this.getDefault(props.value);
+					return (
+						<Form.Xput {...props}>
+							<textarea key={id} {...{  
+								id: 			id, 
+								name: 			name, 
+								rows: 			props.rows||'2',
+								placeholder:	IS(place)=='function'?place.bind(props)():place, 
+								tabIndex: 		props.tab,
+								className:		'fill grow',
+							}} {...value}/>
+						</Form.Xput>
+					);
+				}
 			};
 
 			EV.Form.DataList 	= class DataList 	extends Mix('React', MX.Static) {
@@ -3740,6 +4199,7 @@ module.exports = function Comps(COMPS) {
 					return this.button;
 				}
 			};
+			
 			EV.Form.Button.defaultProps = {
 				kind: 	'button',
 				styles:	 [],

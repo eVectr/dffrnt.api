@@ -194,6 +194,24 @@ module.exports = {
             },
         },
     },
+    Contactmethods:   {
+        type:       'page',
+        config:     {
+            name:        'contactmethods',
+            scheme:      '/contactmethods/',
+            title:       'Contact Us',
+            description: 'Contact Page',
+            accessor:     false,
+            restrict:    { true: null, false: 'login' },
+            page:        {
+                title:      (path, usr) => `Select Reason | ${Object.values(((usr||{}).Profile||{}).Name||{}).join(' ')}`,
+                CSS:        ['style'],
+                styles:      false,
+                main:       'evectr',
+                type:       'cover',
+            },
+        },
+    },
     Profile:    {
         type:       'page',
         config:     {
