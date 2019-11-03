@@ -3919,6 +3919,32 @@
 
 	/******************************************************************/
 	/* FOOTER */
-
+		.contact-input {
+			width: 100%;
+			padding: 6px;
+			margin: 12px 0;
+		}
+		.contact-reason-select {
+			padding: 6px;
+		}
+		.contact-submit {
+			border: none;
+			padding: 6px 30px;
+			background-color: rgb(115, 151, 185);
+			color: #fff;
+		} .contact-submit:disabled {
+			background-color: #868686 !important;
+		}
+		.cancel-button {
+			border: none;
+			padding: 6px 30px;
+			background-color: rgb(59, 59, 59);
+			color: #fff;
+			margin-left: 50px;
+		}
+		.error-message-text {
+			margin-top: 25px;
+			color: #cf2222;
+		}
 /**********************************************************************/
 /**********************************************************************/

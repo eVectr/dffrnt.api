@@ -1480,12 +1480,13 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 											Default: 'documents',
 											Format	 () { return null; },
 											Desc: 	 {
-												type: PT.Text, 
-												description: 'The valid {{Bucket}} location for the {{Service Document}}', 
-												required: false, 
-												hidden: true, 
+												type: PT.Text,
+												description: 'The valid {{Bucket}} location for the {{Service Document}}',
+												required: false,
+												hidden: true,
 											}
 										}),
+										/* BUCKET ME TIMBERS */
 						File: 		new GNParam({
 										Name:	 'File',
 										Default:  null,
@@ -2280,7 +2281,7 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 									},
 								},
 								Query: 		[
-									"UPDATE     user_profile_details  AS d",
+									"UPDATE     user_pro_details  AS d",
 									"SET        d.profile_education = COALESCE(",
 									"               NULLIF(':EDU:',''),",
 									"               d.profile_education),",
@@ -3276,7 +3277,7 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 									max:	1,
 									dest 	(prm, bdy, file) { return `${bdy.bucket}/${prm.uid}`; 	},
 									name	(prm, bdy, file) { return `${file.originalname}`; 		}
-								},
+								}, 
 								Examples: 	{
 									"/:sid:3": [
 										"Uploads an {{Service Document}} for the {{Service ID}}, 3.",
@@ -4832,7 +4833,7 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 									"/:uid:14": "Creates a Stripe� account for the {{User}} with the {{User ID}}",
 								},
 							},
-							async Query	(cls) { 
+							async Query	(cls) {
 								let result, user = {}, error, Stripe = Plugins.Stripe;
 								// Grab User Info
 									user  	= (await Points.User['/']({
@@ -5022,6 +5023,129 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 								},
 							},
 							async Query (cls) {
+								console.log("Mongo Query initiated");
+								//console.log(Plugins);
+								try {
+									//console.log(Mongo.ContactCategory);
+									let Mongo = await Plugins.Mongo;
+									//console.log(Mongo);
+									let result = await Mongo.ContactCategory({});
+									//console.log("QUERY RESULT:");
+									//console.log(result);
+									return [null,result];
+									//return function Parse(res)
+								} catch (error) {
+									console.log(error)
+									throw error
+								}
+							}
+						};	},
+						Params: {},
+						
+					})
+				},
+				Errors: 	{}
+			},
+
+			Submitcontact: {
+				Actions: 	{
+					// ======================================================================
+					"/": 			new RouteDB({
+						Methods: 	Docs.Kinds.POST,
+						Scheme: 	'/',
+						POST			() { return {
+							Doc: 		{
+								Headers: 	{}, // ADD TOKEN HERE
+								Examples: 	{
+									"/": "Creates a ticket",
+								},
+							},
+							Files: 		{
+								field:	'file',
+								max:	1,
+								dest 	(prm, bdy, file) { return `${bdy.bucket}/`; 	}, //dest 	(prm, bdy, file) { return `${bdy.bucket}/${prm.uid}`; 	},
+								name	(prm, bdy, file) { return `${file.originalname}`; 		}
+							},
+							async Query (cls) {
+								// Generate Case Number
+								let date = new Date();
+								let sec = date.getSeconds() + 1;
+								let caseNo = 'SS'.concat('0000').concat((Math.random() * 100000000).toFixed() * sec);
+								cls.caseNo = caseNo;
+								console.log('SubmitContact POST request ['+caseNo+']');
+								try {
+									console.log(cls);
+									let Mongo2 = await Plugins.Mongo2;
+									let result = await Mongo2.MongoResult('contactform', 'save', cls);
+									console.log("MONGO RESULT: ");
+									console.log(result);
+									return [null,result];
+								} catch (error) {
+									console.log(error)
+									throw error
+								}
+							}
+						};	},
+						Params: {
+							/*File:	 true,
+							// Bucket: ['SVC_DOC'],
+							Bucket: ['CTC_DOC'],*/
+							subject: new GNParam({
+								Name: 'subject',
+								Default: null,
+								Format (cls) { return cls.subject; },
+								Desc: 		new GNDescr({
+									type: PT.Text,
+									description: 'A valid {{Subject}}',
+									required: 	  true,
+									to: 		'query', // header, path, or query
+								})
+							}),
+							message: new GNParam({
+								Name: 'message',
+								Default: null,
+								Format (cls) { return cls.message; },
+								Desc: 		new GNDescr({
+									type: PT.Text,
+									description: 'A valid {{Message}}',
+									required: 	  true,
+									to: 		'query',
+								})
+							}),
+							reasontext: new GNParam({
+								Name: 'reasontext',
+								Default: null,
+								Format (cls) { return cls.reasontext; },
+								Desc: 		new GNDescr({
+									type: PT.Text,
+									description: 'A valid {{Reason Text}}',
+									required: 	  true,
+									to: 		'query',
+								})
+							}),
+							
+							/* ADD FILE UPLOADS HERE */
+						},
+						
+					})
+				},
+				Errors: 	{}
+			},
+
+			/*InsertReasons: {
+				Actions: 	{
+					// ======================================================================
+					"/": 			new RouteDB({
+						Methods: 	Docs.Kinds.GET,
+						Scheme: 	'/',
+						GET			() { return {
+							Doc: 		{
+								Headers: 	{  },
+								Examples: 	{
+									"/": "Get Contact Categories",
+								},
+							},
+							async Query (cls) {
 								console.log("TRYING MONGO AWAIT");
 								//console.log(Plugins);
 								try {
@@ -5047,7 +5171,13 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 					})
 				},
 				Errors: 	{}
-			}
+			},
+
+			var contactCategory = new ContactCategory({       ///////   Create contact template and reason here
+			Category_name: 'General Help Request',          
+			Subcategory_name: [{name:'Request to Deactivate Account', Tempate_name:'Standard'}]
+			})
+			contactCategory.save()*/
 		};	
 	};
 

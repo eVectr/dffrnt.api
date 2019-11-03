@@ -60,6 +60,7 @@ module.exports = {
 			]
 		},
 		Auth: 	{
+			/* Set true to flush Redis */
 			Flush: 	false,
 			SQL: 	{
 				Login: 	 "SELECT email_address, user_pass FROM users WHERE email_address = ?",
@@ -229,7 +230,7 @@ module.exports = {
 				schemas  = {
 					ContactCategory: require(`${sch_path}/contactcategory.js`),
 				},
-				connstr  = 'mongodb://evectrContact:r4nd0m@localhost:27017/contact',
+				connstr  = 'mongodb://evbashton:r4nd0m@evportal.bashton.ca:27017/contact',
 				result   = false;
 			
 			// CONNECTION RESULT
@@ -238,14 +239,13 @@ module.exports = {
 				console.log('Mongoose connected')
 				//console.log(mongoose)
 				resolve(mongoose);
-			})	);
+			}));
 			// IF CONNECTRION OBJECT EMPTY
 			if (Object.keys(result).length === 0) {
-				console.log("MONGOOSE FELL DOWN REALLY BAD");
+				console.log("Mongoose connection failed!");
 				throw result;
-				
 			} else {
-				//console.log("THERE IS A VALID CONNEXXX");
+				//console.log("Mongo connection is valid");
 				//console.log(result);
 				let MongoPromiseFactory = (name, filter, type) => {
 					return new Promise((resolve, reject) => {
@@ -256,7 +256,7 @@ module.exports = {
 								else resolve(result);
 							});
 						} else {
-							console.log("Mongo Lookup failed for: "+name);
+							console.log("Func MongoPromiseFactory - Mongo Lookup failed for: "+name);
 						}
 						//if (type === "save") {}
 					});
@@ -266,21 +266,81 @@ module.exports = {
 					ContactCategory: (filter) => {
 						return MongoPromiseFactory('ContactCategory', filter, "find");
 					},
+					SubmitContact: (data) => {
+						console.log(data);
+						return true;
+					}
 				};
 			};
 		},
-		// POPULATE STATIC MONGO DATA
+		Mongo2: 		async function Mongo2() {
+			let mongoose = require('mongoose'),
+				//   [CONFIG]  COLLECTION SCHEMAS
+				schemaDir = '../../../main/mongo/',
+				connstr  = 'mongodb://evbashton:r4nd0m@evportal.bashton.ca:27017/contact',
+				result   = false;
+			
+			// CONNECTION RESULT
+			result = await new Promise((resolve, reject) => mongoose.connect(connstr, err => {
+				if (err) {
+					console.log("(2) Failed to connect to mongo");
+					console.log(err);
+					reject(err);
+				}
+				console.log('(2) Mongoose connected')
+				resolve(mongoose);
+			}));
+			
+			// IF Mongo object empty
+			if (Object.keys(result).length === 0) {
+				console.log("(2) Mongoose connection failed!");
+				throw result;
+			} else {
+				let MongoQuery = (schemaFile, type, data) => {
+					
+					// data accepts a single dimentional key:value object (eg: {'col_1':'VALUE 1','col_2':'VALUE 2'})
+
+					return new Promise((resolve, reject) => {
+						let model = require(`${schemaDir}/${schemaFile}.js`);
+						//let insertModel = new schema(data);
+
+						// MONGO SAVE (insert)
+						if(type === "save") {
+							let insert = new model(data);
+							console.log("Inserting mongo collection data ("+ schemaFile +")");
+							console.log(data);
+							insert.save(data, (error, result) => {
+								if (!!error) reject(error);
+								else resolve(result);
+							});
+						} else {
+							console.log("Unkown MongoQuery type");
+						}
+					});
+					
+				};
+				return {
+					result,
+					MongoResult: (schemaFile, type, data) => {
+						return MongoQuery(schemaFile, type, data);
+					},
+				};
+			};
+		},
+		// POPULATE STATIC MONGO DATA -- TO BE DEPRECATED / REVISED
 		MongoImport: 		async function MongoImport() {
-			var remakeCollections = true; // SET TO TRUE IF YOU WANT TO RE-IMPORT COLLECTIONS OR COLLECTIONS DONT ALREADY EXIST
-			if(remakeCollections === true) {
+			// SET TO TRUE IF YOU WANT TO RE-IMPORT COLLECTIONS OR IF COLLECTIONS DONT ALREADY EXIST
+			var remakeContactReasons = false;
+			if(remakeContactReasons === true) {
 				let mongoose = require('mongoose'),
-				connstr  = 'mongodb://evectrContact:r4nd0m@localhost:27017/contact',
+				connstr  = 'mongodb://evbashton:r4nd0m@evportal.bashton.ca:27017/contact',
+				sch_path  = '../../../main/mongo/',
 				result   = false;
 			
 			// CONNECTION RESULT
 			result = await new Promise((resolve, reject) => mongoose.connect(connstr, err => {
 				if (err) {console.log("MONGOOSE PROMISE ERRoR"); console.log(err); reject(false);}
-				console.log('Mongoose connected')
+				console.log('(Import) Mongoose connected')
 				//console.log(mongoose)
 				resolve(mongoose);
 			})	);
@@ -290,17 +350,8 @@ module.exports = {
 				throw result;
 			} else {
 				console.log("MongoImport: Re-creating collections");
-				var Schema = mongoose.Schema;
-		
-				var evContactReasonsSchema = new Schema({
-					reason_title:  String,
-					category: String,
-					form_type:   String,
-					date: { type: Date, default: Date.now },
-					hidden: Boolean
-				});
-	
-				var evContactReasonsModel = mongoose.model('evContactReasons', evContactReasonsSchema);
+
+				let evContactReasonsModel = require(`${sch_path}/contactcategory.js`);
 				
 				// Drop all entries in evcontactreasons collection
 				var dropCollection = evContactReasonsModel.bulkWrite([
@@ -310,11 +361,10 @@ module.exports = {
 						}
 					}
 				]).then(res => {
-					console.log("Removed "+ res.deletedCount+" documents from evcontactreasons collection.");
+					console.log("MongoImport: Removed "+ res.deletedCount+" documents from evcontactreasons collection.");
 				});
 
 				// DOCUMENT IMPORTS
-
 				var contactReasons = [
 					// GENERAL HELP REQUESTS
 					{reason_title: 'Login Issue', category: "General Help Request", form_type: "Standard"},
@@ -346,7 +396,7 @@ module.exports = {
 					if (error){
 						return console.error(error);
 					} else {
-						console.log("Finished impoorting Contact Reasons");
+						console.log("MongoImport: Finished Impoorting Contact Reasons");
 					}
 				});
 				

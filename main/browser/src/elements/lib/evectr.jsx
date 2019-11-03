@@ -1900,10 +1900,10 @@ module.exports = function Comps(COMPS) {
 						});
 					}
 					
-					this.setState({
+					/*this.setState({
 						isSubmitButtonDisabled: false,
 						isSubmitted: false,
-					})
+					})*/
 				}
 
 				// CYCLE     /////////////////////////////////////////////////////////
@@ -1958,7 +1958,6 @@ module.exports = function Comps(COMPS) {
 				}
 
 				handleCancel(event) {
-					//const categories = this.state.ContactCategory.map;
 					this.setState({contactTemplate: null, subject: '', message: '', contactError: '', contactSuccess: '', isSubmitButtonDisabled: false});
 					event.preventDefault();
 				}
@@ -1972,10 +1971,6 @@ module.exports = function Comps(COMPS) {
 						if(this.state.message === undefined || this.state.message.length <= 4) {
 							return this.setState({contactError: "please enter a valid message"});
 						}
-						
-						// Generate Case Number
-						let date = new Date();
-						let sec = date.getSeconds() + 1;
 					}
 					
 					// Optional Uploads
@@ -1986,10 +1981,6 @@ module.exports = function Comps(COMPS) {
 						if(this.state.message === undefined || this.state.message.length <= 4) {
 							return this.setState({contactError: "please enter a valid message"});
 						}
-						
-						// Generate Case Number
-						let date = new Date();
-						let sec = date.getSeconds() + 1;
 					}
 					
 					// Mandatory Uploads
@@ -2000,47 +1991,81 @@ module.exports = function Comps(COMPS) {
 						if(this.state.message === undefined || this.state.message.length <= 4) {
 							return this.setState({contactError: "please enter a valid message"});
 						}
-
 						if(this.state.contactFiles === undefined || this.state.contactFiles.length <= 4) {
 							return this.setState({contactError: "Please submit at least one document, image or link"});
 						}
-						
-						// Generate Case Number
-						let date = new Date();
-						let sec = date.getSeconds() + 1;
-	
-						
 					}
 					
-					// Generate Case Number
+					/* Generate Case Number
 					let date = new Date();
 					let sec = date.getSeconds() + 1;
-					let caseNo = 'SS'.concat('0000').concat((Math.random() * 100000000).toFixed() * sec);
+					let caseNo = 'SS'.concat('0000').concat((Math.random() * 100000000).toFixed() * sec);*/
 
 					var submitData = {
 						subject: this.state.subject,
 						message: this.state.message,
-						resonText: this.state.reasonText,
-						caseNo: caseNo
+						reasontext: this.state.reasonText,
+						// ADD FILES HERE
 					}
 					
 					console.log(submitData);
-					
+					//createSupportTicket(submitData);
+					var caseNo = false;
 					let result = fetch('/submitcontact', {
 						method: 'POST',
 						headers: {
 							'Accept': 'application/json',
 							'Content-Type': 'application/json',
 						},
-						body: JSON.stringify({
-							firstParam: 'yourValue',
-							secondParam: 'yourOtherValue',
-						})
-					});
+						body: JSON.stringify(submitData)
+					}).then(response => {
+						console.log(response);
+						if (response.status >= 200 && response.status < 300) {
+							if(response.caseNo.length > 10) {
+								var caseNo = response.caseNo;
+							}
+						  } else {
+						   console.log('error sending contact form');
+						  }
+					}).catch(err => err);
 
-					console.log(result);
+					//console.log(result);
 
-					var successMessage = "Thank you, your message has been delivered. We will notify you when the status of your request has been changed. For tracking purposes your case number is: " + caseNo;
+					/*var request = new XMLHttpRequest();
+					request.open('POST', '/submitcontact', true);
+					request.setRequestHeader('Content-Type', 'application/form-urlencoded; charset=UTF-8');
+					request.send(submitData);
+					if(request.responseText.length >= 3) {
+						console.log(request.responseText);
+					} else {
+						console.log("an error occured with the XMLHttpRequest");
+
+						console.log(request.responseText);
+					}*/
+
+					/*let result = fetch('/submitcontact', {
+						method: 'POST',
+						headers: {
+							'Accept': 'application/json',
+							'Content-Type': 'application/json',
+						},
+						body: JSON.stringify({submitData})
+					}).then(response => {
+						if (response.status >= 200 && response.status < 300) {
+							console.log(response);
+							//window.location.reload();
+						  } else {
+						   console.log('Somthing happened wrong');
+						  }
+					}).catch(err => err);
+
+					console.log(result);*/
+					if(caseNo !== false) {
+						var successMessage = "Thank you, your message has been delivered. We will notify you when the status of your request has been changed. For tracking purposes your case number is: ";
+					} else {
+						var successMessage = "We were unable to assign a case number for this inquiry.";
+					}
+					
 					this.setState({
 						isSubmitButtonDisabled: true,
 						isSubmitted: true,
@@ -2049,7 +2074,15 @@ module.exports = function Comps(COMPS) {
 					event.preventDefault();
 				}
 				// FUNCTIONS /////////////////////////////////////////////////////////
-
+				/*async function createSupportTicket(data) {
+					const response = await fetch('/', {
+						method: 'POST',
+						body: JSON.stringify(data),
+						headers: {
+							"Content-type": "application/json; charset=UTF-8"
+						}
+					});
+				}*/
 					//
 
 				// MAIN      /////////////////////////////////////////////////////////
@@ -2160,10 +2193,9 @@ module.exports = function Comps(COMPS) {
 
 					// REASON SELECT
 					return (
-						//<form onSubmit={this.handleSubmit}>
 						<form>
 							<label>
-								<select id="select-contact-reason" className="contact-reason-select" onChange={this.handleChange}><option value="" SELECTED>Select a Reason</option>{listItems}</select>
+								<select id="select-contact-reason" className="contact-reason-select" onChange={this.handleChange}><option value="" selected>Select a Reason</option>{listItems}</select>
 							</label>
 						</form>
 					);
