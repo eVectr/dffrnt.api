@@ -1,7 +1,7 @@
 # evectr.api
 The official **eVectr™** `API`.
 
-![Sourcegraph for Repo Reference Count](https://img.shields.io/badge/latest-v4.0.0-blue.svg?longCache=true)
+![Sourcegraph for Repo Reference Count](https://img.shields.io/badge/latest-v4.0.1-blue.svg?longCache=true)
 ![Sourcegraph for Repo Reference Count](https://img.shields.io/badge/node-%3E=v10.16.2-lightgrey.svg?longCache=true)
 ![Sourcegraph for Repo Reference Count](https://img.shields.io/badge/npm-%3E=v6.9.0-lightgrey.svg?longCache=true)
 ![Sourcegraph for Repo Reference Count](https://img.shields.io/badge/mysql-%3E=v5.6.0-lightgrey.svg?longCache=true)
@@ -16,6 +16,7 @@ The official **eVectr™** `API`.
 >    > 1. [Post-Configuration](#post-configuration)
 >    > 1. [Launching](#launching)
 > 1. [Modules](#modules)
+>    > 1. [dffrnt.confs](#dffrntconfs)
 >    > 1. [dffrnt.utils](#dffrntutils)
 >    > 1. [dffrnt.model](#dffrntmodel)
 >    > 1. [dffrnt.route](#dffrntroute)
