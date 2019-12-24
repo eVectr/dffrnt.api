@@ -1,6 +1,7 @@
 
 'use strict';
 
+/** @type {CFG.SPCE.SpaceHandler} */
 module.exports = {
 	Data:  [
 		function (path, req) { 
@@ -217,78 +218,40 @@ module.exports = {
 	Build: function (Actions, Stores, LID) {
 		var THS = this;
 		return function (res) {
-			var PNL 	= { from: 'Evectr', name: ['Content','Panel'	] },
-				BLK 	= { from: 'Evectr', name: ['Content','Block'	] },
-				XPUT 	= { from: 'Evectr', name: [   'Form','Xput'		] },
-				NPUT	= { from: 'Evectr', name: [   'Form','Input'    ] },
-				CHKBOX 	= { from: 'Evectr', name: [   'Form','Checkbox'	] },
-				SBMT 	= { from: 'Evectr', name: [   'Form','Button'	] },
-				BR  	= { tag: 'br' },
-				HR  	= { tag: 'hr', props: { className: 'MTB spread' } },
-				FLT 	= function FLT(v) { return !!v },
-				SUBMIT 	= function SUBMIT(label, style, start, size) { 
-					return {	
-						tag:	'div',
-						props:	{ className: [start||'one',size||'spread'].join(' ') },
-						items: 	[{ 	
-							tag:	SBMT,
-							props:	{ 
-								kind:	'submit',
-								styles: [style||'info'],
-								block:	 true,
-								label:	 label||'Submit',
-							},
-					}]	
-				};	},
-				WALLET  = function WALLET() {
-					return {
-						tag:	PNL, props: 	{ 
-							name:	'settings-wallet',
-							header: { label: 'Transactions',  icon: 'money-bill-alt', subs: [
-								{ name: 'user-pay-method', label: 'Payments' },
-							]	},
-							align:	'gridSlice',
-							form: 	{
-								'id':			'user-wallet',
-								'data-action': 	'/pos/method',
-								'method':		'PUT',
-								'buttons':		[
-									{ kind:'submit',label:'Update Pay Method',style:'good' },
-								],
-							},
-							body:	[
-								{	tag:	BLK, props:  { 
-									name: 	'user-pay-method', 
-									header: { fixed: true, label: 'Payment Method' },
-									align:	'spread gridSlice',
-									items: 	[
-										{ 	tag:	'div',
-											props:	{ className: 'half' },
-											items: 	[{
-												tag:	XPUT, props:	{
-													id: 		'user-pay-st1',
-													name: 		'Street1',
-													icon:		'map-pin',
-													kind:		'text',
-													placeholder:'0000 0000 0000 0000',
-													value:		 null,
-													priority:	'*',
-													validate: 	{
-														pattern: /^(?:\d{4} ?){4}$/,
-														invalid: 'Please specifiy a valid Credit Card Number.',
-													},
-												}
-										}]	},
-									]
-								}	},
-								{ 	tag:   'hr', props:  { className: 'spread' } }, 
-							]	
-						}
-					}
-				},
-				passpat = /[~{(\[!"#$%&'\w|*+,./\:;?@^_`\])}-]{8,}/,
-				dta 	= Imm.fromJS(THS.Data[0]()),
-				mrg 	= Imm.fromJS(res);
+			var PNL 	= 	{ from: 'Evectr', name: ['Content','Panel'		] },
+				BLK 	= 	{ from: 'Evectr', name: ['Content','Block'		] },
+				XPUT 	= 	{ from: 'Evectr', name: [   'Form','Xput'		] },
+				NPUT	= 	{ from: 'Evectr', name: [   'Form','Input'    	] },
+				CHKBOX 	= 	{ from: 'Evectr', name: [   'Form','Checkbox'	] },
+				BR  	= 	{ tag: 'br' },
+				HR  	= 	{ tag: 'hr', props: { className: 'spread' } },
+				HRS  	= 	{ tag: 'hr', props: { className: 'MTB spread' } },
+				FLT 	= 	function FLT(v) { return !!v },
+				VISIBS  = 	function VISIBS(v) { 
+								var grp = 'user-vis', checked = eval(v.status);
+								visibility += (checked?(visibility|v.value):0);
+								return {
+									tag: 	'div', 
+									props:	{ className: 'half' }, 
+									items:  [{
+										tag:	CHKBOX,
+										props:	{
+											id: 		[ grp, v.field ].join('-'),
+											name:		  v.field,
+											form: 		  grp,
+											label:		  v.name+':',
+											checked:	  checked,
+											value:		  v.value,
+											styles: 	['info-y','good-n'],
+											yes:		 'Hidden', // ncon: '',
+											no:			 'Public', // ycon: '',
+											increment:	  visivalue,
+											follows:	  v.follows||null,
+									}	}]
+							};	},
+				passpat = 	/[~{(\[!"#$%&'\w|*+,./\:;?@^_`\])}-]{8,}/,
+				dta 	= 	Imm.fromJS(THS.Data[0]()),
+				mrg 	= 	Imm.fromJS(res);
 			// -----
 			res = dta.mergeDeepWith(
 				function(o,n,k) { 
@@ -303,33 +266,9 @@ module.exports = {
 				language 		= settings.language,
 				visivalue		= 'user-vis-value',
 				visible 		= (settings.visibility||{}),
-				visibilities 	= (visible.items||[])
-									.map(function mapVis(v) { 
-										var grp = 'user-vis', checked = eval(v.status);
-										visibility += (checked?(visibility|v.value):0);
-										return {
-											tag: 	'div', 
-											props:	{ className: 'half' }, 
-											items:  [{
-												tag:	CHKBOX,
-												props:	{
-													id: 		[ grp, v.field ].join('-'),
-													name:		  v.field,
-													form: 		  grp,
-													label:		  v.name+':',
-													checked:	  checked,
-													value:		  v.value,
-													styles: 	['info-y','good-n'],
-													yes:		 'Hidden', // ncon: '',
-													no:			 'Public', // ycon: '',
-													increment:	  visivalue,
-													follows:	  v.follows||null,
-											}	}]
-									};	}),
+				visibilities 	= (visible.items||[]).map(VISIBS),
 				visibility		= (visible.value||0),
-				modes 			= settings.modes||{},
-				provider		= modes.provider,
-				transact		= modes.transactional;
+				modes 			= settings.modes||{};
 			// -----
 			return Stores.Apps[LID].singleton.updateStore({
 				header:		{
@@ -350,172 +289,8 @@ module.exports = {
 				content: 	{
 					built: 		true,
 					segments: 	{
-						copy: (
-							!!provider ? [{ 	// BUSINESS
-								tag:	PNL, props: 	{ 
-									name:	'settings-business',
-									header: { label: 'Provider',  icon: 'briefcase', subs: [
-										{ name: 'user-biz-contact', label: 'Business Contact' },
-										{ name: 'user-biz-contact', label: 'Business Bank'    },
-									]	},
-									align:	'gridSlice',
-									form: 	{
-										'id':			'user-business',
-										'data-action': 	'/user/settings',
-										'method':		'PUT',
-										'buttons':		[
-											{ kind:'submit',label:'Update Provider Details',style:'good' },
-										],
-									},
-									body:	[
-										{	tag:	BLK, props:  { 
-											name: 	'user-biz-contact', 
-											header: { fixed: true, label: 'Business Contact' },
-											align:	'spread gridSlice',
-											items: 	[
-												{ 	tag:	'div',
-													props:	{ className: 'half' },
-													items: 	[{
-														tag:	XPUT, props:	{
-															id: 		'user-biz-st1',
-															name: 		'Street1',
-															icon:		'map-pin',
-															kind:		'text',
-															placeholder:'Street 1',
-															value:		 null,
-															priority:	'*',
-															validate: 	{
-																pattern: /^(?:[A-z0-9'\/#+-]+\b[?,.]?(?: \b|$))+$/,
-																invalid: 'Please specify a valid Street Address for your Service(s).',
-															},
-														}
-												}]	},
-												{ 	tag:	'div',
-													props:	{ className: 'half' },
-													items: 	[{
-														tag:	XPUT, props:	{
-															id: 		'user-biz-st2',
-															name: 		'Street2',
-															kind:		'text',
-															placeholder:'Street 2',
-															value:		 null,
-															validate: 	{
-																pattern: /^(?:[A-z0-9'\/#+-]+\b[?,.]?(?: \b|$))+$/,
-																invalid: 'Please specify a valid Unit/Apt/Suite for your Service(s).',
-															},
-														}
-												}]	},
-												{ 	tag:	'div',
-													props:	{ className: 'spread' },
-													items: 	[{
-														tag:	{ from: 'Evectr', name: ['Form','Xput'] },
-														props:	{
-															id: 		'user-biz-locale',
-															name: 		'LID',
-															kind:		'text',
-															icon:		'location-arrow',
-															placeholder:'Your Location',
-															priority:	'*',
-															hide: 		 true,
-															value:		{
-																value: res.location.id,
-																label: res.location.label,
-															},
-															data:		{
-																id:   'user-locale-sgst', 
-																url:  '/search/for/locale',
-																list: '/locale',
-															},
-															validate: 	{
-																pattern: /[\w\d% ,;.-]+/,
-																invalid: 'Please specify a City, Region and/or Country and choose your Service\'s Locale from the list.',
-															},
-														}
-												}]	},
-												{ 	tag:	'div',
-													props:	{ className: 'half' },
-													items: 	[{
-														tag:	XPUT, props:	{
-															id: 		'user-biz-postal',
-															name: 		'Street1',
-															icon:		'mail-bulk',
-															kind:		'text',
-															placeholder:'Postal/Zip Code',
-															value:		 null,
-															priority:	'~',
-															validate: 	{
-																pattern: /^(?:[A-Z0-9]+\b(?:[ -]\b|$))+$/,
-																invalid: 'Please specify a valid Postal/Zip Code for your Service(s).',
-															},
-														}
-												}]	},
-												{ 	tag:	'div',
-													props:	{ className: 'half' },
-													items: 	[{
-														tag:	XPUT, props:	{
-															id: 		'user-biz-phone',
-															name: 		'Phone',
-															icon: 		'phone',
-															kind:		'tel',
-															placeholder:'Phone Number',
-															value:		 null,
-															priority:	'*',
-															validate: 	{
-																pattern: /^(?:[0-9]){1,14}[0-9]$/,
-																invalid: 'Please specify a valid Phone Humber for your Service(s).',
-															},
-														}
-												}]	},
-											]
-										}	},
-										{ 	tag:   'hr', props:  { className: 'spread' } }, 
-										{	tag:	BLK, props:  { 
-											name: 	'user-biz-bank', 
-											header: { fixed: true, label: 'Business Bank' },
-											align:	'spread gridSlice',
-											items: 	[
-												{ 	tag:	'div',
-													props:	{ className: 'half' },
-													items: 	[{
-														tag:	XPUT, props:	{
-															id: 		'user-biz-chequing',
-															name: 		'AcctNo',
-															icon:		'university',
-															kind:		'text',
-															placeholder:'Account Number',
-															value:		 null,
-															priority:	'*',
-															validate: 	{
-																pattern: /^[0-9]+$/,
-																invalid: 'Please specify a valid Account Number for your Service(s) Bank.',
-															},
-														}
-												}]	},
-												{ 	tag:	'div',
-													props:	{ className: 'half' },
-													items: 	[{
-														tag:	XPUT, props:	{
-															id: 		'user-biz-routing',
-															name: 		'RouteNo',
-															icon:		'random',
-															kind:		'text',
-															placeholder:'Transit and/or Routing No.',
-															value:		 null,
-															priority:	'*',
-															validate: 	{
-																pattern: /^\b[0-9-]+\b$/,
-																invalid: 'Please specify a valid Transit and/or Routing Number for your Service(s).',
-															},
-														}
-												}]	},
-											]
-										}	},
-										{ 	tag:   'hr', props:  { className: 'spread' } }, 
-									]	
-								}
-							}, WALLET()] : ( 
-								!!transact ? [WALLET()] : null
-							)).concat([{ 		// GENERAL
+						copy: [
+							{     // GENERAL
 								tag:	PNL, props: 	{ 
 									name:	'settings-general',
 									header: { label: 'General',  icon: 'cog', subs: [
@@ -537,6 +312,10 @@ module.exports = {
 												header: { fixed: true, label: 'User Mode' },
 												align:	'spread gridSlice',
 												items: 	[
+													{	tag: 'p', props : { className: 'spread', style: { fontSize: 'medium' } }, items: [
+														"Enable or disable your status as a Provider or Transactional User. If you disable your Provider status, but already had ",
+														"Services set up, you can always re-enable your status and they'll be right where you left them.",
+													]	}, 
 													!!!modes.provider ? { 	
 														tag:	'div',
 														props:	{ className: 'half' },
@@ -565,13 +344,15 @@ module.exports = {
 														}	}]
 													}, 
 												]
-										}	}, 
-										{ 	tag:   'hr', props:  { className: 'spread' } }, 
+										}	}, 	HR, 
 										{	tag:	BLK, props:  { 
 												name: 	'user-general', 
 												header: { fixed: true, label: 'Site Configuration' },
 												align:	'spread gridSlice',
 												items: 	[
+													{	tag: 'p', props : { className: 'spread', style: { fontSize: 'medium' } }, items: [
+														"Choose your preferred Timezone as well as your preferred Language for the site.",
+													]	}, 
 													{ 	tag:	'div',
 														props:	{ className: 'half' },
 														items: 	[{	
@@ -616,11 +397,10 @@ module.exports = {
 													},
 												],
 											}
-										},
-										{ 	tag:   'hr', props:  { className: 'spread' } }, 
+										},	HR, 
 									]	
 								}
-							},	{ 				// PRIVACY
+							},	{ // PRIVACY
 								tag:	PNL, props: 	{ 
 									name:	'settings-privacy',
 									header: { label: 'Privacy', icon: 'user-secret' },
@@ -652,38 +432,65 @@ module.exports = {
 												]	},
 										]	}	}
 									].concat(visibilities, [ 
-										{ 	tag:	NPUT,
-											props:	{
-												kind:		'hidden',
-												name: 		'Visibles',
-												id: 		 visivalue,
-												required:	 true,
-												value:  	 visibility,
-										}	},	HR,
+										{ 	tag:	NPUT, props:	{
+											kind:		'hidden',
+											name: 		'Visibles',
+											id: 		 visivalue,
+											required:	 true,
+											value:  	 visibility,
+										}	},	HRS,
 									]),	
 								}
-							},	{ 				// SECURITY
+							},	{ // SECURITY
 								tag:	PNL, props: 	{ 
 									name:	'settings-security',
 									header: { label: 'Security',  icon: 'fingerprint', subs: [
-										{ name: 'user-email-change', label: 'Change Email' 		},
-										{ name: 'user-pass-change',  label: 'Change Password' 	},
+										{ name: 'user-sessions',     label: 'Active Sessions' 	},
+										{ name: 'form-email-change', label: 'Change Email' 		},
+										{ name: 'form-pass-change',  label: 'Change Password' 	},
 									]	},
 									body:	[
+										{	tag:	BLK, props:  { 
+											name: 	'user-sessions', 
+											header: { fixed: true, label: 'Your Active Sessions' },
+											align:	'gridSlice',
+											items: 	[
+												{	tag: 'p', props : {
+														className: 'spread', style: { fontSize: 'medium' }
+													}, items: [
+														"Above is a list of all of the devices currently logged in to your account. ",
+														"The ", {tag:"em",items:["italicized"]}, " item represents the device you're ",
+														"currently using\u2014this cannot be removed, as you can simply logout using the ",
+														"top menu.", BR, BR, 
+														"If you notice any sessions here that you do not recognize, remove them ",
+														"immediately by clicking on the respective ", {tag:"strong",items:["delete "]},
+														{tag:"span",props:{className:'tkn nope'},items:[
+															{tag:'i',props:{className:'fas fa-trash fa-fw'}}
+														]	}, {tag:"strong",items:[" button"]}," and consider ", 
+														{tag:"a",props:{href:'#form-pass-change'},items:["changing your password."]},
+												]	}, 	
+												{	tag: 	{ from: 'Evectr', name: ['App', 'Sessions'] }, 
+													props:	{ list: [] }
+												}, 		
+											]
+										}	}, HRS, 
 										{	tag:	BLK, props:  { 
 											name: 	'user-email-change', 
 											header: { fixed: true, label: 'Change Your Email' },
 											align:	'gridSlice',
 											form: 	{
-												'id':			'form-user-email',
+												'id':			'form-email-change',
 												'data-action': 	'/user/settings/email',
 												'method':		'PUT',
 												'buttons':		[
-													{ kind:'submit',label:'Change Email',style:'nope',start:'nine',size:'third' },
+													{ kind:'submit',label:'Change Email',style:'nope inline',start:'nine',size:'third' },
 												],
 											},
 											items: 	[
-												{ 	tag:	'div',
+												{	tag: 'p', props : { className: 'spread', style: { fontSize: 'medium' } }, items: [
+													"Change your Email here if needed. All of your active sessions will be cleared, so you'll be prompted to log back in on your other devices.",
+												]	}, 
+												{	tag:	'div',
 													props:	{ className: 'most' },
 													items: 	[{
 														tag:	XPUT, props:	{
@@ -701,13 +508,13 @@ module.exports = {
 														}
 												}]	},
 											]
-										}	}, HR, 
+										}	}, HRS, 
 										{	tag:	BLK, props:  { 
 											name: 	'user-pass-change', 
 											header: { fixed: true, label: 'Change Your Password' },
 											align:	'gridSlice',
 											form: 	{
-												'id':			'form-user-password',
+												'id':			'form-pass-change',
 												'data-action': 	'/user/settings/password',
 												'method':		'PUT',
 												'buttons':		[
@@ -715,6 +522,9 @@ module.exports = {
 												],
 											},
 											items: 	[
+												{	tag: 'p', props : { className: 'spread', style: { fontSize: 'medium' } }, items: [
+													"If you're changing your Password, all of your active sessions will be cleared, so you'll be prompted to log back in on your other devices.",
+												]	}, 
 												{ 	tag:	'div',
 													props:	{ className: 'spread' },
 													items: 	[{
@@ -770,7 +580,7 @@ module.exports = {
 									]
 								}
 							}, 
-						]),
+						],
 						other: [
 							{ 	 // TIPS
 								tag:	PNL, props: 	{ 

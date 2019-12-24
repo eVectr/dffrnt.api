@@ -36,6 +36,7 @@ module.exports = function (global) {
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// REQUIRES /////////////////////////////////////////////////////////////////////////////////////////////////////
 
+		global.RNotify  = '__notify__';
 		global.CREATE 	= Object.create;
 		global.OWNDESC 	= Object.getOwnPropertyDescriptor;
 		global.Assign 	= require('object-assign');
@@ -58,8 +59,7 @@ module.exports = function (global) {
 		global.Stack 	= Imm.Stack;
 		global.Seq 		= Imm.Seq;
 		global.Record 	= Imm.Record;
-		global.GenID 	= require('password-generator');
-		global.DOHASH 	= function (obj) { return JSON.stringify(btoa(jsn)); };
+		global.DOHASH 	= function (jsn) { return JSON.stringify(btoa(jsn)); };
 		global.UNHASH 	= function (hsh) { return JSON.parse(atob(hsh)); 	 };
 		global.classN 	= require('classnames');
 		global.ALLSTUFF = Map({});
@@ -163,33 +163,6 @@ module.exports = function (global) {
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// FUNCTIONS ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-		global.EXTEND 	= function (sup, base, handlers) {
-			try { var descriptor, handles, proxy;
-				// -----------------------------------------------------------
-				descriptor = OWNDESC(base.prototype, 'constructor');
-				base.prototype = CREATE(sup.prototype);
-				// -----------------------------------------------------------
-				handles = Assign({
-					construct: function (target, args) {
-						var pro = CREATE(base.prototype),
-							obj = new Proxy(pro, handlers || {});
-						this.apply(target, obj, args); return obj;
-					},
-					apply: function (target, that, args) {
-						if (!(that instanceof base)) return this.construct(target, args);
-						var s = sup.apply(that, args), b = base.apply(that, args);
-					}
-				}, handlers || {});
-				proxy = new Proxy(base, handles); descriptor.value = proxy;
-				DEFINE(base.prototype, { constructor: descriptor });
-				// -----------------------------------------------------------
-				return proxy;
-			} catch (e) {
-				base.prototype = CREATE(sup.prototype);
-				DEFINE(base.prototype, { constructor: descriptor });
-				return base;
-			}
-		}
 		global.PROPS 	= function (value, descript) {
 			var def, val, prp, iGS, dsc = (descript || {});
 			try {
@@ -243,6 +216,62 @@ module.exports = function (global) {
 			return (arr.sort(function (a, b) {
 				return a.length - b.length;
 			})[0]||'');
+		}
+		global.ISS 		= function (arg) {
+			var OBJ = false, RET = {}, STR, NAN = true,
+				ANS, BLN, DTE, ARR, NMB, NUM, EML, IMG, LNK, SCK, TXT, RAW, FNC, SYM,
+				dReg = /^\d{4}(-\d{2}){2}[T ](\d{2}:){2}\d{2}(?:\.\d{3})?Z?$/,
+				lReg = /^(?:\/[^\/\n\t]+)+|\/$/,
+				sReg = /^SocketLink\{.+\}$/,
+				eReg = /^(([^<>()\[\]\.,;:\s@\"]+(\.[^<>()\[\]\.,;:\s@\"]+)*)|(\".+\"))@(([^<>()[\]\.,;:\s@\"]+\.)+[^<>()[\]\.,;:\s@\"]{2,})$/i,
+				nReg = /^\.?(?:\d+\.){2,}\d+$|^(?:[a-f\d]{2}:){5}[a-f\d]{2}$/i,
+				iReg = /^(data:image\/gif;base64,)(.+)$/;
+			// String Representation
+			STR = !!arg ? arg.toString() : '';
+			try { NAN = isNaN(eval(arg)); } catch (e) {}
+			// Determine Array
+			ARR = (arg instanceof Array);
+			// Determine Types w/ Regex
+			DTE = (!!!ARR&&!!STR.match(dReg));
+			EML = (!!!ARR&&!!STR.match(eReg));
+			// LNK = (!!!ARR&&!!STR.match(lReg));
+			SCK = (!!!ARR&&!!STR.match(sReg));
+			IMG = (!!!ARR&&!!STR.match(iReg));
+			NUM = (!!!ARR&&!!STR.match(nReg));
+			// Determine Types w/o Regex
+			BLN = (typeof(arg) == 'boolean');
+			NMB = (!(NUM||ARR||BLN||DTE||NAN));
+			TXT = (!(SCK||IMG||EML||LNK||NMB||DTE) && NAN && typeof(arg) == 'string');
+			RAW = (arg instanceof RegExp);
+			FNC = (typeof(arg) == 'function');
+			SYM = (typeof(arg) ==   'symbol');
+			// Fill-In Return
+			ANS = Imm.OrderedMap({
+				'null': 	NIL(arg),
+				'date': 	(DTE),
+				'email': 	(EML),
+				// 'link': 	(LNK),
+				'socket': 	(SCK),
+				'image': 	(IMG),
+				'boolean': 	(BLN),
+				'string': 	(TXT),
+				'raw': 		(RAW),
+				'number': 	(NMB),
+				'numeric': 	(NUM),
+				'function': (FNC),
+				'symbol': 	(SYM),
+				'array': 	(ARR),
+				'object': 	false,
+			});
+			// Determine IF Object
+			ANS.map(function (V, K) {
+				OBJ = !OBJ ? (V ? 1 : 0) : 1;
+			});
+			RET = ANS.toJS(); RET.object = !OBJ;
+			// Return Answers
+			return Object.keys(RET).filter(
+				function(v) { return RET[v]; }
+			)[0];
 		}
 		global.IS 		= function (arg) {
 			var OBJ = false, RET = {}, STR, NAN = true,
@@ -480,457 +509,47 @@ module.exports = function (global) {
 				);
 			},
 		}
-
-
-	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	// CLASSES //////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-		/////////////////////////////////////////////////////////////////////////////////////////////////////////////
-		// CLASS.CONSTANTS //////////////////////////////////////////////////////////////////////////////////////////
-
-			var   OBIDs 	= Imm.Map({});
-			const tObjOmit 	= Imm.List([
-				'parent','group','toObject','toLog','to','path','toDepth','is','hasIn','getIn','setIn']);
-
-
-		/////////////////////////////////////////////////////////////////////////////////////////////////////////////
-		// CLASS.STATICS ////////////////////////////////////////////////////////////////////////////////////////////
-
-			function getID   (id) {
-				var ID = id; while ((!!!ID || OBIDs.has(ID))) {
-					ID = GenID(9, false, /[\w\d]/);
-				}; 	OBIDs = OBIDs.set(ID,ID); return ID;
-			}
-			function toLog 	 () { !!this.debug && console.log.apply(console, ARGS(arguments)); }
-			function toObject() { return this.cache; }
-			function toDepth (depth) { return (path.length <= depth) ? this.cache : null; }
-
-
-		/////////////////////////////////////////////////////////////////////////////////////////////////////////////
-		// CLASS.ITEMS //////////////////////////////////////////////////////////////////////////////////////////////
-
-			var ITEMS 	= function ITEMS (data, parent, master) {},
-				itmsLog = function itmsLog (k,v) {
-					var key = (k+':'+v); if (!ALLSTUFF.has(key)) {
-						ALLSTUFF = ALLSTUFF.set(key, key);
-					}
-				},
-				itmsCfg = function itmsCfg (key, val, res) {
-					var me = this; me.keys.push(key); me.size++;
-					me.cache[key] = res.toObject(); !res.iter && itmsLog(key,val);
-				},
-				itmsMap = function itmsMap (v,k) {
-					var me = this, hash = me.hash, res = new ITEM(k, v, {
-							group: me, parent: me.parent, master: me.master
-						}), tmp = ITEMS.temps[hash];
-					if (!!hash) {
-						tmp[k] = {}; tmp[k][res.type] = {
-							iter: 	res.iter, 	size: 	res.size,
-							type: 	res.type, 	alone: 	res.alone,
-					}; 	}; 	itmsCfg.bind(me)(k,v,res);
-					// console.log('\t\t\t\t\tMAPPED:', k)
-					return PROPS(res, itmsDsc);
-				},
-				itmsTmp = function itmsTmp (v,k) {
-					var me = this, hash = me.hash, res = new ITEM(k, v, {
-							group: me, parent: me.parent, master: me.master
-						}, ITEMS.temps[hash][k][IS(v)]); itmsCfg.bind(me)(k,v,res);
-					// console.log('\t\t\t\t\tTEMPED:', k)
-					return PROPS(res, itmsDsc);
-				},
-				itmsItm = function itmsItm (v,k) {
-					var me = this, res = v; itmsCfg.bind(me)(k,v,res);
-					// console.log('\t\t\t\t\tITEMED:', k)
-					return PROPS(res, itmsDsc);
-				},
-				itmsHsh = function itmsHsh (hash, key, type) {
-					var tmp;
-					if (tmp = ITEMS.temps[hash], !!tmp) {
-						if (tmp = tmp[key], !!tmp) {
-							if (tmp = tmp[type], !!tmp) return true;
-					}; 	}; 	return false;
-				},
-				itmsGST = function itmsGST (prop, getter, setter, enumer, config) {
-					var def = {};
-					!!getter && (def.get = function () { return this.cache[prop]; });
-					!!setter && (def.set = function (v) { this.cache[prop] = v;   });
-					return PROPS(def, { E: enumer, C: config });
-				},
-				itmsWch = { array: Imm.List, object: Imm.OrderedMap },
-				itmsDsc = { E: 1, W: 1, C: 1 };
-			/////////////////////////////////////////////////////////////////////////////////////////////////////////
-			DEFINE(ITEMS.prototype, {
-				////////////////////////////////////////////////////////////////////////////////
-				_omit: 		PROPS(tObjOmit, { E: 0, C: 0, W: 0 }),
-				toObject: 	PROPS(toObject, { E: 1, C: 0, W: 0 }),
-				toLog: 		PROPS(toLog, 	{ E: 0, C: 0, W: 0 }),
-				toDepth: 	PROPS(function toDepth (depth, self, offset) {
-					var THS = this, keys = THS.keys, res = {}, ofs = offset||0;
-					keys.map(function (k,i) {
-						res[k] = THS[k].toDepth(depth, self, ofs);
-					});
-					return res;
-				}, 	{ E: 0, C: 0, W: 0 }),
-				toEmpty: 	PROPS(function toEmpty () {
-					var TH = this, data = (TH.type=='array'?[]:{});
-					return ITEMS(data, null, null);
-				}, 	{ E: 0, C: 0, W: 0 }),
-				////////////////////////////////////////////////////////////////////////////////
-				store: 		PROPS({
-					get: function ( ) { return this._store||this.parent.store; },
-					set: function (v) {
-						try { var path = v[0], data = Imm.fromJS(v[1],FJS);
-							if (!!!this._store) this.parent.store = v;
-							else this._store = this._store.setIn(path, data);
-						} catch (e) { console.log('SET ERROR', e.message, path); }
-					}
-				}, { E: 0, C: 0 }),
-				////////////////////////////////////////////////////////////////////////////////
-				map: 		PROPS(function map (callback) {
-					var THS = this;
-					return this.keys.map(function (k,i) {
-						return callback(THS[k],k,i);
-					});
-				}, { E: 1, C: 0, W: 0 }),
-				filter: 	PROPS(function map (callback) {
-					var THS = this, rslt = [];
-					this.keys.map(function (k,i) {
-						var v = THS[k];
-						callback(v,k,i) && rslt.push(v);
-					}); return rslt;
-				}, { E: 1, C: 0, W: 0 }),
-				slice: 		PROPS(function slice (start, end) {
-					var THS = this; return this.keys.slice(start,end).map(function (k,i) {
-						return THS[k];
-					});
-				}, { E: 1, C: 0, W: 0 }),
-				////////////////////////////////////////////////////////////////////////////////
-				_path: 		itmsGST('_path', 	true, false, true,  false),
-				size: 		itmsGST('size', 	true, true,  false, false),
-				keys: 		itmsGST('keys', 	true, true,  true,  false),
-				type: 		itmsGST('type', 	true, true,  false, false),
-				////////////////////////////////////////////////////////////////////////////////
-				is: 		PROPS(function is (to, at, obj) {
-					var nxt = Imm.fromJS(obj).getIn(at),
-						prv = this.store.getIn(to);
-					return Imm.is(prv, nxt)!==false;
- 				}, { E: 0, C: 0, W: 0 }),
-				hasIn: 		PROPS(function hasIn (path) {
-					var input = this, end = (path.length-1), res = false;
-					try { path.map( function (v,i) {
-						if (i!=end) { input = input[v].value; }
-						else { res = !!input[v]; }
-					}); } catch (e) { res = false; }
-					finally { return res; }
- 				}, { E: 0, C: 0, W: 0 }),
-				getIn: 		PROPS(function getIn (path) {
-					var input = this, prput, end = (path.length-1), res,
-						stat = true, fpth = input._path;
-					path.map( function (v,i) {
-						if (v != fpth[i] && stat) {
-							if (!!!input[v]) { res = prput; stat = false; }
-							else if (i!=end) { prput = input[v]; input = prput.value; }
-							else { res = input[v]; }
-						}
-					}); return { Child: res, Parent: this };
-				}, { E: 1, C: 0, W: 0 }),
-				setIn: 		PROPS(function setIn (path, data) {
-					var mch = function (r) { return function (v,i) { return v.match(r); }; },
-						ths = this, input = ths, end = (path.length-1), sze = this.size,
-						has = this.hasIn(path), gti, res;
-
-					gti = ths.getIn(path)
-					// console.log('\t\tSIZE:',sze,'| HAS:',has,'| PATh:',path, gti)
-
-					// if (sze == 0 || (has && !!gti.Child)) {
-
-						// var pth, key;
-						// input = gti.Child;
-						// pth = path.filter(function (v) { return !input._path.has(v); });
-
-						// delete input.value;
-
-						// if (pth.length>0) {
-						// 	key = pth.last;
-						// 	input.value.add(key, data);
-						// } else {
-						// 	input.value = data;
-						// 	res = input;
-						// }
-
-						path.map( function (v,i) {
-							if (i!=end) { input = input[v].value; } else {
-								// delete input[v].value;
-								input[v].value = data; res = input[v];
-						} 	});
-
-						return { Child: res, Parent: this };
-					// } else {
-					// 	Object.keys(data).map(function (k,n,a) {
-					// 		var pth = []; path.map(function (v,i) {
-					// 			var r = new RegExp('^'+v+'$'), m = k.match(r);
-					// 			pth.push(!!m ? k : v);
-					// 		});	ths.setIn(pth, data[k]);
-					// 	}); res = ths.getIn(path); return res;
-					// };
-				}, { E: 0, C: 0, W: 0 }),
-				deleteIn: 	PROPS(function deleteIn (path, data) {
-					try { 	res = ths.getIn(path.slice(0,-1));
-							delete res[path.slice(-1)]; }
-					catch (e) { } finally { return true; }
-				}, { E: 0, C: 0, W: 0 }),
-				update: 	PROPS(function update (path, diff, data, prefix) {
-					var ths = this, input, res = {}; input = ths.getIn(path).Child;
-					input.value = data; return ths.getIn(path);
-				}, { E: 0, C: 0, W: 0 }),
-				////////////////////////////////////////////////////////////////////////////////
-				replace: 	PROPS(function replace (key, val) {
-					var ths = this, has = ths.keys.has(key), nu, prp = {},
-						tab = '\t'.dup(ths._path.length);
-
-						// console.log(tab, 'KEY:', key, 'of', JSON.stringify(ths.keys))
-
-					if (has) {
-						nu = ths[key];
-						nu.value = val;
-						// console.log('\t'+tab,'REPLACE', key, val)
-						delete ths[key];
-						ths.add(key, nu);
-
-						// console.log('\t'+tab, JSON.stringify(ths.toObject()))
-					} else {
-						// console.log('\t'+tab,'ADD', key)
-						ths.add(key, val);
-					}
-				}, { E: 0, C: 0, W: 0 }),
-				add: 		PROPS(function add (key, val) {
-					var ths = this, res = {};
-					res[key] = this._mapper(val,key);
-					DEFINE(ths, res);
-				}, { E: 0, C: 0, W: 0 }),
-				fill: 		PROPS(function fill (data) {
-					var ths = this, hash = ths.hash, type = IS(data),
-						keys = ths.keys, res = {}, map, iter,
-						fnc = ths._mapper.bind(ths), s = 20, b = 0, e = s,
-						mpr = function () {
-							DEFINE(ths, iter.map(fnc).toObject());
-							b += s; e += s; iter = map.slice(b,e);
-						};
-					// ------------------------------------------------------
-					if (!!hash && !!!ITEMS.temps[hash]) ITEMS.temps[hash] = {};
-					// ------------------------------------------------------
-					try { map = itmsWch[type](data); }
-					catch (e) { console.trace(e); map = itmsWch.array; }
-					if (iter = map.slice(b,e), mpr(), iter.size > 0) {
-						setTimeout(function () { while (!!iter.count()) mpr(); }, 500);
-					}
-				}, { E: 0, C: 0, W: 0 }),
-				_mapper:  	PROPS(function _mapper (val, key) {
-					var ths = this, prp = ((val instanceof ITEM ?
-							itmsItm : (itmsHsh(ths.hash,key,IS(val)) ?
-							itmsTmp : itmsMap))).bind(ths)(val,key);
-						return prp;
-				}, { E: 0, C: 0, W: 0 }),
-				////////////////////////////////////////////////////////////////////////////////
-			});
-			/////////////////////////////////////////////////////////////////////////////////////////////////////////
-			ITEMS = EXTEND(ITEMS, function ITEMS (data, parent, master) {
-				// ------------------------------------------------------
-				var ths  =  this, type = IS(data),
-					keys = Object.keys(data),
-					id 	 =  getID(typeof(master)=='string'?master:null), 
-					mast = (master||(parent||{}).master),
-					max  =  MAX(keys).length,
-					hash = 	keys.toString().replace(/\d+,?/g,'')
-								.replace(/^(.+)$/,'{'+mast+':[$1]}');
-				// ------------------------------------------------------
-				DEFINE(ths, {
-					cache: 	PROPS({
-						id: id,
-						keys: [],
-						size: 0,
-						map: ths.map,
-						slice: ths.slice,
-						getIn: ths.getIn,
-						type: type,
-						toObject: ths.toObject.bind(ths),
-						_path: ((parent||{}).path||[])
-					}, 						{ E: 0, W: 1, C: 0 }),
-					id: 	PROPS(id, 		{ E: 0, W: 0, C: 1 }),
-					parent: PROPS(parent, 	{ E: 0, W: 0, C: 0 }),
-					master: PROPS(mast, 	{ E: 0, W: 0, C: 0 }),
-					hash: 	PROPS(hash, 	{ E: 0, W: 1, C: 0 }),
-					debug: 	PROPS(false, 	{ E: 0, W: 1, C: 0 }),
-					max: 	PROPS(max, 		{ E: 0, W: 1, C: 0 }),
-				});
-				if (!!!parent) DEFINE(ths, {
-					_store: 	PROPS(Imm.fromJS(data,FJS), { E: 0, W: 1, C: 0 }),
-					// _triggers: 	PROPS([], 					{ E: 0, W: 1, C: 0 }),
-				});
-				// ------------------------------------------------------
-				ths.fill(data);
-			}, {
-				deleteProperty: function deleteProperty (target, prop) {
-					if (prop in target) {
-						// console.log('TARGET:', target)
-						var id = target[prop].id, ky = target.keys,
-							pth = target._path.concat(prop);
-						// delete target[prop].value;
-						// global.TESTY = target;
-						delete target[prop]; delete target.cache[prop];
-						// console.log('\tDELETING:', prop, typeof(prop), JSON.stringify(target.toObject()))
-						ky.splice(ky.indexOf(prop),1); target.size--;
-						OBIDs = OBIDs.delete(id);
-						// console.log('DELETED:', prop)
-						// target.store = [[],target.store.deleteIn(pth)];
-						return true;
-					} else { return false; }
-				}
-			});
-			/////////////////////////////////////////////////////////////////////////////////////////////////////////
-			ITEMS.getItems 	= function (data, parent, master) {
-				switch (true) {
-					case NIL(data): 				return 'null';
-					case data instanceof ITEMS:
-					case data instanceof  ITEM:
-					case !(typeof(data)=='object'): return data;
-					default: return new ITEMS(data, parent, master);
-				}
-			}
-			ITEMS.temps = {};
-
+		global.Stamp	= /**
+		 * Expands a datetime into its various parts.
+		 * @param {Date} date A `Date` object. If `null`, uses the current datetime.
+		 * @param {('hrs'|'min'|'sec'|'mil')} round Will round the nearest whole as specified.
+		 * @param {number} interval If specified with `round`, the rounding will be done at the interval specified.
+		 * @param {('floor'|'ceil'|'round')} [method='floor'] The rounding method to use.
+		 */
+		function Stamp(date, round, interval, method) {
+			date = date||new Date();
+			var meth = method||'round',
+				ints = {mil:1000,sec:60,min:60,hrs:24},
+				nIdx = Object.keys(ints).indexOf(round);
+			if (!isNaN(interval)) ints[round]=interval;
+			var nvls = Object.values(ints);
+			var ntvl = nvls.reduce(function(p,c,i){return i>nIdx?p:p*c;},1);
+			var rslt = new Date(Math[meth]((date.getTime())/ntvl)*ntvl);
+			return {
+				yy: rslt.getFullYear(),
+				mm: rslt.getMonth()+1,
+				dd: rslt.getDate(),
+				HH: rslt.getHours(), 
+				MM: rslt.getMinutes(),
+				ss: rslt.getSeconds(),
+				ms: rslt.getMilliseconds(),
+			};
+		}
 
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////////
-		// CLASS.ITEM  //////////////////////////////////////////////////////////////////////////////////////////////
 
-			var ITEM = function ITEM (key, value, config, template) {}
-			/////////////////////////////////////////////////////////////////////////////////////////////////////////
-			DEFINE(ITEM.prototype, {
-				////////////////////////////////////////////////////////////////////////////////
-				_omit: 		PROPS(tObjOmit, { E: 0, C: 0, W: 0 }),
-				toObject: 	PROPS(toObject, { E: 1, C: 0, W: 0 }),
-				toLog: 		PROPS(toLog, 	{ E: 0, C: 0, W: 0 }),
-				toDepth: 	PROPS(function toDepth (depth, self, offset) {
-					var TH  = this, pth = TH.path,  len = pth.length,
-						ofs = (!!self ? len : (offset||0)),
-						can = (len-ofs <= depth),
-						to  = (can?'toDepth':'toEmpty');
-					console.log('%sDEPTH: %d <= %d |', '\t'.dup(len), len-ofs, depth, TH.value)
-					return !TH.iter ? TH : TH.value[to](depth, false, ofs);
-				}, 	{ E: 0, C: 0, W: 0 }),
-				////////////////////////////////////////////////////////////////////////////////
-				iterHas: 	PROPS(function iterHas (data) {
-					var ths = this, keys = ths._value.keys;
-					return FromJS(data,FJS).filter(
-						function filter (v,k) { return keys.has(k); }
-					).size > 0;
-				}, 	{ E: 0, C: 0, W: 0 }),
-				////////////////////////////////////////////////////////////////////////////////
-				store: 		PROPS({
-					get: function ( ) { return this.group.store; },
-					set: function (v) { this.group.store = v; }
-				}, { E: 0, C: 0 }),
-				////////////////////////////////////////////////////////////////////////////////
-				iter: 		itmsGST('iter', 	true, true, true, false),
-				path: 		itmsGST('path', 	true, true, true, false),
-				type: 		itmsGST('type', 	true, true, true, false),
-				alone: 		itmsGST('alone', 	true, true, true, false),
-				size: 		itmsGST('size', 	true, true, true, false),
-				inside: 	itmsGST('inside', 	true, true, true, false),
-				////////////////////////////////////////////////////////////////////////////////
-				value: 		PROPS({
-					get: function ( ) { return this._value; },
-					set: function (v) {
-						var ths = this, prnt = ths.parent, oter = this.iter,
-							iter = Iter.Is(v), val,
-							merge = function merge () {
-								// console.log('\tREPLACED!!!')
-								FromJS(v,FJS).map(function (vl,ky) {
-									ths._value.replace(ky,v[ky]);
-								}); val = ths._value;
-							},
-							insert = function insert () {
-								// console.log('\sCREATED!!!')
-								ths._value = val = ITEMS.getItems(v, ths);
-							};
-						ths.iter 	= iter;
-						ths.path  	= prnt.path.concat([ths.name]);
-						ths.store   = [ths.path, v];
-						ths.type 	= IS(v);
-						// console.log('\t', ths.name, oter, iter)
-						if ((!!oter && !!iter) && ((ths._value||{size:0}).size > 0)) {
-							ths.iterHas(v) && merge() || insert();
-						} else { insert(); }
-						ths.size 	= ths.value.size||1;
-						ths.cache.value = (!!val.toObject ? val.toObject() : val);
-						ths.alone   = (!!!iter||(
-							(ths.type=='array' && ths.size<2) &&
-							(val.filter(function(v){return!v.alone;}).length==0)
-						)	);
-					},
-				}, { E: 1, C: 0 }),
-				////////////////////////////////////////////////////////////////////////////////
-			});
-			/////////////////////////////////////////////////////////////////////////////////////////////////////////
-			ITEM = EXTEND(ITEM, function ITEM (name, value, config, template, custID) {
-				// -------------------------------------------------------------
-					var id = getID(custID), len = (name||'').length, 
-						parent, master, group, inside, max, pad, c, val;
-				// -------------------------------------------------------------
-					parent = (config.parent || { path: [], master: id });
-					master = (config.master || parent.master);
-					group  = (config.group||{});
-					inside = (group.type||'null');
-				// -------------------------------------------------------------
-					max = !!group ? group.max : 0;
-					pad = (len<max) ? new Array((max+1)-len) : [];
-				// -------------------------------------------------------------
-					c = Assign({
-						master: master,	iter: 	false,
-						id: 	id,		name: 	name,
-						path: 	[], 	pad: 	pad,
-						size: 	0, 		alone: 	true,
-						type: 	'null', inside: inside,
-						value: 	null,   toObject: this.toObject.bind(this)
-					}, template||{});
-				// -------------------------------------------------------------
-					DEFINE(this, {
-						cache: 	 PROPS(c, 			{ E: 0, C: 0, W: 1 }),
-						parent:  PROPS(parent, 		{ E: 0, C: 1 }),
-						group: 	 PROPS(group, 		{ E: 0, C: 1 }),
-						id: 	 PROPS(c.id, 		{ E: 1 }),
-						name: 	 PROPS(c.name, 		{ E: 1 }),
-						master:  PROPS(c.master, 	{ E: 1 }),
-						pad: 	 PROPS(c.pad, 		{ E: 1, W: 1, C: 1 }),
-						_value:  PROPS(c.value, 	{ E: 0, W: 1, C: 1 })
-					});
-				// -------------------------------------------------------------
-					if (!!!template) { this.value = value; }
-					else {
-						this.path  	= parent.path.concat([name]);
-						this._value = val = ITEMS.getItems(value, this);
-						this.cache.value = (!!val.toObject ? val.toObject() : val);
-					}
-			}, {
-				deleteProperty: function deleteProperty (target, prop) {
-					if (prop in target) {
-						if (prop == 'value') {
-							var trg = target[prop], pth = target.path,
-								mpr = function (v,k,i) { delete trg[k]; };
-							if (target.iter) { trg.map(mpr); }; //target[prop] = null;
-							// console.log('\tDELETED:', prop)
-							// target.store = [[],target.store.deleteIn(pth)];
-						} else { delete target[prop]; }
-						return true;
-					} else { return false; }
-				}
-			});
-
-
-		/////////////////////////////////////////////////////////////////////////////////////////////////////////////
-			
-			global.ITEMS = ITEMS; global.ITEM = ITEM;
-
+		global.MODE = {};
+		var hiddenProp = { enumerable: false, configurable: false, writable: false };
+		try { 
+			!!window && DEFINE(global.MODE, {
+				Server  : Assign({}, hiddenProp, { value: false }),
+				Browser : Assign({}, hiddenProp, { value:  true }),
+			}); 
+		} catch (e) {
+			DEFINE(global.MODE, {
+				Server  : Assign({}, hiddenProp, { value:  true }),
+				Browser : Assign({}, hiddenProp, { value: false }),
+			}); 
+		}
 
 };

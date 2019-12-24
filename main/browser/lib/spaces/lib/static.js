@@ -1,6 +1,7 @@
 
 'use strict';
 
+/** @type {CFG.SPCE.SpaceHandler} */
 module.exports = {
 	Data:  [
 		function (path) { 
@@ -20,9 +21,6 @@ module.exports = {
 	Build: function (Actions, Stores, LID) {
 		return function (res) {
 			// -----
-
-			console.log('PAGE: Static')
-
 			return Stores.Apps[LID].singleton.updateStore({
 				content: 	{
 					built: 		true,

@@ -1,6 +1,11 @@
+/// <reference path="../stores.d.ts" />
+
 'use strict';
 
-module.exports = function (Reflux, Actions, Spaces, IOs) {
+module.exports = /**
+ * @type {import('../stores')}
+ */
+function (Reflux, Actions, IOs) {
 
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// SOCKET HANDLES ///////////////////////////////////////////////////////////////////////////////////////////////
@@ -104,8 +109,12 @@ module.exports = function (Reflux, Actions, Spaces, IOs) {
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// STORES ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
+		/**
+		 * @type {FluxStores}
+		 */
 		const Stores = { 
-			Apps: {}, App: null, Nav: null, Content: null, Data: null, 
+			Apps: {}, 
+			App: null, Nav: null, Content: null, Data: null, 
 			Run: { Access: runAccess, API: runAPI,  Socket: runSocket },
 			ISO: {}, 
 		};
@@ -114,6 +123,11 @@ module.exports = function (Reflux, Actions, Spaces, IOs) {
 		// STORE.APP     ////////////////////////////////////////////////////////////////////////////////////////
 			Stores.App 		= function App(LID) {
 				if (!!!Stores.Apps[LID]) {
+					/**
+					 * @type {FluxStore.App}
+					 * @augments FluxStore.App
+					 * @this FluxStore.App
+					 */
 					Stores.Apps[LID] = class extends Reflux.Store {
 						constructor		() {
 							super(); let defaults = {
@@ -167,24 +181,14 @@ module.exports = function (Reflux, Actions, Spaces, IOs) {
 										website: 'eVectr.com',
 										contact: 'arian.johnson@evectr.com'
 									},
-									chats:		[
-										{kind:'user',name:{First:  'Arian',Last:  'Johnson'}},
-										{kind:'user',name:{First: 'Darren',Last:      'Sun'}},
-										{kind:'user',name:{First:   'Marc',Last:   'Djoudi'}},
-										{kind:'user',name:{First:  'Sarah',Last:'Jefferson'}},
-										{kind:'user',name:{First:'Ricardo',Last:     'Mora'}},
-										{kind:'user',name:{First:   'Sean',Last:      'Kim'}},
-										{kind:'user',name:{First:  'Yosef',Last: 'Ben Zaid'}},
-										{kind:'user',name:{First: 'Farhan',Last:   'Bhatti'}},
-										{kind:'user',name:{First:'Rodrigo',Last:    'Lopez'}},
-										{kind:'user',name:{First:'Pritesh',Last:    'Patel'}},
-									]
+									chats:		[]
 								},
 							};
 							this.temps = FromJS(defaults);
 							this.state = this.setInitialState(defaults);
 							this.listenables = [Actions.App];
 						}
+						
 
 						isIdentified 	() { return this.state.header.identified; }
 						onConnect 		() { 
@@ -223,8 +227,9 @@ module.exports = function (Reflux, Actions, Spaces, IOs) {
 														checked: true,
 														user: usr
 												} 	}); 
-												(!!rdr)&&(loc.href = rdr);
-												break;;
+												if (qry.path==RLogin&&!!rdr) {
+													loc.href = rdr;
+												};	break;;
 								case RLogout: 	THS.onDisconnect(pay);
 												loc.href = '/login';
 												break;;
@@ -271,6 +276,7 @@ module.exports = function (Reflux, Actions, Spaces, IOs) {
 							let state, imval = FromJS(value||{});
 							state = FromJS(this.state).mergeDeep(imval);
 							this.setState(state.toJS());
+							console.info('APP STATE UPDATED!!')
 						}
 						reset() { 
 							this.state = this.temps.toJS(); 
@@ -281,8 +287,13 @@ module.exports = function (Reflux, Actions, Spaces, IOs) {
 
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////
 		// STORE.NAV     ////////////////////////////////////////////////////////////////////////////////////////
-			Stores.Nav 		= class extends Reflux.Store {
 
+			/**
+			 * @type {FluxStore.Nav}
+			 * @augments FluxStore.Nav
+			 * @this FluxStore.Nav
+			 */
+			Stores.Nav 		= class extends Reflux.Store {
 				constructor		() {
 					super(); this.listenables = [Actions.Nav];
 				}
@@ -294,6 +305,8 @@ module.exports = function (Reflux, Actions, Spaces, IOs) {
 						pth = app.getPath(page), total,
 						pge = {page:{num:num,pth:pth}},
 						ste = this.state;
+
+						console.log(ste)
 					// --------------------------------------------------------
 					app.secretlyUpdateStore(pge); 
 					this.setState(pge);
@@ -308,6 +321,12 @@ module.exports = function (Reflux, Actions, Spaces, IOs) {
 
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////
 		// STORE.CONTENT ////////////////////////////////////////////////////////////////////////////////////////
+
+			/**
+			 * @type {FluxStore.Content}
+			 * @augments FluxStore.Content
+			 * @this FluxStore.Content
+			 */
 			Stores.Content 	= class extends Reflux.Store {
 
 				constructor		() {
@@ -326,7 +345,7 @@ module.exports = function (Reflux, Actions, Spaces, IOs) {
 				}
 				onBuild 		() {
 					requestAnimationFrame(function () {
-						console.log('Building...');
+						console.log('Building...', LOCKER);
 						Stores.Content.render(LOCKER);
 					});
 				}
@@ -335,6 +354,12 @@ module.exports = function (Reflux, Actions, Spaces, IOs) {
 
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////
 		// STORE.DATA    ////////////////////////////////////////////////////////////////////////////////////////
+
+			/**
+			 * @type {FluxStore.Data}
+			 * @augments FluxStore.Data
+			 * @this FluxStore.Data
+			 */
 			Stores.Data 	= class extends Reflux.Store {
 
 				constructor		() {
@@ -355,16 +380,17 @@ module.exports = function (Reflux, Actions, Spaces, IOs) {
 							End: 		 null,
 						},
 					});
-					this.stats		 = {};
+					this.stats		 = { [RNotify]: {} };
+					this.state 		 = { [RNotify]: {} };
 					this.defaults 	 = { store: { status: 200, payload: {} } };
 					this.temps 		 = Imm.fromJS({});
-					this.state 		 = {};
 					this.jids 		 = {};
 					this.listenables = [Actions.Data];
+					this.lastPath    = null;
 				}
 				
 				onAuth  		(point, data, noProg) {
-					console.log(point)
+					// console.log(point)
 					this.time(data);
 					!!!noProg && Actions.App.progress(99, { paused:true });
 					requestAnimationFrame((function () {
@@ -380,28 +406,29 @@ module.exports = function (Reflux, Actions, Spaces, IOs) {
 					}).bind(this));
 				}
 				onReceive 		(data) {
-					var opt = data.payload.options, 
+					var THS = this,
+						opt = data.payload.options, 
 						qry = opt.query||opt.body,
 						pth = qry.path, id = qry.id, 
-						str, tme;
-					console.log(data)
+						ial = false, tme;
+					// ---------
 					switch (pth) {
-						case RError: 	console.log("Error:", data);
+						case RError: 	console.error("Error:", data);
 										alert(data.payload.result.message);
 										Actions.App.progress(100);
 										break;;
-						case RLogin: 	case RCheck: case RLogout: case RRegen:
-										console.log("Identify:", data);
+						case RLogout:	if (pth==THS.lastPath) return;
+						case RLogin: 	case RCheck: case RRegen:
+										console.info("Identify:", data);
 										Actions.App.identify(data);
 										break;;
-						default: 		str = this.stats[id].Time.Start;
-										tme = ((NOW() - str) / 1000);
-										this.stats[id].Time.Calling = (tme.toFixed(3)+'s');
-										this.stats[id].Request.Received = data.payload;
-										setTimeout((function () {
-											this.updateStoreIn(qry, data, tme);
-										}).bind(this), 0);
-					}
+						default: 		ial = (pth==RNotify);
+										tme = THS.lapse(id, data, ial);
+										setTimeout(() => (
+											THS.updateStoreIn(qry, data, tme, ial)
+										), 	0);
+										break;;
+					};	THS.lastPath = pth;
 				}
 
 				is  			(old, nxt) {
@@ -414,9 +441,15 @@ module.exports = function (Reflux, Actions, Spaces, IOs) {
 				}
 
 				poll 			(id) {
-					if (this.has(id)) this.setState({ 
-						[id]: this.state[id] 
-					});
+					if (this.has(id)) { 
+						this.setState({ [id]: this.state[id] });
+						return true;
+					} else return false;
+				}
+				grab			(id, callback) {
+					if (this.has(id)) { 
+						callback(this.state[id]);
+					};
 				}
 				place			(id, data = {}) {
 					let THS = this, state = THS.state[id]||{};
@@ -435,13 +468,30 @@ module.exports = function (Reflux, Actions, Spaces, IOs) {
 					this.stats[id].Time.Start = NOW();
 					this.stats[id].Request.Emmitted = data;
 				}
+				lapse 			(id, data, isAlert = false) {
+					let rn = RNotify, stat = {}, str = 0, tme = 0;
+					// ---
+					if (!!isAlert) {
+						stat = this.stats[rn][id] = this.statDef.toJS();
+						stat.Time.Start = 0;
+					} else {
+						stat = this.stats[id];
+					}
+					// ---
+					str = stat.Time.Start;
+					tme = ((NOW() - str) / 1000);
+					stat.Time.Calling = (tme.toFixed(3)+'s');
+					stat.Request.Received = data.payload;
+					// ---
+					return tme;
+				}
 
-				setIn  			(qry, data) {
+				setIn  			(qry, data, isAlert = false) {
 					let THS = this, { id, to, at } = qry,
 						dta = FromJS(data).getIn(to||THS.prefix), 
 						def = { 'object': Map({}), 'array': List([]) }, 
 						ste = FromJS(THS.state), typ = IS(dta.toJS()), 
-						nvl = def[typ], res = {};
+						nvl = def[typ], res = {}, alr = [];
 					// -------------------------------------------------
 					try { 
 						// ---------------------------------------------
@@ -449,14 +499,15 @@ module.exports = function (Reflux, Actions, Spaces, IOs) {
 								// DATA: 	dta.toJS(),
 								// STRE: 	ste.getIn([id],nvl).toJS(),
 								// MRGE: 	ste.getIn([id],nvl)
-								// 			.mergeDeep(dta)
-								// 			.toJS(),
+											// .mergeDeep(dta)
+											// .toJS(),
 							// });
 							// res = 	ste.setIn([id], 
 										// ste	.getIn([id],nvl)
 											// .mergeDeep(dta)
 									// ).toJS();
-							res = ste.setIn([id], Map({
+							!!isAlert && (alr = [RNotify]);
+							res = ste.setIn([...alr,id], Map({
 								stamp: new Date(), 
 								items: dta,
 							}	)	).toJS();
@@ -464,34 +515,36 @@ module.exports = function (Reflux, Actions, Spaces, IOs) {
 							return res;
 					} catch (e) { console.log(e); return null; }
 				}
-				updateStoreIn  	(qry, data, dur) {
+				updateStoreIn  	(qry, data, dur, isAlert = false) {
 					var THS = this, res = {}, iT, rT, fT, sT = NOW();
 					// -------------------------------------------------
-						res = this.setIn(qry, data);
+						res = this.setIn(qry, data, isAlert);
 							// if (!!!res) { Actions.App.progress(100); return; }
 						iT  = NOW(-sT, 1000);
 					// -------------------------------------------------
 						sT  = NOW(); THS.setState(res);
 						rT  = NOW(-sT, 1000); fT = (dur+iT+rT);
 					// --------------------------------------------------
-						THS.setStats(qry.id, qry.path, iT, rT, fT, res);
+						THS.setStats(qry.id, qry.path, iT, rT, fT, res, isAlert);
 					// -------------------------------------------------
 				}
 
-				setStats 		(id, path, iterTime, rendTime, fullTime, state) {
-					var stats = this.stats[id], lg = this.logStore;
+				setStats 		(id, path, iterTime, rendTime, fullTime, state, isAlert = false) {
+					var stats = (!!isAlert?this.stats[RNotify]:this.stats)[id], 
+						LG    = this.logStore;
+					if (!!!stats) return;
 					setTimeout(function () {
 						stats.Time.Iterating 	= iterTime.toFixed(3)+'s';
 						stats.Time.Rendering 	= rendTime.toFixed(3)+'s';
 						stats.Time.Total 		= fullTime.toFixed(3)+'s';
 						stats.Time.End 			= NOW();
 						stats.Request.State 	= FromJS(state).toJS();
-						lg(path, stats);
+						LG(path, stats);
 					}, 	0);
 				}
-				logStore (id) {
+				logStore (id, data, ...args) {
 					// ----------------------------------------
-					console.log.apply(console, ["[#%s]:", id].concat(ARGS(arguments).slice(1)));
+					console.info("[#%s]:", id, data, ...args);
 				}
 
 				toJS  			(obj) {

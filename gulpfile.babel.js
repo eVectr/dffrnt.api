@@ -2,7 +2,21 @@
 'use strict';
 
 // ----------------------------------------------------------------------------------------------
-// Handle Requires ------------------------------------------------------------------------------
+// Handle Configurations ------------------------------------------------------------------------
+
+	// Requires ---------------------------------------------------------------------------------
+
+		/**
+		 * @type {('development'|'production')}
+		 */
+		process.env.NODE_ENV = 'development';
+
+		function isDev() {
+			return process.env.NODE_ENV == 'development';
+		}
+		function isPro() {
+			return process.env.NODE_ENV == 'production';
+		}
 
 	// Requires ---------------------------------------------------------------------------------
 
@@ -57,6 +71,12 @@
 					location: cfgfld
 				};
 		const 	browReq	= [
+					'harmony-reflect',
+					'object-assign',
+					'immutable',
+					// 'immutablediff',
+					// 'password-generator',
+					'classnames',
 					'socket.io-client',
 					'reflux',
 					'react',
@@ -65,13 +85,14 @@
 				];
 		const 	browExl	= [
 					'./lib/iso',
+					// '../../spaces',
 				];
 		const 	brow 	= {
 					options:  	{
 						cache: {},
 						packageCache: {},
 						fullPaths: false,
-						debug: true,
+						debug: isDev(),
 					},
 					entries: [
 						{
@@ -83,23 +104,25 @@
 							entries: 	[ `${brwFld}/main.js` ],
 							external:	browReq.concat(browExl),
 							exclude: 	[
-								`${libFld}/src/renders/lib/iso.jsx`,
+								// `${libFld}/src/renders/lib/iso.jsx`,
 								// `${libFld}/spaces/lib/*.js`,
 							],
 						},
 					],
 					mini:  {
-						// map: false, 
 						uglify: {
-							mangle: false,
+							global: true,
+							mangle: isPro(),
 							compress: {
 								sequences: true,
 								dead_code: true,
+								unused: true,
 								conditionals: true,
 								booleans: true,
-								unused: true,
 								if_return: true,
-								join_vars: true
+								join_vars: true,
+								warnings: isDev(),
+								// passes: 5,
 							}
 					} 	},
 					location: 	`${pubFld}/js`,
@@ -166,17 +189,60 @@
 	// Configs ----------------------------------------------------------------------------------
 
 		// Initialize Framework Directory; if necessary
-			gulp.task( 'framework', (done) => {
-				let loc = frwk.location;
+			gulp.task( 'framework', (end) => {
+				let loc = frwk.location, fld, len = 0, cnt = [];
+				// ------------------------------------------------------------------------------
+				function Count(path) { 
+					return fs.readdirSync(path).filter(f=>!!!f.match(/^\./)).length;;
+				}
+				function Traverse(file, location, end, level = 1) {
+					level++; 
+					let len = 0, idx = 0, cnt = [],
+						TAB = new Array(level).join('    '), 
+						{ path: full, basename: dir } = file, 
+						lnk = `${location}/${dir}`;
+					len = Count(full);
+					gulp.src(`${full}/*`, { nosort: true })
+						.pipe(map((item, done) => {
+							let fini=()=>(cnt.push(0),done(null,item),cnt.length==len&&end()),
+								{ path: pth, basename: base } = item,
+								  stat = fs.statSync(pth),
+								  absl = `${lnk}/${base}`,
+								  exst = fs.existsSync(absl); 
+								  idx++;
+							// ---
+							if (stat.isDirectory()) {
+								LOG(`${TAB}+ (${idx}/${len}) ${dir}/${base}/`);
+								!exst && fs.mkdirSync(absl);
+								Traverse(item, lnk, fini, level);
+							} else if (!exst) {
+								LOG(`${TAB}- (${idx}/${len}) ${dir}/${base}`);
+								LOG(`fs.symlinkSync('${pth}', '${absl}');`)
+								fs.symlinkSync(pth, absl);
+								// gulp.src(pth).pipe(gulp.symlink(full));
+								fini();
+							} else fini();
+						}));
+				};
+				// ------------------------------------------------------------------------------
 				if (!fs.existsSync(loc)) fs.mkdirSync(loc), LOG(`Created Framework Directory.`);
+				// ------------------------------------------------------------------------------
 				gulp.src(frwk.folders, frwk.options)
+					.pipe(map((file, done) => (
+						cnt.push(0),setTimeout(
+							()=>done(null,file),500)
+					)))
 					.pipe(map((file, done) => {
-						let pth = file.path, nme = file.basename;
-						if (!fs.existsSync(`${loc}/${nme}`)) {
-							LOG(`Linking Module, [${nme}/], to ${loc} ...`);
-							gulp.src(pth).pipe(gulp.symlink(loc));
-						};	done(null, file);
-					})); 	done();
+						let fini=()=>(cnt.shift(),done(null,file),cnt.length==0&&end()),
+							nme  = file.basename, full = `${loc}/${nme}`, exst = fs.existsSync(full),
+							lnkd = exst?fs.lstatSync(full).isSymbolicLink():false,
+							floc = path.resolve(loc);
+						// ----------------------------------------------------------------
+						LOG(`Linking Module, [${nme}/], to ${loc} ...`);
+						lnkd && fs.unlinkSync(full);
+						exst || fs.mkdirSync(full);
+						Traverse(file, floc, fini);
+					}));
 			});
 
 		// Initialize Spaces Directory; if necessary
@@ -232,10 +298,12 @@
 
 	// Convert ----------------------------------------------------------------------------------
 	
+			console.log({ isDev: isDev(), isPro: isPro() })
+
 		//  ES6 to ES5 Conversion/Watch
 			gulp.task('es6-make',	(done) => {
 				gulp.src(es6.source)
-					.pipe( babel({ presets: es6.presets, compact: true }))
+					.pipe( babel({ presets: es6.presets, /* compact: true, */ comments: false }))
 					.on( 'error', (e) => { LOG('>>> ERROR', e); this.emit('end'); })
 					.pipe(gulp.dest(es6.location));
 				done();
@@ -246,7 +314,7 @@
 		//  JSX to  JS Conversion/Watch
 			gulp.task('jsx-make',	(done) => {
 				gulp.src(jsx.source)
-					.pipe( babel({ presets: jsx.presets, compact: true }))
+					.pipe( babel({ presets: jsx.presets, /* compact: true, */ comments: false }))
 					.on( 'error', (e) => { LOG('>>> ERROR', e); this.emit('end'); })
 					.pipe(gulp.dest(jsx.location));
 				done();
@@ -264,9 +332,10 @@
 							entries: entry.entries,
 						},	brow.options)),
 						SMAP = `${entry.source}.map`,
-						MINI = Assign({ 
+						MINI = Assign({}, isDev() ? { 
 							map: `${pubFld.slice(1)}/js/${SMAP}`, 
 							output: `${pubFld}/js/${SMAP}`, 
+						} : {},{
 							compressPath: p => (path.relative(`${__dirname}/..`, p)) 
 						}, 	brow.mini);
 
@@ -349,7 +418,7 @@
 			gulp.task('demon', (done) => {
 				let nmon = nodemon({ execMap: {
 								js: 'node --harmony',
-								tasks: ['demon','main'],
+								tasks: ['demon'],
 							}})
 							.on('crash', () => {
 								try { LOG('Crashed ~ !!');
@@ -368,18 +437,12 @@
 
 		switch (true) {
 			case !!!brwexs:
-				gulp.task('development', SERIES('init','system'));
-				gulp.task('production',  SERIES('init','system'));
+				gulp.task('main', SERIES('init','system'));
 				break;;
 			default:
-				gulp.task('development', SERIES('init','convert','system'));
-				gulp.task('production',  SERIES('init','convert','system'));
+				gulp.task('main', SERIES('init','convert','system'));
 				break;;
 		}
-
-		switch (process.env.NODE_ENV) {
-			case 'production': 	gulp.task('default', SERIES('production' )); break;;
-			default: 			gulp.task('default', SERIES('development')); break;;
-		}
+		gulp.task('default', SERIES('main'));
 
 // ----------------------------------------------------------------------------------------------

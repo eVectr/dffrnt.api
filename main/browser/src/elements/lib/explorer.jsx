@@ -72,7 +72,7 @@ module.exports = function Comps(COMPS) {
 		} = COMPS.Elements.Stock;
 
 		// APP /////////////////////////////////////////////////////////////
-			EX.App 				= class App 	 extends Mix('Reflux',MX.General) {
+			EX.App 				= class App 	 extends Mix('Reflux','General') {
 				constructor(props) {
 					super(props)
 					this.name = 'APP';
@@ -124,7 +124,7 @@ module.exports = function Comps(COMPS) {
 			};
 
 		// LOAD ////////////////////////////////////////////////////////////
-			EX.Load 			= class Load 	 extends Mix('React', MX.Dynamic) {
+			EX.Load 			= class Load 	 extends Mix('React', 'Dynamic') {
 				constructor(props) {
 					super(props)
 					this.name = 'LOAD';
@@ -148,7 +148,7 @@ module.exports = function Comps(COMPS) {
 				}
 			};
 
-			EX.Load.Lock 		= class Lock 	 extends Mix('React', MX.General) {
+			EX.Load.Lock 		= class Lock 	 extends Mix('React', 'General') {
 				constructor(props) {
 					super(props)
 					this.name = 'LOAD.LOCK';
@@ -167,7 +167,7 @@ module.exports = function Comps(COMPS) {
 				}
 			};
 
-			EX.Load.Wait 		= class Wait 	 extends Mix('React', MX.Dynamic) {
+			EX.Load.Wait 		= class Wait 	 extends Mix('React', 'Dynamic') {
 				constructor(props) {
 					super(props)
 					this.name = 'LOAD.WAIT';
@@ -189,7 +189,7 @@ module.exports = function Comps(COMPS) {
 			};
 
 		// NAVI ////////////////////////////////////////////////////////////
-			EX.Navi 			= class Navi 	 extends Mix('Reflux',MX.Dynamic) {
+			EX.Navi 			= class Navi 	 extends Mix('Reflux','Dynamic') {
 				constructor(props) {
 					super(props)
 					this.name = 'NAVI';
@@ -205,7 +205,7 @@ module.exports = function Comps(COMPS) {
 				}
 			};
 
-			EX.Stat 			= class Stat 	 extends Mix('React', MX.Dynamic) {
+			EX.Stat 			= class Stat 	 extends Mix('React', 'Dynamic') {
 				constructor(props) {
 					super(props)
 					this.name = 'STAT';
@@ -218,7 +218,7 @@ module.exports = function Comps(COMPS) {
 			};
 
 		// HEAD ////////////////////////////////////////////////////////////
-			EX.Head 			= class Head	 extends Mix('Pure',  MX.Static) {
+			EX.Head 			= class Head	 extends Mix('Pure',  'Static') {
 				constructor(props) {
 					super(props)
 					this.name = 'HEAD';
@@ -238,7 +238,7 @@ module.exports = function Comps(COMPS) {
 				}
 			};
 
-			EX.Head.Login		= class Login	 extends Mix('Pure',  MX.Static) {
+			EX.Head.Login		= class Login	 extends Mix('Pure',  'Static') {
 				constructor(props) {
 					super(props)
 					this.name = 'HEAD.LOGIN';
@@ -280,7 +280,7 @@ module.exports = function Comps(COMPS) {
 				}
 			};
 
-			EX.Head.Logout 		= class Logout	 extends Mix('Pure',  MX.Static) {
+			EX.Head.Logout 		= class Logout	 extends Mix('Pure',  'Static') {
 				constructor(props) {
 					super(props)
 					this.name = 'HEAD.LOGOUT';
@@ -317,7 +317,7 @@ module.exports = function Comps(COMPS) {
 				}
 			};
 
-			EX.Head.Profile  	= class Profile	 extends Mix('Pure',  MX.Static) {
+			EX.Head.Profile  	= class Profile	 extends Mix('Pure',  'Static') {
 				constructor(props) {
 					super(props)
 					this.name = 'HEAD.PROFILE';
@@ -367,7 +367,7 @@ module.exports = function Comps(COMPS) {
 			};
 
 		// BODY ////////////////////////////////////////////////////////////
-			EX.Body 			= class Body	 extends Mix('React',  MX.Static) {
+			EX.Body 			= class Body	 extends Mix('React',  'Static') {
 				constructor(props) {
 					super(props)
 					this.name = 'BODY';
@@ -382,7 +382,7 @@ module.exports = function Comps(COMPS) {
 					</main>);
 				}
 			};
-			EX.Body.Segments	= class Segments extends Mix('React',  MX.Static) {
+			EX.Body.Segments	= class Segments extends Mix('React',  'Static') {
 				constructor(props) {
 					super(props)
 					this.name = 'BODY.SEGMENTS';
@@ -423,7 +423,7 @@ module.exports = function Comps(COMPS) {
 			};
 
 		// SIDEBAR /////////////////////////////////////////////////////////
-			EX.SideBar 			= class SideBar	 extends Mix('Pure',  MX.Static) {
+			EX.SideBar 			= class SideBar	 extends Mix('Pure',  'Static') {
 				constructor(props) {
 					super(props)
 					this.name = 'SIDEBAR';
@@ -442,7 +442,7 @@ module.exports = function Comps(COMPS) {
 					);
 				}
 			};
-			EX.SideBar.Bttn 	= class Bttn	 extends Mix('Pure',  MX.Static) {
+			EX.SideBar.Bttn 	= class Bttn	 extends Mix('Pure',  'Static') {
 				constructor(props) {
 					super(props)
 					this.name = 'SIDEBAR.BTTN';
@@ -472,7 +472,7 @@ module.exports = function Comps(COMPS) {
 			};
 
 		// PAGES ///////////////////////////////////////////////////////////
-			EX.Pages 			= class Pages	 extends Mix('Pure',  MX.Static) {
+			EX.Pages 			= class Pages	 extends Mix('Pure',  'Static') {
 				constructor(props) {
 					super(props)
 					this.name = 'PAGES';
@@ -501,7 +501,7 @@ module.exports = function Comps(COMPS) {
 					);
 				}
 			};
-			EX.Pages.Page 		= class Page	 extends Mix('Pure',  MX.Static) {
+			EX.Pages.Page 		= class Page	 extends Mix('Pure',  'Static') {
 				constructor(props) {
 					super(props)
 					this.name = 'PAGE';
@@ -520,7 +520,7 @@ module.exports = function Comps(COMPS) {
 			};
 
 		// DRAFT ///////////////////////////////////////////////////////////
-			EX.Draft 			= class Draft	 extends Mix('React', MX.Requests,MX.Forms) {
+			EX.Draft 			= class Draft	 extends Mix('React', 'Requests','Forms') {
 				constructor(props) {
 					super(props)
 					this.name = 'DRAFT';
@@ -576,7 +576,7 @@ module.exports = function Comps(COMPS) {
 					);
 				}
 			};
-			EX.Draft.Field 		= class Field	 extends Mix('Pure',  MX.Static,MX.MonoSpacer) {
+			EX.Draft.Field 		= class Field	 extends Mix('Pure',  'Static','MonoSpacer') {
 				constructor(props) {
 					super(props)
 					this.name = 'PAGES.FIELD';
@@ -745,7 +745,7 @@ module.exports = function Comps(COMPS) {
 					);
 				}
 			};
-			EX.Draft.Case 		= class Case	 extends Mix('Pure',  MX.Static) {
+			EX.Draft.Case 		= class Case	 extends Mix('Pure',  'Static') {
 				constructor(props) {
 					super(props)
 					this.name = 'PAGES.CASE';
@@ -783,7 +783,7 @@ module.exports = function Comps(COMPS) {
 			};
 
 		// SEARCH //////////////////////////////////////////////////////////
-			EX.Search 			= class Search	 extends Mix('Pure',  MX.Static,MX.Forms) {
+			EX.Search 			= class Search	 extends Mix('Pure',  'Static','Forms') {
 				constructor(props) {
 					super(props)
 					this.name = 'SEARCH';
@@ -834,7 +834,7 @@ module.exports = function Comps(COMPS) {
 					);
 				}
 			};
-			EX.Search.List 		= class List	 extends Mix('Reflux',MX.Dynamic,MX.Receivers) {
+			EX.Search.List 		= class List	 extends Mix('Reflux','Dynamic','Receivers') {
 				constructor(props) {
 					super(props)
 					this.name = 'SEARCH.LIST';
@@ -885,7 +885,7 @@ module.exports = function Comps(COMPS) {
 			};
 
 		// TABLE ///////////////////////////////////////////////////////////
-			EX.Table 			= class Table	 extends Mix('Pure',  MX.Static) {
+			EX.Table 			= class Table	 extends Mix('Pure',  'Static') {
 				constructor(props) {
 					super(props)
 					this.name = 'TABLE';
@@ -906,7 +906,7 @@ module.exports = function Comps(COMPS) {
 					);
 				}
 			};
-			EX.Table.List 		= class List	 extends Mix('Pure',  MX.Static,MX.MonoSpacer) {
+			EX.Table.List 		= class List	 extends Mix('Pure',  'Static','MonoSpacer') {
 				constructor(props) {
 					super(props)
 					this.name = 'TABLE.LIST';
@@ -930,7 +930,7 @@ module.exports = function Comps(COMPS) {
 
 
 		// FOOT ////////////////////////////////////////////////////////////
-			EX.Foot 			= class Foot	 extends Mix('Pure',  MX.Static) {
+			EX.Foot 			= class Foot	 extends Mix('Pure',  'Static') {
 				constructor(props) {
 					super(props)
 					this.name = 'FOOT';

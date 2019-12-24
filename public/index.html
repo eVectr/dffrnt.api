@@ -3,7 +3,7 @@
 	<head>
 		<title><!--{{TITLE}}--></title>
 		<!-- META DATA -->
-		<meta name="viewport"                                 content="initial-scale=1 maximum-scale=1 user-scalable=no">
+		<meta name="viewport"                                 content="initial-scale=1 width=device-width maximum-scale=1 user-scalable=no">
 		<meta name="X-UA-Compatible"                          content="IE=Edge" http-equiv="X-UA-Compatible">
 		<meta name="apple-mobile-web-app-capable"             content="yes">
 		<meta name="apple-mobile-web-app-status-bar-style"    content="white-translucent">
@@ -36,7 +36,7 @@
 		<!-- NAV -->
 		<style type="text/css"  id="navigation">/*!- STYLES -*/</style>
 	</head>
-	<body><main id="app-root" role="none"><!--CONTENT--></main><div id="modal-root" aria-modal="true" role="dialog"></div></body>
+	<body><main id="app-root" role="none"><!--CONTENT--></main><div id="modal-root" role="none"></div></body>
 	<script defer>
 		(function(G){
 			G.NMESPC={/*!- CONFIG -*/};G.TITLE=NMESPC.page.title;G.LOCKER="/*!- LOCKER -*/";G.NMESPC.host=location.protocol+G.NMESPC.host;
@@ -47,7 +47,7 @@
 						elm.blur(); elm.focus(); return;
 					}); }catch(e){}
 		})(window);</script>
-	<script defer type="text/javascript" src="https://js.stripe.com/v3/"></script>
+	<script defer type="text/javascript" src="https://js.stripe.com/v3/" async></script>
 	<script defer type="text/javascript" src="public/js/vendor.js"></script>
 	<script defer type="text/javascript" src="public/js/engine.js"></script>
 </html>

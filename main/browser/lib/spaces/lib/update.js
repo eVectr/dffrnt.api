@@ -1,6 +1,7 @@
 
 'use strict';
 
+/** @type {CFG.SPCE.SpaceHandler} */
 module.exports = {
 	Data:  [
 		function (path, req) { 
@@ -183,7 +184,7 @@ module.exports = {
 															value:		 res.name.first,
 															priority:	'*',
 															validate: 	{
-																pattern: /[A-z'-]+/,
+																pattern: /^\b[A-z' -]+\b$/i,
 																invalid: 'Please specify a valid First Name.',
 															},
 														}
@@ -200,7 +201,7 @@ module.exports = {
 															value:		 res.name.last,
 															priority:	'*',
 															validate: 	{
-																pattern: /[A-z'-]+/,
+																pattern: /^\b[A-z'-]+\b(?: (?:[sj]r.|[0-9](?:st|nd|rd|th)))?$/i,
 																invalid: 'Please specify a valid Last Name.',
 															},
 														}
@@ -377,7 +378,7 @@ module.exports = {
 																	{ tag:  'p', items: ['You can input more than one language in this selection should you choose, but please use the format below:'] },
 																	{ tag: 'ul', items: [{ tag: 'li', xerox: true, items: [
 																		'Your primary language is entered first;',
-																		'followed by a comma ,;',
+																		['followed by a comma ',{ tag:'span', props:{ className:'mono bold' }, items:[','] },';'],
 																		'then all other subsequent languages (comma-separated), in the order of preference or skill.',
 																	]}]	},
 																	{ tag:  'p', items: ['Please see the placeholder example in the this input-box.'] },

@@ -1,6 +1,7 @@
 
 'use strict';
 
+/** @type {CFG.SPCE.SpaceHandler} */
 module.exports = {
 	Data:  [ 
 		function (path, req) { 
@@ -82,10 +83,29 @@ module.exports = {
 				SVC 	  = { from: 'Evectr', name: ['Services'] },
 				RAD  	  = { tag: 'input', props:{id:'closeSvc',name:'svcs',className:'reveal'}},
 				BR  	  = { tag: 'br' },
+				STYLIZE	  = function STYLIZE(tag,text) {
+								text = Array.isArray(text)?text:[text];
+								return { tag: tag, items: text };
+							},
+				DSV  	  = function DML(v) {
+								var asg = Assign,
+									chk = !!v && !isNaN(v),
+									num = (chk ? (v>5?5:v) : null),
+									mpr = function(v,i){return asg({id:i},dfl);},
+									fil = function(n,m){return Array(n).fill(1).map(m);},
+									dfl = {
+										kind:		 '...',
+										name:		 '...',
+										description: '...',
+										charge:		 0,
+										rate:		 'Free',
+									};
+								return (chk?fil(num,mpr):v);
+							},
 				user_id	  = res.user_id,
 				pdid 	  = res.provider_id,
 				photos 	  = res.photos||{},
-				services  = res.services||[],
+				services  = DSV(res.services||5),
 				settings  = res.settings||{},
 				modes	  = settings.modes||{},
 				provider  = !!modes.provider;
@@ -117,103 +137,40 @@ module.exports = {
 									name:		'services',
 									accordian: 	true,
 									header: 	{ label: 'Edit Services', icon: 'edit' },
-									body:		[{ 
-										tag: SVC, props: { 
+									body:		[
+										{ tag: 'div', props: { style:{marginBottom:'2em'} }, items: [
+											{ tag: 'p', xerox: true, props: { className:'text' }, items: [
+												{ tag: 'small', items: [
+													'Edit the ', 
+													STYLIZE('b','Service Name'),', ',STYLIZE('b','Description'),', ',STYLIZE('b','Charge'),'/',STYLIZE('b','Rate'),
+													', etc. of any of your Services below. ',
+													STYLIZE('i',"Keep in mind; changing this info may hinder your current clientele's ability to find you."),
+													' Be sure to alert them of said changes.'
+												]	},
+												{ tag: 'small', items: [
+													'You can ', STYLIZE('b','Delete'), ' your Service as well. Do so with ', 
+													STYLIZE('b','caution'),', as it ',STYLIZE('b','cannot'),' be undone!'
+												]	}
+											]	},
+										]	},
+										{ tag: SVC, props: { 
 											editable: true, 
 											services: services 
-										} 
-									}],
+										}	}
+									],
 								}
 							} : null, { 		  // ADD NEW SERVICE
 								tag: PNL, props: { 
 									name:	'add-service',
 									header: { label: 'Add a Service', icon: 'folder-plus' },
 									align:	'gridSlice',
-									form: 	{
-										'id':			'add-service-form',
-										'rid':			'services',
-										'data-action': 	'/provider/service',
-										'method':		'POST',
-										'clear':		 true,
-										'buttons':		[
-											{ kind:'submit',label:'Add Service',style:'norm' },
-										],
-										'params':		{ pdid: pdid },
-										'query':		{ uids: user_id },
-									},
+									trail:   true,
 									body:	[
-										{ 	tag:	'div',
-											props:	{ className: 'spread' },
-											items: 	[{
-												tag:	{ from: 'Evectr', name: ['Form','Xput'] },
-												props:	{
-													id: 		'svc-name',
-													name: 		'SvcName',
-													icon:		'sign',
-													kind:		'text',
-													placeholder:'Service Name',
-													priority:	'*',
-													validate: 	{
-														pattern: /[\w &|\/:;'"#@!?+,.-]+/,
-														invalid: 'Please specify a valid Service Name.',
-													},
-												}
-										}]	},
-										{ 	tag:	'div',
-											props:	{ className: 'more' },
-											items: 	[{
-												tag:	{ from: 'Evectr', name: ['Form','Select'] },
-												props:	{
-													id: 		'svc-type',
-													name:		'SvcType',
-													icon:		'barcode',
-													title:		'Select a Service Type',
-													priority:	'*',
-													options:	[],
-													data:		{ url: '/list/services', id: 'select-type' },
-										}	}	]	},
-										{ 	tag:	'div',
-											props:	{ className: 'eight some' },
-											items: 	[{
-												tag:	{ from: 'Evectr', name: ['Form','Select'] },
-												props:	{
-													kind:		'slc-txt',
-													id: 		'svc-rate',
-													name:		'SvcRate',
-													icon:		'dollar-sign',
-													reverse:	 true,
-													title:		'Rate',
-													priority:	'*',
-													options:	[],
-													data:		{ url: '/list/rates', id: 'select-rate' },
-													input:			{
-														kind: 		'number',
-														id: 		'svc-charge',
-														name:		'SvcCharge',
-														placeholder:'0.00',
-														min:		'0.00',
-														max:		'10000.00',
-														step:		'0.01',
-														validate: 	{
-															pattern: /\d{1,5}\.\d{2}/,
-															invalid: 'That price ain\'t legit',
-														},
-														restrict: 	['Free','Quote'],
-													},
-										}	}	]	},
-										{ 	tag:	'div',
-											props:	{ className: 'spread' },
-											items: 	[{
-												tag:	{ from: 'Evectr', name: ['Form','Area'] },
-												props:	{
-													id: 		'svc-descr',
-													name:		'SvcDescr',
-													icon:		'newspaper',
-													rows:		 3,
-													priority:	'*',
-													placeholder:'Use this to provide as many details as possible regarding your Service. This can contain any Rules or Restrictions, Hours of Preparation, etc.',
-												}
-										}]	}, 
+										{	tag: { from:'Evectr', name:['Service','Form'] } ,
+											props: {
+												mode: 'add',
+												IDs:  { pdid: pdid },
+										}	},
 									],	
 								}
 							}, 

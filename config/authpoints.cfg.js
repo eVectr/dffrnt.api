@@ -1,4 +1,4 @@
-
+/// <reference path="../node_modules/dffrnt.confs/types/authpoints.cfg.d.ts" />
 /////////////////////////////////////////////////////////////////////////////////////////////
 // THINGS TO KNOW:
 	//
@@ -21,14 +21,20 @@
 /////////////////////////////////////////////////////////////////////////////////////////////
 // IMPORT
 
-const { RouteAU, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.confs').Definers(); 
+	const { 
+		RouteAU, GNHeaders, GNParam, GNDescr, PType, PT, _Methods
+	} = require('dffrnt.confs'); 
 
 /////////////////////////////////////////////////////////////////////////////////////////////
 // EXPORT
+
+	/** 
+	 * @return {CFG.AuthPoints}
+	 */
 	module.exports = function () { 
-		let OUT  = { path: '/auth/logout' },
-			IN   = { path: '/auth/login'  },
-			SSIG = "stripe-signature";
+		/////////////////////////////////////////////////////////////////////////////////////
+		let SSIG = "stripe-signature";
+		/////////////////////////////////////////////////////////////////////////////////////
 		return { // DO NOT CHANGE/REMOVE!!!
 			// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 			__DEFAULTS: 	{
@@ -54,9 +60,9 @@ const { RouteAU, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 			Auth: 		{
 				Actions: 	{
 					// ======================================================================
-					Login: 		new RouteAU({
+					Login: 		new RouteAU({ 
 						Methods: 	Docs.Kinds.POST,
-						Limits: 	['Tries/Day'],
+						Limits: 	['Tries/Second'],
 						Scheme: 	'/',
 						POST		() { return {
 							Doc: 		{
@@ -71,8 +77,14 @@ const { RouteAU, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 									Password: new GNParam({
 										Name: 	'Password',	
 										Desc: 	new GNDescr({ type: PT.Password, description: "The account's {{Password}}", required: true, to: 'query' }),
-										Format 	(cls) { return cls.password },
+										Format 	(cls) { return cls.password; },
 										Default:'', 
+									}),
+									Remember: new GNParam({
+										Name: 	'Remember',	
+										Desc: 	new GNDescr({ type: PT.Bool, description: "Remember this Session for a while", required: false, to: 'query' }),
+										Format 	(cls) { return cls.remember; },
+										Default:false, 
 									}),
 								},
 							},
@@ -81,7 +93,6 @@ const { RouteAU, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 								Error: 		 'ERROR',
 								async NoData (req) {
 									let THS  = this, SSD = {},
-										sess = req.session,
 										sid  = req.sessionID,
 										bdy  = (req.body||{}), user,
 										acct = bdy.username;
@@ -103,23 +114,25 @@ const { RouteAU, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 										// ------------------------------------------------------
 										SSD  = { sessionID: sid };
 										user = await LogUserIn(THS, req);
-										acct = user.email_address;
+										acct = user.account;
 										user = await THS.Profile(acct, true);
 										LG.Server(sid, 'Loaded', acct, 'green');
 										return {
 											send: [
 												MSG.LOADED.temp, 
-												user, null, Assign(IN, bdy)
+												user, null, STATE('IN', bdy)
 											],
 											next: ['Save', { 
-												id:		user.Scopes.user_id, 
+												id:		user.UID, 
 												acct:	user.Account, 
 												token:	user.Token, 
+												__rem:  bdy.remember,
 											}],
 										}; 
 									// Handle Errors --------------------------------------------
 									} catch (err) { 
-										throw [MSG.LOGIN, SSD, (acct||''), Assign(OUT, bdy)]; 
+										if (Array.isArray(err)) throw err;
+										else throw [MSG.ERROR, {}, {}, req.body]; 
 									}
 								},
 								async Main   (req) {
@@ -131,7 +144,7 @@ const { RouteAU, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 											bdy  = req.body, ret;
 										// ----------------------------------------------------------
 										SSD  = { sessionID: sid };
-										ret = [MSG.RESTORED.temp, user, null, Assign(IN, bdy)];
+										ret = [MSG.RESTORED.temp, user, null, STATE('IN', bdy)];
 										if (acct == bdy.username) {
 											ret[1] = await THS.Profile(acct, true);
 											LG.Server(sid, 'Restored', acct, 'green');
@@ -141,15 +154,15 @@ const { RouteAU, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 										}
 									// Handle Errors --------------------------------------------
 									} catch (err) { 
-										console.log(err)
-										throw [MSG.LOGIN, SSD, (acct||''), Assign(OUT, bdy)]; 
+										if (Array.isArray(err)) throw err;
+										else throw [MSG.ERROR, {}, {}, req.body]; 
 									}
 								}
 							}
 						};	}
 					}),
 					// ======================================================================
-					Validate: 	new RouteAU({
+					Validate: 	new RouteAU({ 
 						Methods: 	Docs.Kinds.MID,
 						Scheme: 	'/',
 						MID			() { return {
@@ -171,20 +184,18 @@ const { RouteAU, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 										// ----------------------------------------------------------
 										bdy.uuid = uid;
 										Imm.Map(Docs.Headers).map((v,k)=>{
-											// console.log('HEADER:', k)
-											if (!v.Desc.type.sanitize({ head, user }))
+											if (k=='token'&&!v.Desc.type.sanitize({ head, user }))
 												throw [MSG.TOKEN, SSD, (acct||''), bdy];
-										})
-										
+										});
 										if (!!bdy.cliip) {
 											bdy.cliip = TLS.Lng2IP(req.connection.remoteAddress);
-										}
+										};
 										if (!!spc.match(/^\/(?:add|edit|dump)/)) {
 											prm.uids = uid; bdy.single = 'true';
 											if (!!!prm.uid && !!!bdy.uid) {
 												bdy.uid  = uid;
 											}
-										}
+										};
 										return { 
 											send: [
 												MSG.VALID.temp, 
@@ -195,13 +206,16 @@ const { RouteAU, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 											}] 
 										};
 									// Handle Errors --------------------------------------------
-									} catch (err) { console.log(err); throw err; }
+									} catch (err) { 
+										if (Array.isArray(err)) throw err;
+										else throw [MSG.ERROR, {}, {}, req.body]; 
+									}
 								}
 							}
 						}; 	}
 					}),
 					// ======================================================================
-					Check: 		new RouteAU({
+					Check: 		new RouteAU({ 
 						Methods: 	Docs.Kinds.MPOS,
 						Scheme: 	'/',
 						MID			() { return {
@@ -219,7 +233,7 @@ const { RouteAU, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 										// ----------------------------------------------------------
 										switch (true) {
 											case !!!sess.user.token:
-												throw [MSG.EXISTS, SSD, (acct||''), Assing(OUT, bdy)]
+												throw [MSG.EXISTS, SSD, (acct||''), STATE('OUT', bdy)]
 											default:
 												THS.sid = req.sessionID;
 												user = await THS.Profile(acct, true);
@@ -227,19 +241,251 @@ const { RouteAU, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 													send: [
 														MSG.PROFILE.temp, 
 														user, acct, 
-														Assign(IN, bdy),
+														// STATE('IN', bdy),
+														bdy,
 													],
 													next: ['Renew'],
 												};
 										};	
 									// Handle Errors --------------------------------------------
 									} catch (err) { 
-										console.log(err); throw err; 
+										if (Array.isArray(err)) throw err;
+										else throw [MSG.ERROR, {}, {}, req.body]; 
 									}
 								}
 							}
 						};	},
 						POST        () { return 'MIDDLEWARE'; },
+					}),
+					// ======================================================================
+					Sessions: 	new RouteAU({ 
+						Methods: 	[
+							..._Methods.GET,
+							..._Methods.DELETE,
+						],
+						Scheme: 	'/',
+						GET		() { return {
+							Scheme: 	 '/',
+							Doc: 		{
+								Headers: 	{ Token: Docs.Headers.Token },
+								Examples: 	{ "/": "Retrieve all User Sessions", },
+								Params: 	{},
+							},
+							Proc: 		{
+								Error: 		 'ERROR',
+								NoData: 	 'INVALID',
+								async Main   (req) { try {
+									let ssID = req.sessionID,
+										sess = req.session,
+										uid  = sess.user.id,
+										bdy  = req.query,
+										rslt;
+									// Get Session List ---------------------------------- //
+									rslt = (await Sessions.List(uid))
+											.map(ss => (ss.current=(ss.ssid==ssID),ss))
+											.sort((a,b) => (
+												a.since<b.since?1:(a.since>b.since?-1:0)
+											));
+									// Return -------------------------------------------- //
+									return {
+										send: [MSG.VALID.temp,rslt,null,bdy],
+										next: ['Renew'],
+									};
+									// Handle Errors ------------------------------------- //
+								} catch (err) { 
+									if (Array.isArray(err)) throw err;
+									else throw [MSG.ERROR, {}, {}, req.body]; 
+								}	}
+							}
+						};	},
+						DELETE	() { return {
+							Scheme: 	'/:ssid([\\w_-]{32})/',
+							Doc: 		{
+								Headers: 	{ 
+									Token: Docs.Headers.Token 
+								},
+								Examples: 	{ 
+									"/:ssid:rE3HwYO6dPLv_6yE9IAXwvEY6itZ1NlU": "Delete a User Session", 
+								},
+								Params: 	{
+									SSID: new GNParam({
+										Name: 	'Session ID', 
+										Format 	(cls) { return cls.ssid; }, 
+										Desc: 	new GNDescr({ 
+											type: PT.Text({ regex: /^[\w_]{32}$/ }), 
+											description: "The ID of the Session you'd like to delete.", 
+											required: true, to: 'param' 
+										}), 
+										Default:null, 
+									}),
+									Invert: new GNParam({
+										Name: 	'Invert', 
+										Format 	(cls) { return cls.invert; },
+										Desc: 	new GNDescr({ 
+											type: PT.Bool, 
+											description: "If {{true}}, removes all sessions except for {{SSID}}", 
+											required: false, to: 'query' 
+										}),
+										Default:false, 
+									}),
+								},
+							},
+							Proc: 		{
+								Error: 		 'ERROR',
+								NoData: 	 'INVALID',
+								async Main   (req) { try {
+									let ssID = req.sessionID, 
+										sess = req.session, 
+										uid  = sess.user.id, 
+										prm  = req.params, 
+										bdy  = req.body, 
+										rslt;
+									// Remove the Session(s)
+									if (bdy.invert) {
+										await Sessions.Rem(uid, ssID, true);
+									} else if (ssID != prm.ssid) {
+										await Sessions.Rem(uid, prm.ssid, false);
+									};
+									// Get List of Sessions
+									rslt = (await Sessions.List(uid))
+											.map(ss => (ss.current=(ss.ssid==ssID),ss))
+											.sort((a,b) => (
+												a.since<b.since?1:(a.since>b.since?-1:0)
+											));
+									// Return
+									return {
+										send: [MSG.VALID.temp,rslt,null,bdy],
+										next: ['Renew'],
+									};
+									// Handle Errors --------------------------------------------
+									} catch (err) { 
+										if (Array.isArray(err)) throw err;
+										else throw [MSG.ERROR, {}, {}, req.query]; 
+									}
+								}
+							}
+						};	}
+					}),
+					// ======================================================================
+					Alerts: 	new RouteAU({ 
+						Methods: 	[
+							..._Methods.POST,
+							..._Methods.GET,
+							..._Methods.DELETE,
+						],
+						Scheme: 	'/',
+						POST		() { return {
+							Doc: 		{
+								Headers: 	{ Token: Docs.Headers.Token },
+								Examples: 	{ "/": "Retrieve all User Sessions", },
+								Params: 	{},
+							},
+							Proc: 		{
+								Error: 		 'ERROR',
+								NoData: 	 'INVALID',
+								async Main   (req) { try {
+									let sess = req.session,
+										acct = sess.user.acct,
+										bdy  = req.body,
+										rslt;
+									// Get Alerts List ----------------------------------- //
+									rslt = await Alert.Post(acct, {
+										type: bdy.type, 
+										payload: JSON.parse(bdy.content||{})
+									});
+									// Return -------------------------------------------- //
+									return {
+										send: [MSG.VALID.temp,rslt,null,bdy],
+										next: ['Renew'],
+									};
+									// Handle Errors ------------------------------------- //
+								} catch (err) { 
+									console.log(err)
+									if (Array.isArray(err)) throw err;
+									else throw [MSG.ERROR, false, {}, req.body]; 
+								}	}
+							}
+						};	},
+						GET		() { return {
+							Doc: 		{
+								Headers: 	{ Token: Docs.Headers.Token },
+								Examples: 	{ "/": "Retrieve all User Sessions", },
+								Params: 	{},
+							},
+							Proc: 		{
+								Error: 		 'ERROR',
+								NoData: 	 'INVALID',
+								async Main   (req) { try {
+									let sess = req.session,
+										acct = sess.user.acct,
+										bdy  = req.query,
+										rslt;
+									// Get Alerts List ----------------------------------- //
+									rslt = await Alert.List(acct);
+									// Return -------------------------------------------- //
+									return {
+										send: [MSG.VALID.temp,rslt,null,bdy],
+										next: ['Renew'],
+									};
+									// Handle Errors ------------------------------------- //
+								} catch (err) { 
+									if (Array.isArray(err)) throw err;
+									else throw [MSG.ERROR, {}, {}, req.body]; 
+								}	}
+							}
+						};	},
+						DELETE	() { return {
+							Scheme: 	'/:alids([A-z0-9_;-]+(?!;))/',
+							Doc: 		{
+								Headers: 	{ 
+									Token: Docs.Headers.Token 
+								},
+								Examples: 	{ 
+									"/:alid:TJ7ymXXs;OJsP0OwU": "Delete a User Session", 
+								},
+								Params: 	{
+									ALIDs: new GNParam({
+										Name: 	'Session ID', 
+										Format 	(cls) { return cls.alids; }, 
+										Desc: 	new GNDescr({ 
+											type: PT.L.Text({ join: ',' }),
+											description: "The ID of the Session you'd like to delete.", 
+											required: true, to: 'param' 
+										}), 
+										Default:[], 
+									}),
+								},
+							},
+							Proc: 		{
+								Error: 		 'ERROR',
+								NoData: 	 'INVALID',
+								async Main   (req) { try {
+									let sess = req.session, 
+										acct = sess.user.acct, 
+										prm  = req.params, 
+										bdy  = req.body, 
+										rslt = [], 
+										alids;
+									// Remove the Session(s)
+									alids = prm.alids.match(/([\w_-]{8})(?:(?=;)|$)/g);
+									if (!!alids) {
+										await Alert.Acknowledge(alids);
+										// Get Alerts List 
+										rslt = Alert.List(acct);
+									};
+									// Return
+									return {
+										send: [MSG.VALID.temp,rslt,null,bdy],
+										next: ['Renew'],
+									};
+									// Handle Errors --------------------------------------------
+									} catch (err) { 
+										if (Array.isArray(err)) throw err;
+										else throw [MSG.ERROR, {}, {}, req.query]; 
+									}
+								}
+							}
+						};	}
 					}),
 					// ======================================================================
 					Logout: 	new RouteAU({
@@ -268,7 +514,10 @@ const { RouteAU, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 											next: ['Destroy'],
 										};
 									// Handle Errors --------------------------------------------
-									} catch (err) { throw [MSG.ERROR, {}, {}, bdy]; }
+									} catch (err) { 
+										if (Array.isArray(err)) throw err;
+										else throw [MSG.ERROR, {}, {}, req.query]; 
+									}
 								}
 							}
 						};	}

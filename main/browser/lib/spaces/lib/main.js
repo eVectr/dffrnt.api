@@ -1,6 +1,7 @@
 
 'use strict';
 
+/** @type {CFG.SPCE.SpaceHandler} */
 module.exports = {
 	Data:  [
 		function (path, req) { return {}; },
@@ -25,6 +26,9 @@ module.exports = {
 				content: 	{
 					built: 		true,
 					nav: 		{},
+					style:      { 
+						backgroundImage: 'url(/public/images/backs/main.jpg)' 
+					},
 					segments: 	{
 						copy:  [{
 							tag :	BLCK,
@@ -34,22 +38,23 @@ module.exports = {
 								items: 	[{
 									tag:	TABS,
 									props: 	{ 
-										name: 	'main',
-										start:	'two',
-										size:	'mostly',
-										tabs:	[
+										name: 	 'main',
+										start:	 'two',
+										size:	 'mostly',
+										default: true,
+										tabs:	 [
 											{ 	name: 	'login',
 												icon:	'sign-in-alt',
 												label:	'Login',
 												checked: true,
-												body: 	[BR, {
+												body: 	[{
 													tag: 	{ from:'Evectr', name:['App','Login'] },
 													props: 	{},
 											}],	},
 											{ 	name: 	'signup',
 												icon:	'edit',
 												label:	'Sign Up',
-												body: 	[BR, {
+												body: 	[{
 													tag: 	{ from:'Evectr', name:['App','Signup'] },
 													props: 	{ terms: res.copy },
 											}]	},

@@ -1,6 +1,15 @@
+/// <reference path="../../index.d.ts" />
+
 'use strict';
 
-module.exports = function Comps(global, Reflux, Actions, IOs) {
+module.exports = /**
+ * Initializes all of the `Stores`, `Actions`, and `Components` for the App.
+ * @param {NodeJS.Global|Window} global The `Window` object, when called from a `Browser`. The `global` object, when called from the `Node` server.
+ * @param {ReFlux} Reflux The `ReFlux` object.
+ * @param {FluxActions} Actions The `Flux-Actions` for this App.
+ * @param {sIOs} IOs The `SocketIO` connections.
+ */
+function Comps(global, Reflux, Actions, IOs) {
 
 	////////////////////////////////////////////////////////////////////////
 	// VARIABLES -----------------------------------------------------------
@@ -14,8 +23,7 @@ module.exports = function Comps(global, Reflux, Actions, IOs) {
 		const	React 			= require('react');
 		const	RDOM 			= require('react-dom');
 		const	StripeJS		= require('react-stripe-elements');
-		const	Spaces			= require('../../spaces');
-		const	Stores  		= require('../../stores')(Reflux, Actions, Spaces, IOs);
+		const	Stores  		= require('../../stores')(Reflux, Actions, IOs);
 
 		// Variables
 		COMPS.Token 			= null;
@@ -23,12 +31,11 @@ module.exports = function Comps(global, Reflux, Actions, IOs) {
 		COMPS.IsAuthd 			= false;
 		COMPS.Receivers 		= 0;
 		COMPS.Rejecters 		= 0;
-		COMPS.Elements  		= { "/": function () { return; } };
 		COMPS.React 			= React;
 		COMPS.Actions 			= Actions;
 		COMPS.Reflux 			= Reflux;
-		COMPS.Spaces			= Spaces;
 		COMPS.Stores 			= Stores;
+		COMPS.Elements  		= {};
 		COMPS.Elements.RDOM 	= RDOM;
 		COMPS.Elements.StripeJS = StripeJS;
 
@@ -38,8 +45,9 @@ module.exports = function Comps(global, Reflux, Actions, IOs) {
 		require('../../elements')(COMPS); 
 
 		Stores.Content.render = function (LID) {
-			const App = COMPS.Elements[TC(NMESPC.page.main)].App;
-			RDOM.hydrate(<App LID={LID}/>, document.getElementById('app-root'));
+			const App = COMPS.Elements[TC(NMESPC.page.main)].App,
+				  Ste = COMPS.Stores.Apps[LID].singleton.state;
+			RDOM.hydrate(<App LID={LID} {...Ste} />, document.getElementById('app-root'));
 		}
 		
 		return COMPS;

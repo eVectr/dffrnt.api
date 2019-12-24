@@ -11,6 +11,7 @@ module.exports = {
 	defined: 	require("./lib/defined"),
 	static: 	require("./lib/static"),
 	settings: 	require("./lib/settings"),
+	wallet: 	require("./lib/wallet"),
 	update: 	require("./lib/update"),
 	services: 	require("./lib/services"),
 	profile: 	require("./lib/profile"),

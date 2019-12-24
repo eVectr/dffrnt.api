@@ -19,6 +19,7 @@
 **/jsconfig.json
 **/jsdoc.json
 **/.tern-project
+**/typedoc.json
 !/.docs/images
 !/.docs/node_modules.sh
 !/main/browser/lib/spaces/**

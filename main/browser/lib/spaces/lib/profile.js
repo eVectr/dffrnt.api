@@ -1,6 +1,7 @@
 
 'use strict';
 
+/** @type {CFG.SPCE.SpaceHandler} */
 module.exports = {
 	Data:  [
 		function (path, req) { 
@@ -62,12 +63,16 @@ module.exports = {
 		},
 	],
 	Call: function Call(path, params, query, body, files, user) {
-		var acc = path.replace(/^\//,''),
-			dsp = user.Scopes.display_name;
+		var dsp = user.Scopes.display_name, prm = {};
+		if (!!params.uid) prm = { uids: [params.uid] };
+		else if (!!params.account) {
+			var acc = params.account;
+			prm = { account: (acc!='profile'?acc:dsp) };
+		}
 		return {
 			method:	'GET',
 			path: 	'/user',
-			params: { account: (acc!='profile'?acc:dsp) },
+			params: prm,
 			query:	Assign({},{
 						uuid: user.Scopes.user_id,
 						single:true,links:true,
@@ -146,6 +151,7 @@ module.exports = {
 						user:	{
 							mode:	'show',
 							photo: 	photos.profile,
+							uid: 	res.user_id,
 							uname: 	res.display_name,
 							name: 	res.name,
 							badges: [
