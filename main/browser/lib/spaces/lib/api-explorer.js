@@ -1,7 +1,7 @@
 
 'use strict';
 
-
+/** @type {CFG.SPCE.SpaceHandler} */
 module.exports = {
 	Data:  function () { return this.Help; },
 	Build: function (Actions, Stores) {

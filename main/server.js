@@ -14,7 +14,11 @@
 		const 	express 		  = require('express');
 		const { Routes, Session } = require('dffrnt.route');
 		const { SSL, Port 		} = Settings;
-		const { createServer 	} = require(!!SSL?'spdy':'http');
+		/** 
+		 * @type {import('spdy')|import('http')}
+		 */
+		const   HTTP              = require(!!SSL?'spdy':'http');
+		const { createServer 	} = HTTP;
 
 		function getSSL(file) { try {
 			return fs.readFileSync(`${ROOTD}/${file}`,'utf8');

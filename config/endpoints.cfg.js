@@ -1,4 +1,4 @@
-
+/// <reference path="../node_modules/dffrnt.confs/types/endpoints.cfg.d.ts" />
 /////////////////////////////////////////////////////////////////////////////////////////////
 // THINGS TO KNOW:
 	//
@@ -21,235 +21,260 @@
 /////////////////////////////////////////////////////////////////////////////////////////////
 // IMPORT
 
-const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.confs').Definers(); 
+	const { 
+		RouteDB, GNHeaders, GNParam, GNDescr, PType, PT, _Methods
+	} = require('dffrnt.confs'); 
 
 /////////////////////////////////////////////////////////////////////////////////////////////
 // EXPORT 
 
+	/** 
+	 * @returns {CFG.DataPoints} 
+	 */
 	module.exports = function () { // DO NOT CHANGE/REMOVE!!!
 		
-
 		/////////////////////////////////////////////////////////////////////////////////////
-		const 	FJS   = Imm.fromJS,
-				optns = { 
-							Sex: [
-								{ value: 'M', label: 'Male'		},
-								{ value: 'F', label: 'Female'	},
-								{ value: 'I', label: 'Intersex'	},
-							],
-							Marital: [
-								{ value: 'M', label: 'Married'		},
-								{ value: 'R', label: 'Relationship'	},
-								{ value: 'S', label: 'Single'		},
-							],
-							SvcType: [
-								{ value: '01100', label: 'Accounting/Tax' 		},
-								{ value: '01101', label: 'Artist' 				},
-								{ value: '01102', label: 'Child Care' 			},
-								{ value: '01103', label: 'Cleaner' 				},
-								{ value: '01104', label: 'Cooking/Catering' 	},
-								{ value: '01105', label: 'Designing' 			},
-								{ value: '01106', label: 'DJ' 					},
-								{ value: '01107', label: 'Entertainment' 		},
-								{ value: '01108', label: 'Equipment Rental' 	},
-								{ value: '01109', label: 'Fitness' 				},
-								{ value: '01110', label: 'Installation' 		},
-								{ value: '01111', label: 'Labour' 				},
-								{ value: '01112', label: 'Massage/Chiropractic' },
-								{ value: '01113', label: 'Mobile Services' 		},
-								{ value: '01114', label: 'Moving/Delivery' 		},
-								{ value: '01115', label: 'Pet Sitting' 			},
-								{ value: '01116', label: 'Photography' 			},
-								{ value: '01117', label: 'Teaching/Tutoring' 	},
-								{ value: '01118', label: 'Tech Support' 		},
-								{ value: '01119', label: 'Tour Guide' 			},
-								{ value: '01120', label: 'Translation' 			},
-								{ value: '01121', label: 'Web/Programming' 		},							
-							],
-							SvcRate: [
-								{ value: 'Free',	label: 'Free'		},
-								{ value: 'Flat',	label: 'Flat'		},
-								{ value: 'Hourly',	label: 'Hourly'		},
-								{ value: 'Daily',	label: 'Daily'		},
-								{ value: 'Monthly',	label: 'Monthly'	},
-								{ value: 'Quote',	label: 'Quote'		},
-							],
-							Context: [
-								{ value: 'VT', label: 'Service Type' 		},
-								{ value: 'VD', label: 'Service Description' },
-								{ value: 'VC', label: 'Service Charge' 		},
-								{ value: 'VR', label: 'Service Rate' 		},
-								{ value: 'LC', label: 'Locale' 				},
-								{ value: 'HB', label: 'Hobby' 				},
-								{ value: 'LG', label: 'Language' 			},
-								{ value: 'NL', label: 'Nationality' 		},
-								{ value: 'RL', label: 'Religion' 			},
-								{ value: 'SX', label: 'Sex' 				},
-								{ value: 'MS', label: 'Marital Status' 		},
-								{ value: 'OR', label: 'Orientation' 		},
-								{ value: 'GD', label: 'Gender' 				},
-							],
-							RUnits:  [
-								{ value: 'K', label: 'Kilometers' 	},
-								{ value: 'M', label: 'Miles' 		}
-							]
-						},
-				cntxp = {	'LC' : 'lid', 
-							'VT' : 'svctype',   'VD' : 'svcdescr',  
-							'VR' : 'svcrate',   'VC' : 'svccharge',
-							'HB' : 'hids',      'LG' : 'lgids',
-							'NL' : 'nids',      'RL' : 'Rids',
-							'GD' : 'gids',      'SX' : 'sex',
-							'MS' : 'marital',   'OR' : 'oids',
-							'AG' : 'age' },
-				lcale = function lcale() { 
-							return function Parse(res) {
-								var RQ = this.RQ, QY = this.QY;
-								return 	Imm.Map(JSN.Objectify(
-											res, RQ.Key, RQ.Columns, QY
-										)).map(v=>v.user).toJS();
-							};
-						},
-				scqry = function scqry(TAG, QRY, VERB) { 
-							let CNT, CQY, BEG, END, TG = 'S.tag', 
-								TB = `\n${' '.dup(17)}`, SP = ' '.dup(13),
-								TYP = TYPE(TAG, Array); 
-							// Build Counters ---------------------------------------------- //
-								if (TYP) { // Multi  Counters
-									let CSE = TAG.map(v=>{ let C = `@CNT_${v}`;
-											return `${TG} = '${v}' THEN ${C}:=${C}+1`;
+			const 	FJS   = Imm.fromJS,
+					YEAR  = () => (new Date().getFullYear()),
+					SSIG  = "Stripe-Signature",
+					optns = { 	
+								Sex: [
+									{ value: 'M', label: 'Male'		},
+									{ value: 'F', label: 'Female'	},
+									{ value: 'I', label: 'Intersex'	},
+								],
+								Marital: [
+									{ value: 'M', label: 'Married'		},
+									{ value: 'R', label: 'Relationship'	},
+									{ value: 'S', label: 'Single'		},
+								],
+								SvcType: [
+									{ value: '01100', label: 'Accounting/Tax' 		},
+									{ value: '01101', label: 'Artist' 				},
+									{ value: '01102', label: 'Child Care' 			},
+									{ value: '01103', label: 'Cleaner' 				},
+									{ value: '01104', label: 'Cooking/Catering' 	},
+									{ value: '01105', label: 'Designing' 			},
+									{ value: '01106', label: 'DJ' 					},
+									{ value: '01107', label: 'Entertainment' 		},
+									{ value: '01108', label: 'Equipment Rental' 	},
+									{ value: '01109', label: 'Fitness' 				},
+									{ value: '01110', label: 'Installation' 		},
+									{ value: '01111', label: 'Labour' 				},
+									{ value: '01112', label: 'Massage/Chiropractic' },
+									{ value: '01113', label: 'Mobile Services' 		},
+									{ value: '01114', label: 'Moving/Delivery' 		},
+									{ value: '01115', label: 'Pet Sitting' 			},
+									{ value: '01116', label: 'Photography' 			},
+									{ value: '01117', label: 'Teaching/Tutoring' 	},
+									{ value: '01118', label: 'Tech Support' 		},
+									{ value: '01119', label: 'Tour Guide' 			},
+									{ value: '01120', label: 'Translation' 			},
+									{ value: '01121', label: 'Web/Programming' 		},							
+								],
+								SvcRate: [
+									{ value: 'Free',	label: 'Free'		},
+									{ value: 'Flat',	label: 'Flat'		},
+									{ value: 'Hourly',	label: 'Hourly'		},
+									{ value: 'Daily',	label: 'Daily'		},
+									{ value: 'Monthly',	label: 'Monthly'	},
+									{ value: 'Quote',	label: 'Quote'		},
+								],
+								SvcInteract: [
+									{ value: 1,	label: 'In-Person'		},
+									{ value: 2,	label: 'Mobile'			},
+									{ value: 3,	label: 'Correspondence' },
+									{ value: 4,	label: 'Shipment'		},
+								],
+								Context: [
+									{ value: 'VT', label: 'Service Type' 		},
+									{ value: 'VD', label: 'Service Description' },
+									{ value: 'VC', label: 'Service Charge' 		},
+									{ value: 'VR', label: 'Service Rate' 		},
+									{ value: 'LC', label: 'Locale' 				},
+									{ value: 'HB', label: 'Hobby' 				},
+									{ value: 'LG', label: 'Language' 			},
+									{ value: 'NL', label: 'Nationality' 		},
+									{ value: 'RL', label: 'Religion' 			},
+									{ value: 'SX', label: 'Sex' 				},
+									{ value: 'MS', label: 'Marital Status' 		},
+									{ value: 'OR', label: 'Orientation' 		},
+									{ value: 'GD', label: 'Gender' 				},
+								],
+								RUnits:  [
+									{ value: 'K', label: 'Kilometers' 	},
+									{ value: 'M', label: 'Miles' 		}
+								]	
+							},
+					cntxp = {	'LC' : 'lid', 
+								'VT' : 'svctype',   'VD' : 'svcdescr',  
+								'VR' : 'svcrate',   'VC' : 'svccharge',
+								'HB' : 'hids',      'LG' : 'lgids',
+								'NL' : 'nids',      'RL' : 'Rids',
+								'GD' : 'gids',      'SX' : 'sex',
+								'MS' : 'marital',   'OR' : 'oids',
+								'AG' : 'age' },
+					lcale = function lcale() { 
+								return function Parse(res) {
+									var RQ = this.RQ, QY = this.QY;
+									return 	Imm.Map(JSN.Objectify(
+												res, RQ.Key, RQ.Columns, QY
+											)).map(v=>v.user).toJS();
+								};
+							},
+					scqry = function scqry(TAG, QRY, VERB) { 
+								let CNT, CQY, BEG, END, TG = 'S.tag', 
+									TB = `\n${' '.dup(17)}`, SP = ' '.dup(13),
+									TYP = TYPE(TAG, Array); 
+								// Build Counters ---------------------------------------------- //
+									if (TYP) { // Multi  Counters
+										let CSE = TAG.map(v=>{ let C = `@CNT_${v}`;
+												return `${TG} = '${v}' THEN ${C}:=${C}+1`;
+											});
+										CNT = `(CASE${TB}WHEN ${CSE.join(`${TB}WHEN `)}\n${SP}END)`; 
+										CQY = `${TAG.map(v=>`@CNT_${v}:=0`).join(',')}`;
+									} else {   // Single Counters
+										CNT =  `@CNT_${TAG}`; CQY = `${CNT}:=0`; 
+										CNT += `:=${CNT}+1`; TG  = `'${TAG}' AS tag`;
+									}
+								// Build Verbage ----------------------------------------------- //
+									VERB = ( !TYP ? `'${VERB}' AS verb` : `S.verb` );
+								// Build Wrapper Statemnets ------------------------------------ //
+									BEG = 	`SELECT  S.score, ${CNT} AS idx, S.verb,`
+											.split('\n').concat([
+											`        S.value, S.tag, S.label, S.description`,
+											"FROM    (",
+											"    SELECT Q.* FROM (",
+											`         SELECT  (S.score+(S.score/S.len)) AS score, ${VERB}, S.value,`,
+											`                 ${TG}, S.label, S.description`,
+											"         FROM    ("
+											]);
+									END = [ `         ) AS S, (SELECT ${CQY}) C`,
+											"    ) AS Q ORDER BY Q.score DESC",
+											`) AS S`,
+											":LIMIT: :PAGE:"];
+								// Build & Return Query ---------------------------------------- //
+									return BEG.concat(QRY.map(v=>`${SP}${v}`),END);
+							},
+					spars = function sparse() { 
+								return function Parse(res) {
+									var RQ  = this.RQ, QY = this.QY,
+										all = FJS(res),
+										IDs = [], obj, avg, MAP, C, ret, mlt, trm,
+										cat = Imm.Map({ user: 'user' }), 
+										sgl = !!eval(QY.single),
+										dls = Imm.List([]);
+										dmp = Imm.Map({});
+									// ------------------------------------------------------------
+										obj = 	all .slice(1).groupBy(v=>v.get('user_id'));
+										MAP = 	obj.map(v=>v.get(0));
+												C = MAP.size;
+										avg =  (MAP .reduce((s,v)=>s+v.get('score'),0)/C);
+										ret =	MAP	.filter(r=>((r.get('score')/avg)>=.6));
+									// ------------------------------------------------------------
+										if (IDs = ret.keySeq().toArray(), IDs) { 
+											var qry = `?${[ 'to=["payload","result"]',
+															`single=${sgl}`,
+															`links=["${[
+																'photos',
+																'identity',
+																'settings',
+															].join('","')}"]`,
+															'as=item',
+														].join('&')}`,
+												prm = `:uids:${IDs.join(';')}`;
+											cat.map((l,c)=>{
+												var lnk = `/${l}/${prm}${qry}`;
+												RQ.links[c]=SQL.SOCKET({ link: lnk });
+											});
+										};
+									// RETRIEVE ORIGINAL SEARCH TERMS -----------------------------
+										trm = new Imm.List([]);
+										mlt = new Imm.List(
+											all.get(0,dmp).get('multi',dls).toJS().map(m => {
+												m.tag = m.tag.replace(/[+-]$/,''); return m;
+											})
+										);
+										QY.terms.split(ORS).map(s => {
+											let a = s.split('@'), t = a[0], v = a[1];
+											trm = trm.push(mlt.find((m,i) => {
+												let chk = (m.tag==t&&m.value==v);
+												if (chk) mlt = mlt.remove(i);
+												return chk;
+											})	);
 										});
-									CNT = `(CASE${TB}WHEN ${CSE.join(`${TB}WHEN `)}\n${SP}END)`; 
-									CQY = `${TAG.map(v=>`@CNT_${v}:=0`).join(',')}`;
-								} else {   // Single Counters
-									CNT =  `@CNT_${TAG}`; CQY = `${CNT}:=0`; 
-									CNT += `:=${CNT}+1`; TG  = `'${TAG}' AS tag`;
-								}
-							// Build Verbage ----------------------------------------------- //
-								VERB = ( !TYP ? `'${VERB}' AS verb` : `S.verb` );
-							// Build Wrapper Statemnets ------------------------------------ //
-								BEG = 	`SELECT  S.score, ${CNT} AS idx, S.verb,`
-										.split('\n').concat([
-										`        S.value, S.tag, S.label, S.description`,
-										"FROM    (",
-										"    SELECT Q.* FROM (",
-										`         SELECT  (S.score+(S.score/S.len)) AS score, ${VERB}, S.value,`,
-										`                 ${TG}, S.label, S.description`,
-										"         FROM    ("
-										]);
-								END = [ `         ) AS S, (SELECT ${CQY}) C`,
-									  	"    ) AS Q ORDER BY Q.score DESC",
-									  	`) AS S`,
-									  	":LIMIT: :PAGE:"];
-							// Build & Return Query ---------------------------------------- //
-								return BEG.concat(QRY.map(v=>`${SP}${v}`),END);
-						},
-				spars = function sparse() { 
-							return function Parse(res) {
-								var RQ  = this.RQ, QY = this.QY,
-									all = FJS(res),
-									IDs = [], obj, avg, MAP, C, ret,
-									cat = Imm.Map({ user: 'user' }), 
-									sgl = !!eval(QY.single),
-									dls = Imm.List([]);
-									dmp = Imm.Map({});
-								// ------------------------------------------------------------
-									obj = 	all .slice(1).groupBy(v=>v.get('user_id'));
-									MAP = 	obj.map(v=>v.get(0));
-											C = MAP.size;
-									avg =  (MAP .reduce((s,v)=>s+v.get('score'),0)/C);
-									ret =	MAP	.filter(r=>((r.get('score')/avg)>=.6));
-								// ------------------------------------------------------------
-									if (IDs = ret.keySeq().toArray(), IDs) { 
-										var qry = `?${[ 'to=["payload","result"]',
-														`single=${sgl}`,
-														`links=["${[
-															'photos',
-															'identity',
-															'settings',
-														].join('","')}"]`,
-														'as=item',
-													].join('&')}`,
-											prm = `:uids:${IDs.join(';')}`;
-										cat.map((l,c)=>{
-											var lnk = `/${l}/${prm}${qry}`;
-											RQ.links[c]=SQL.SOCKET({ link: lnk });
-										});
-									};
-								// ------------------------------------------------------------
-									ret = 	ret.set('terms', all.get(0,dmp).get('multi',dls));
-								// ------------------------------------------------------------
-									return 	ret.toJS();
+										ret = ret.set('terms', trm);
+									// ------------------------------------------------------------
+										return 	ret.toJS();
+								};
 							};
-						},
-				repsq = function sanitizers(v) { return v.replace(/'/g,"\\'"); },
-				SSIG  = "Stripe-Signature";
 
 		/////////////////////////////////////////////////////////////////////////////////////
 		
-		PT.L.JSON_ARRAY  =  PT.L.Int({ join: ',', enclosed: ["'[","]'"], min: 1 });
-		PT.O.JSON_SETS   =  (new PType({ 
-								name: 'Set', type: 'Object', 
-								iterable: true,  sanitizers(v) {
-									// ------------------------------------- 
-										if (UoN(v)) return null;
-										if (CNAME(v)!=='Object') return null;
-										if (UoN(v.K)||UoN(v.V)) return null;
-									// ------------------------------------- 
-									let THS = this;
-									// -------------------------------------
-										v.K = PT.Int.sanitize(v.K);
-										v.V = PT.Int.sanitize(v.V);
-									// ------------------------------------- 
-										if (UoN(v.K)||UoN(v.V)) return null;
-									// -------------------------------------
-										return `'$.${v.K}','${v.V}'`;
-								},
-							}))({ join: ',' });
-		PT.O.JSON_REMS   =  PT.L.Int({ join: ',', map(v) { return `'$.${v}'`; } })
-		PT.L.JSON_EDITS  =  (new PType({ 
-								name: 'Edits', type: 'Number', 
-								iterable: false,  sanitizers(v) {
-									let THS = this, 
-										col = THS.tags[0],
-										val = PT.L.Leveled.sanitize(v),
-										set = PT.O.JSON_SETS.sanitize(val[0]),
-										rem = PT.O.JSON_REMS.sanitize(val[1]),
-										res = null;
-									if (!!set||!!rem) {
-										res = (!!set ? `JSON_SET(${col},${set})`: col);
-										if (!!rem) res = `JSON_REMOVE(${res},${rem})`;	
-									};	return res;
-								},
-							}))({ tags: ['t.column'] });
-		PT.SearchTerm	 = 	(new PType({
-								name: 'Text', type: 'String', iterable: false, 
-								sanitizers(v) {
-										if (UoN(v)) return;
-									// ------------------------------------------------------------
-										function ftxts(term) { 
-											let x =[/\w+/g, /("(?:\\"|[^"])+")/g],
-												a = term.match(x[1])||[],
-												r =[term.replace(x[1],'')
-														.replace(/([;.-]+|\b(the|of)\b)/g,' ')
-														.split(/[,\s]+/)
-														.filter((v,i)=>!!v&&!a.has(v))
-														.join(', ')
-														.replace(/(\b\S{3,}\b)(?!,)/g, '+(<$1* >"$1")')
-														.replace(/(\b\S{3,}\b),/g, '+"$1"')
-														.replace(/(\b\S{1,2}\b),/g, '$1'),
-													(!!a.length?a.join(' +'):'')
-														.replace(/(^.+$)/,'+$1')];
-											return r.filter(v=>!!v).join(' ');
-										}
-									// ------------------------------------------------------------
-									let mch = v.match(/^[^\s\d]{0,3}(\d+(,\d{2,3})*([.]\d{2})?)( [A-Z]{1,3}|)$/);
-									// ------------------------------------------------------------
-										return [(!!mch ? mch[0] : ftxts(v)), v];
-								}
-							}));
-		PT.StripeID 	 =	PT.Text({ regex: /^(acct_[\w\d]+|ACCOUNT_DELETED)$/ });
-		PT.L.StripeID 	 =	PT.StripeID.extend({ iterable: true });
+			PT.L.JSON_ARRAY  =  PT.L.Int({ join: ',', enclose: ["'[","]'"], min: 1 });
+			PT.O.JSON_SETS   =  (new PType({ 
+									name: 'Set', type: 'Object', 
+									iterable: true,  sanitizers(v) {
+										// ------------------------------------- 
+											if (UoN(v)) return null;
+											if (CNAME(v)!=='Object') return null;
+											if (UoN(v.K)||UoN(v.V)) return null;
+										// ------------------------------------- 
+										let THS = this;
+										// -------------------------------------
+											v.K = PT.Int.sanitize(v.K);
+											v.V = PT.Int.sanitize(v.V);
+										// ------------------------------------- 
+											if (UoN(v.K)||UoN(v.V)) return null;
+										// -------------------------------------
+											return `'$.${v.K}','${v.V}'`;
+									},
+								}))({ join: ',' });
+			PT.O.JSON_REMS   =  PT.L.Int({ join: ',', map(v) { return `'$.${v}'`; } });
+			PT.L.JSON_EDITS  =  (new PType({ 
+									name: 'Edits', type: 'Number', 
+									iterable: false,  sanitizers(v) {
+										let THS = this, 
+											col = THS.tags[0],
+											val = PT.L.Leveled.sanitize(v),
+											set = PT.O.JSON_SETS.sanitize(val[0]),
+											rem = PT.O.JSON_REMS.sanitize(val[1]),
+											res = null;
+										if (!!set||!!rem) {
+											res = (!!set ? `JSON_SET(${col},${set})`: col);
+											if (!!rem) res = `JSON_REMOVE(${res},${rem})`;	
+										};	return res;
+									},
+								}))({ tags: ['t.column'] });
+			PT.SearchTerm	 = 	(new PType({
+									name: 'Text', type: 'String', iterable: false, 
+									sanitizers(v) {
+											if (UoN(v)) return;
+										// ------------------------------------------------------------
+											function ftxts(term) { 
+												let x =[/\w+/g, /("(?:\\"|[^"])+")/g],
+													a = term.match(x[1])||[],
+													r =[term.replace(x[1],'')
+															.replace(/([;.-]+|\b(the|of)\b)/g,' ')
+															.split(/[,\s]+/)
+															.filter((v,i)=>!!v&&!a.has(v))
+															.join(', ')
+															.replace(/(\b\S{3,}\b)(?!,)/g, '+(<$1* >"$1")')
+															.replace(/(\b\S{3,}\b),/g, '+"$1"')
+															.replace(/(\b\S{1,2}\b),/g, '$1'),
+														(!!a.length?a.join(' +'):'')
+															.replace(/(^.+$)/,'+$1')];
+												return r.filter(v=>!!v).join(' ');
+											}
+										// ------------------------------------------------------------
+										let mch = v.match(/^[^\s\d]{0,3}(\d+(,\d{2,3})*([.]\d{2})?)( [A-Z]{1,3}|)$/);
+										// ------------------------------------------------------------
+											return [(!!mch ? mch[0] : ftxts(v)), v];
+									}
+								}));
+			PT.StripeID 	 =	PT.Text({ regex: /^(acct_[\w\d]+|ACCOUNT_DELETED)$/ });
+			PT.CustomerID 	 =	PT.Text({ regex: /^(cus_[\w\d]+|ACCOUNT_DELETED)$/  });
+			PT.PayMethID 	 =	PT.Text({ regex: /^pm_[\w\d]+$/ });
 
 		/////////////////////////////////////////////////////////////////////////////////////
 		return { 
@@ -290,6 +315,7 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 									.AddVersion('QHIDE',  { Desc: { hidden: true } }),
 						UIDs: 		new GNParam({
 										Name:	 	'User IDs',
+										Aliases:	['Who'],
 										Default: 	 0,
 										Format 		(cls) { return cls.uids; },
 										Desc: 		new GNDescr({
@@ -300,7 +326,15 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 											to: 'path',
 										})
 									})
-									.AddVersion('QUERY', { Desc: { required: true, to: 'query' } }),
+									.AddVersion('QUERY', { Desc: { required: true, to: 'query' } })
+									.AddVersion('EMPTY', { Desc: { type: PT.L.Int }, Default: '' })
+									.AddVersion('EMREQ', { Desc: { required: true }, }, 'EMPTY')
+									.AddVersion('EMQRY', { Desc: { to: 'query' } }, 'EMPTY')
+									.AddVersion(  'WHO', {
+										Name:	 'Who',
+										Format 	 (cls) { return cls.who; },
+										Default: null,
+									}, 'EMPTY', true),
 						MD5: 		new GNParam({
 										Name:	 	'MD5 Checksum',
 										Default: 	'',
@@ -378,29 +412,22 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 										Desc: 	 { description: "Confirms a new {{<<NAME>>}}" }
 									}),	
 						FirstName: 	new GNParam({
-										Name:	 'First Name',
-										Default: '',
-										Format 	 (cls) { return cls.firstname; },
-										Desc: 	 new GNDescr({
+										Name:	 	'First Name',
+										Aliases:	['LastName'],
+										Default: 	'',
+										Format 	 	(cls) { return cls.firstname; },
+										Desc: 	 	new GNDescr({
 											type: PT.Name, 
 											description: "The user's {{<<NAME>>}}", 
-											matches: { '<<NAME>>': `Updates the {{<<NAME>>}} of the {{User}} (([A-z0-9 .-]))` },
+											matches: { '<<NAME>>': `The {{<<NAME>>}} of the {{User}} (([A-z0-9 .-]))` },
 											required: false,
 											to: 'query', 
 										})
-									}),
-						LastName: 	new GNParam({
-										Name:	 'Last Name',
-										Default: '',
-										Format 	 (cls) { return cls.lastname; },
-										Desc: 	 new GNDescr({
-											type: PT.Name, 
-											description: "The user's {{<<NAME>>}}", 
-											matches: { '<<NAME>>': `Updates the {{<<NAME>>}} of the {{User}} (([A-z0-9 .-]))` },
-											required: false,
-											to: 'query', 
-										})
-									}),
+									})
+									.AddVersion('LastName', {
+										Name:	 	'Last Name',
+										Format 	 	(cls) { return cls.lastname; },
+									},	null, true),
 						BirthDate: 	new GNParam({
 										Name:	 'Birth Date',
 										Default: '',
@@ -449,6 +476,102 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 											to: 'query', 
 										})
 									}),
+					// ADDRESS ==================================================================
+						Line1:		new GNParam({
+										Name: 		'Line 1',
+										Aliases:	['Line2'],
+										Default: 	null,
+										Format 		(cls) { return cls.line1; },
+										Desc: 	 	new GNDescr({
+											type: PT.Street,
+											description: "<<NAME>> of an Address Street", 
+											required: false, 
+											matches: { 'Street': 'An {{Address\'s}} {{Street}}, {{Unit #}}, etc.' },
+											to: 'query',
+										})
+									})
+									.AddVersion('Required', {
+										Desc: { required: true },
+									})
+									.AddVersion('Line2', {
+										Name:	 'Line 2',
+										Format 	 (cls) { return cls.line2; },
+									},	null, true),
+						City:		new GNParam({
+										Name: 		'City',
+										Aliases:	['State','Region'],
+										Default: 	null,
+										Format 		(cls) { return cls.city; },
+										Desc: 	 	new GNDescr({
+											type: PT.Place,
+											description: "A valid {{<<NAME>>}}", 
+											required: false, 
+											to: 'query',
+										})
+									})
+									.AddVersion('Required', {
+										Desc: { required: true },
+									})
+									.AddVersion('State', {
+										Name:	 'State',
+										Format 	 (cls) { return cls.state; },
+									},	null, true)
+									.AddVersion('Region', {
+										Name:	 'Region',
+										Format 	 (cls) { return cls.region; },
+									},	null, true),
+						Postal_Code:new GNParam({
+										Name: 		'Postal/Zip Code',
+										Aliases:	['Zip'],
+										Default: 	null,
+										Format 		(cls) { return cls.postal_code; },
+										Desc: 	 	new GNDescr({
+											type: PT.Postal,
+											description: "A valid {{Postal/Zip Code}}", 
+											required: false, 
+											to: 'query',
+										})
+									})
+									.AddVersion('Required', {
+										Desc: { required: true },
+									})
+									.AddVersion('Zip', {
+										Name:	 'Zip Code',
+										Format 	 (cls) { return cls.zip; },
+									}),
+						CCode: 		new GNParam({
+										Name: 	 	'Country Code',
+										Aliases: 	['Country'],
+										Default: 	null,
+										Format 	 	(cls) { return cls.ccode; },
+										Desc: 	 	new GNDescr({
+											type: PT.CCode, 
+											description: "A valid 2-Digit {{<<NAME>>}}",
+											required: false, 
+											to: 'query', 
+										})
+									})
+									.AddVersion('Required', {
+										Desc: { required: true },
+									})
+									.AddVersion('Country', {
+										Name:	 'Country',
+										Format 	 (cls) { return cls.country; },
+									},	null, true),
+						Phone: 		new GNParam({
+										Name: 	 	'Phone Number',
+										Default: 	null,
+										Format 	 	(cls) { return cls.phone; },
+										Desc: 	 	new GNDescr({
+											type: PT.Phone, 
+											description: "A valid 10-15 Digit {{<<NAME>>}}",
+											required: false, 
+											to: 'query', 
+										})
+									})
+									.AddVersion('Required', {
+										Desc: { required: true },
+									}),
 					// DISTINCTIONS =============================================================
 						Age: 		new GNParam({
 										Name:		'Age',
@@ -482,7 +605,13 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 										})
 									})
 									.AddVersion('SEARCH', { 
-										Desc: { type: PT.L.Text({ selects: optns.Sex }) },
+										Default  	(   ) { return "'[]'"; },
+										Desc:       { 
+											type: 	PT.L.Int({ 
+														selects: optns.Sex.map((v,i)=>(v.value=i+1,v)),
+														enclose: ["'[","]'"], join: ',',
+													}) 
+											},
 									})
 									.AddVersion('SEARCH_HID', { 
 										Desc: { hidden: true },
@@ -497,11 +626,16 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 											required: false, 
 											matches: { 'Marital Status': 'Matches the {{Marital Status}} of the {{User}} ((M|R|S))' },
 											to: 'query', 
-											// style: 'half', 
 										})
 									})
 									.AddVersion('SEARCH', { 
-										Desc: { type: PT.L.Text({ selects: optns.Marital }) },
+										Default  	(   ) { return "'[]'"; },
+										Desc:       { 
+											type: 	PT.L.Int({ 
+														selects: optns.Marital.map((v,i)=>(v.value=i+1,v)),
+														enclose: ["'[","]'"], join: ',',
+													}) 
+											},
 									})
 									.AddVersion('SEARCH_HID', { 
 										Desc: { hidden: true },
@@ -562,7 +696,7 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 									})
 									.AddVersion('LOCALE', { 
 											Default  (   ) { return ["AND JSON_CONTAINS(","    JSON_KEYS(d.profile_hobbies),","    JSON_QUOTE(CONVERT(h.hobby_id,CHAR(5)",")))"].join(`\n${'    '.dup(11)}`); },
-											Desc: 	 { type: PT.L.Int({ join: ',', enclosed: ["AND h.hobby_id IN (",")"], min: 1 }) } 
+											Desc: 	 { type: PT.L.Int({ join: ',', enclose: ["AND h.hobby_id IN (",")"], min: 1 }) } 
 										})
 									.AddVersion('SEARCH', { 
 											Desc: 	{ to: 'query' } 
@@ -607,7 +741,7 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 									})
 									.AddVersion('LOCALE', { 
 											Default  (   ) { return ["AND JSON_CONTAINS(","    JSON_KEYS(d.profile_languages),","    JSON_QUOTE(CONVERT(l.language_id,CHAR(5)",")))"].join(`\n${'    '.dup(11)}`); },
-											Desc: 	 { type: PT.L.Int({ join: ',', enclosed: ["AND l.language_id IN (",")"], min: 1 }) } 
+											Desc: 	 { type: PT.L.Int({ join: ',', enclose: ["AND l.language_id IN (",")"], min: 1 }) } 
 										})
 									.AddVersion('SEARCH', { 
 											Desc: 	{ to: 'query' } 
@@ -640,7 +774,7 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 									})
 									.AddVersion('LOCALE', { 
 										Default  (   ) { return ["AND JSON_CONTAINS(","d.profile_nationalities,","n.nationality_id)"].join(`\n${' '.dup(5)}${'    '.dup(10)}`); },
-										Desc: 	 { type: PT.L.Int({ join: ',', enclosed: ["AND n.nationality_id IN (",")"], min: 1 }) } 
+										Desc: 	 { type: PT.L.Int({ join: ',', enclose: ["AND n.nationality_id IN (",")"], min: 1 }) } 
 									})
 									.AddVersion('SEARCH', { 
 										Desc: 	{ to: 'query' } 
@@ -679,7 +813,7 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 									})
 									.AddVersion('LOCALE', { 
 										Default  (   ) { return 'AND r.religion_id = d.profile_religion'; },
-										Desc: 	 { type: PT.L.Int({ join: ',', enclosed: ["AND r.religion_id IN (",")"], min: 1 }) } 
+										Desc: 	 { type: PT.L.Int({ join: ',', enclose: ["AND r.religion_id IN (",")"], min: 1 }) } 
 									})
 									.AddVersion('SEARCH', { 
 										Desc: 	{ to: 'query' } 
@@ -714,7 +848,7 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 									})
 									.AddVersion('LOCALE', { 
 										Default  (   ) { return 'AND o.orient_id = d.profile_orient'; },
-										Desc: 	 { type: PT.L.Int({ join: ',', enclosed: ["AND o.orient_id IN (",")"], min: 1 }) } 
+										Desc: 	 { type: PT.L.Int({ join: ',', enclose: ["AND o.orient_id IN (",")"], min: 1 }) } 
 									})
 									.AddVersion('SEARCH', { 
 										Desc: 	{ to: 'query' } 
@@ -749,7 +883,7 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 									})
 									.AddVersion('LOCALE', { 
 										Default  (   ) { return 'AND g.gender_id = d.profile_identity'; },
-										Desc: 	 { type: PT.L.Int({ join: ',', enclosed: ["AND g.gender_id IN (",")"], min: 1 }) } 
+										Desc: 	 { type: PT.L.Int({ join: ',', enclose: ["AND g.gender_id IN (",")"], min: 1 }) } 
 									})
 									.AddVersion('SEARCH', { 
 										Desc: 	{ to: 'query' } 
@@ -852,7 +986,12 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 											'Service Description':'Matches the {{Description}} of the {{Provider Service}}, (([A-z0-9,/.-]+))',
 										} 	} 	})
 									.AddVersion('Services',      { Name: 'Service' })
-									.AddVersion('TZ',            { Name: 'Timezone', Format(cls) { return cls.term||''; } })
+									.AddVersion('TZ',            { 
+										Name: 	'Timezone', 
+										Format	(cls) { return cls.term||''; },
+										Desc:	{ 
+											type: PT.NoSpace, required: false
+										} 	})
 									.AddVersion('Suggestions',   { 
 										Name: 'Suggest', Desc: { matches: {
 											'Service Type': 		'Matches the {{Service Type}} (([A-z0-9,/.-]+))',
@@ -873,6 +1012,7 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 										Default: '',
 										Format 	 (cls) {
 											let trms = Imm.Map(cls.terms);
+											console.log(`TERMS: ${trms}`)
 											trms.map((V,K)=>(cls[cntxp[K]]=V.join(ORS)));
 											return null;
 										},
@@ -932,6 +1072,18 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 										Default: '{}',
 										Format   (cls) { return JSON.stringify(cls.context); },
 										Desc: 	 { type: PT.L.Multi } 
+									}),
+						In: 		new GNParam({
+										Name:		'In',
+										Default:	null,
+										Format		(cls) { return cls.in; },
+										Desc: 		new GNDescr({
+											type: 	PT.Text({ selects: ['city','region','country'] }), 
+											description: "The {{Locale Section}} to Search in", 
+											required: false, 
+											matches: { 'Locale Section': 'Matches either {{city}}, {{region}}, or {{country}}' },
+											to: 'query', 
+										})
 									}),
 						RawTerm: 	new GNParam({
 										Name:	 'Raw Search Term',
@@ -1024,18 +1176,28 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 										})
 									})
 									.AddVersion('HIDE', { Desc: { hidden: true } }), 
-						STRPIDs:	new GNParam({
-										Name:	 	'Stripe IDs',
-										Default: 	 '',
-										Format 		(cls) { return cls.strpids; },
-										Desc: 		new GNDescr({
-											type: PT.L.StripeID({ join: ',' }), 
-											description: 'A semi-colon-separated list of valid {{<<NAME>>}}',
-											required: null, 
-											matches: { '<<NAME>>': 'Matches ANY of the {{<<NAME>>}} Items ((acct_[A-z0-9]))' },
-											to: 'path',
+						CUSTID: 	new GNParam({
+										Name: 	 'Stripe ID',
+										Default:  null,
+										Format	 (cls) { return cls.custid; },
+										Desc: 	 new GNDescr({
+											type: PT.CustomerID,
+											description: "A Transactional User's {{<<NAME>>}}",
+											required: true, to: "query", 
 										})
-									}),
+									})
+									.AddVersion('HIDE', { Desc: { hidden: true } }), 
+						PMID: 		new GNParam({
+										Name: 	 'Payment Method ID',
+										Default:  null,
+										Format	 (cls) { return cls.pmid; },
+										Desc: 	 new GNDescr({
+											type: PT.PayMethID,
+											description: "A {{<<NAME>>}}",
+											required: true, to: "query", 
+										})
+									})
+									.AddVersion('HIDE', { Desc: { hidden: true } }), 
 						SID: 		new GNParam({
 										Name:	 	'Service ID',
 										Default: 	 0,
@@ -1097,7 +1259,7 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 										Default  	(   ) { return 'NULL'; },
 										Format 		(cls) { return cls.cids; },
 										Desc: 		new GNDescr({
-											type: PT.L.Text({ selects: optns.SvcType, join: `,`, enclose: [`'[`,`]'`] }),
+											type: PT.L.Text({ join: `,`, enclose: [`'[`,`]'`] }),
 											description: `A semi-colon-separated list of valid {{<<NAME>>s}}`,
 											matches: { '<<NAME>>': 'Matches a valid {{<<NAME>>}} (((?:[0-9]+;?)+))' },
 											required: false, 
@@ -1173,7 +1335,6 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 											required: true, 
 											matches: { '<<NAME>>': 'Matches a valid {{<<NAME>>}} ((0[0-9]{4}))' },
 											to: 'query', 
-											// style: 'half', 
 										})
 									})
 									.AddVersion('EDIT', { 
@@ -1182,13 +1343,17 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 										})
 									.AddVersion('SEARCH', { 
 											Default  	(   ) { return 'NULL'; },
+											Format		(cls) { 
+												let styp = cls.svctype;
+												return styp ? `'${styp}'` : null; 
+											},
 										},	'EDIT')
 									.AddVersion('SEARCH_HID', { 
 											Desc: { hidden: true },
 										}, 	'SEARCH'),
 						SvcCharge:	new GNParam({
 										Name: 		'SvcCharge',
-										Default: 	 0.00,
+										Default: 	 '',
 										Format   	(cls) { return cls.svccharge; },
 										Desc: 		{
 											type: PT.Float({ min: 0.00, step: 0.10 }), 
@@ -1204,7 +1369,18 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 											Desc: 		{ required: false },
 										})
 									.AddVersion('SEARCH', { 
-											Desc: { type: PT.CRange({ tags: ['VC-','VC+'], min: 0.00, step: 0.10 }) },
+											Desc: { 
+												type: 	PT.CRange({ 
+															tags: ['VC-','VC+'], min: 0.00, step: 0.10 
+														}).extend({
+															name: 'SvcCharge', 
+															sanitizers(v) { 
+																if (!!!v) return v;
+																try { return JSON.parse(`[${v}]`); } 
+																catch(e) { return v; };	
+															}
+														})
+											},
 										},	'EDIT')
 									.AddVersion('SEARCH_HID', { 
 											Desc: { hidden: true },
@@ -1212,27 +1388,98 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 						SvcRate:	new GNParam({
 										Name:		'Service Rate',
 										Default: 	'Free',
-										Format		(cls) { return `'${cls.svcrate}'`; },
+										Format		(cls) { return cls.svcrate; },
 										Desc: 		new GNDescr({
 											type: 	PT.Text({ selects: optns.SvcRate }), 
-											description: "The provider's {{Rate}}", 
+											description: "The provider's Service {{Rate}}", 
 											required: true, 
-											matches: { 'Rate': 'Matches the {{Rate}} of the {{Service}} ((Free|Flat|Hourly|Daily|Monthly|Quote))' },
+											matches: { 
+												'Rate': 'Matches the {{Rate}} of the {{Service}} ((Free|Flat|Hourly|Daily|Monthly|Quote))' 
+											},
 											to: 'query', 
-											// style: 'half', 
 										})
 									})
 									.AddVersion('EDIT', { 
 											Default: 	'',
-											Format		(cls) { return cls.svcrate; },
 											Desc: 		{ required: false },
 										})
 									.AddVersion('SEARCH', { 
-											Default  	(   ) { return 'NULL'; },
+											Default  (   ) { return 'NULL'; },
+											Desc:    { type: PT.Text({ 
+												selects: optns.SvcRate.map((v,i)=>(v.value=i+1,v)) 
+											}), } 
 										},	'EDIT')
 									.AddVersion('SEARCH_HID', { 
 											Desc: { hidden: true },
 										}, 	'SEARCH'),
+						SvcInteract:new GNParam({
+										Name:		'Service Interaction Method',
+										Default: 	1,
+										Format		(cls) { return cls.svcinteract; },
+										Desc: 		new GNDescr({
+											type: 	PT.Int({ selects: optns.SvcInteract }), 
+											description: "The provider's Service {{Interaction Method}}", 
+											required: true, 
+											matches: { 
+												'Interaction': 'Matches the {{Interaction Method}} of the {{Service}} ((In-Person|Mobile|Correspondence|Shipment))' 
+											},
+											to: 'query', 
+										})
+									})
+									.AddVersion('EDIT', { 
+											Default: 	0,
+											Desc: 		{ required: false },
+										}),
+						SvcQUnit:   new GNParam({
+										Name:		'Service Interaction Method',
+										Default: 	'NULL',
+										Format		(cls) { return cls.svcqunit; },
+										Desc: 		new GNDescr({
+											type: 	PT.Text({ 
+														regex: /^\b(?:\w[\w\/-]+\b *)+\b$/ 
+													}).extend({ sanitizers(v) { 
+														return !!v?`'${v}'`:'';
+													}	}), 
+											description: "The provider's Service {{<<NAME>>}}", 
+											required: false, 
+											matches: { 
+												'{{<<NAME>>}}': 'Matches the {{<<NAME>>}} of the {{Service}} ((^\\b([\\w\\/-]+ *)+\\b$))' 
+											},
+											to: 'query', 
+										})
+									}),
+						SvcQStep:   new GNParam({
+										Name:		'Quantity Multiple',
+										Aliases: 	['SvcQMin','SvcQMax'],
+										Default: 	 1,
+										Format		(cls) { return cls.svcqstep; },
+										Desc: 		new GNDescr({
+											type: 	PT.Float({ min: 0.25, step: 0.25 }), 
+											description: "The Provider Service's {{<<NAME>>}}", 
+											required: false, 
+											matches: { 
+												'{{<<NAME>>}}': 'Matches the {{<<NAME>>}} of the {{Service}} (([1-9]\\d*))' 
+											},
+											to: 'query', 
+										})
+									})
+									.AddVersion('QMIN', {
+										Name:	 'Quantity Minimum',
+										Format 	 (cls) { return cls.svcqmin; },
+									}, 	null, true)
+									.AddVersion('QMAX', {
+										Name:	 'Quantity Maximum',
+										Format 	 (cls) { return cls.svcqmax; },
+									}, 	null, true)
+									.AddVersion('EDIT', {
+										Default  (   ) { return 0; },
+									})
+									.AddVersion('MN_EDIT', {
+										Default  (   ) { return 0; },
+									}, 	'QMIN', true)
+									.AddVersion('MX_EDIT', {
+										Default  (   ) { return 0; },
+									}, 	'QMAX', true),
 						SCID:		new GNParam({
 										Name:	 'Document ID',
 										Default:  0,
@@ -1257,6 +1504,28 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 								to: 'path',
 							})
 						}),
+						Exp_Month:	new GNParam({
+										Name:	 	'Expiry Month',
+										Default: 	null,
+										Format	 	(cls) { return cls.exp_month; },
+										Desc: 	 	new GNDescr({
+											type: PT.Int({ min: 1, max: 12 }), 
+											description: 'A valid {{<<NAME>>}}', 
+											required: false, 
+											to: 'query',
+										})
+									}),
+						Exp_Year:	new GNParam({
+										Name:	 	'Expiry Year',
+										Default: 	null,
+										Format	 	(cls) { return cls.exp_year; },
+										Desc: 	 	new GNDescr({
+											type: PT.Int({ min: YEAR(), max: YEAR()+20 }), 
+											description: 'A valid {{<<NAME>>}}', 
+											required: false, 
+											to: 'query',
+										})
+									}),
 						SCPage:  	new GNParam({
 										Name:		'Service-File Page',
 										Default: 	 1, 
@@ -1390,10 +1659,11 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 									}),
 					// MISC =====================================================================
 						Name:		new GNParam({
-										Name: 	 'Page Name',
-										Default: '',
-										Format 	 (cls) { return cls.name; },
-										Desc: 	 new GNDescr({
+										Name: 	 	'Page Name',
+										Aliases:	['Nickname'],
+										Default: 	'',
+										Format 	 	(cls) { return cls.name; },
+										Desc: 	 	new GNDescr({
 											type: PT.NoWrap, 
 											description: "The content's {{<<NAME>>}}", 
 											matches: { '<<NAME>>': 'Matches the name of the {{<<NAME>>}} ((\\b[\\w-]+\\b))' },
@@ -1407,7 +1677,26 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 											description: "The service {{<<NAME>>}}",
 											to: "query",
 										}
-									}),
+									})
+									.AddVersion('Card', {
+										Name: 	 'Credit Card Nickname',
+										Format 	 (cls) { return cls.nickname; },
+										Desc: 	 {
+											description: "The user's {{<<NAME>>}}",
+											to: "query",
+										}
+									})
+									.AddVersion('Name', {
+										Name:	 	'Full Name',
+										Format 	 	(cls) { return cls.name; },
+										Desc:		{
+											type: PT.Name, 
+											description: "The user's {{<<NAME>>}}", 
+											matches: { '<<NAME>>': `The {{<<NAME>>}} of the {{User}} (([A-z0-9 .-]))` },
+											required: false,
+											to: 'query', 
+										},
+									},	null, true),
 						Location: 	new GNParam({
 										Name: 	 'URL Location',
 										Default: '',
@@ -1432,21 +1721,9 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 											to: 'query', 
 										})
 									}),
-						CCode: 		new GNParam({
-										Name: 	 'Country Code',
-										Default: '',
-										Format 	 (cls) { return cls.ccode; },
-										Desc: 	 new GNDescr({
-											type: PT.Text({ regex: /^[A-Z]{2}$/ }), 
-											description: "The user's {{<<NAME>>}}",
-											matches: { '<<NAME>>': 'The {{<<NAME>>}} of the {{User}} (([A-Z]{2}))' },
-											required: true, 
-											to: 'query', 
-										})
-									}),
 						UserFlag:	new GNParam({
 										Name:	 'User Flag',
-										Aliases: ['Provider','Transact'],
+										Aliases: ['Provider','Transact','SvcQuant'],
 										Default  (   ) { return -1; },
 										Format 	 (cls) { return cls.userflag; },
 										Desc: 	 new GNDescr({
@@ -1464,7 +1741,18 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 									.AddVersion('Transact', {
 										Name:	 'Transactional Status',
 										Format 	 (cls) { return cls.transact; },
-									}),
+									})
+									.AddVersion('SVCQEDIT', {
+										Name:	 'Quantified Status',
+										Format 	 (cls) { return cls.svcquant; },
+										Desc:	 {
+											description: "The provider Service's {{Quantified Status}}",
+											matches: { '<<NAME>>': 'Updates the {{<<NAME>>}} of the {{Service}} ((0|1|true|false))' },
+										}
+									})
+									.AddVersion('SVCQUANT', {
+										Default:  0,
+									}, 	'SVCQEDIT'),
 						Bucket: 	new GNParam({
 										Name:	 'Bucket',
 										Default: 'profile',
@@ -1799,7 +2087,7 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 							Sub: 		['for'],
 							Methods: 	Docs.Kinds.GET,
 							GET			() { return {
-								Scheme: 	'/(:term([\\w\\d% ,;.-]+)(?:/:in((?:(?:city|region|country)(?=;|$))*))?)/',
+								Scheme: 	'/:term([\\w\\d% ,;.-]+)(?:/:in((?:(?:city|region|country)(?=;|$))*))?/',
 								Limits: 	["Constant/Second"],
 								Doc: 		{
 									Headers: 	{ Token: true },
@@ -2055,7 +2343,11 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 						Key: 		'user_id'
 					}),
 				},
-				Errors: 	{ /* BAD_REQ: ['/'] */ }
+				Errors: 	{ 
+					BAD_REQ: [
+						'/for/languages/'
+					] 
+				}
 			},
 			User: 			{
 				Actions: 	{
@@ -2095,7 +2387,7 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 						Methods: 	Docs.Kinds.PUT,
 						PUT			() { return {
 							Merge: 		true,
-							Scheme: 	'/', // $# '/:uids(\\d*)/',
+							Scheme: 	'/',
 							Limits: 	["Tries/Second"],
 							Doc: 		{
 								Headers: 	{ Token: true },
@@ -2210,7 +2502,9 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 								"                   'language',   JSON_OBJECT(",
 								"                       'label', l.language_name,",
 								"                       'value', l.language_id),",
-								"                   'stripe_id',  s.stripe_id,",
+								"                   'stripe',     JSON_OBJECT(",
+								"                       'acct_id', s.stripe_acct_id,",
+								"                       'cust_id', s.stripe_cust_id),",
 								`                   'visibility', ${SQL.SOCKET({link:'/user/settings/visibility/:uids:%s',columns:['u.user_id']})}`,
 								"               ),",
 								"               '$.modes',               JSON_OBJECT(),",
@@ -2232,7 +2526,7 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 						};	},
 						PUT			() { return {
 							Merge: 		true,
-							Scheme: 	'/', // $# '/:uids(\\d*)/',
+							Scheme: 	'/',
 							Limits: 	["Tries/Second"],
 							Doc: 		{
 								Headers: 	{ Token: true },
@@ -2247,17 +2541,20 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 								"           s.language_id      = COALESCE(NULLIF( :LGID:,      -1), s.language_id),",
 								"           s.is_provider      = COALESCE(NULLIF( :PROVIDER:,  -1), s.is_provider),",
 								"           s.is_transactional = COALESCE(NULLIF( :TRANSACT:,  -1), s.is_transactional),",
-								"           s.stripe_id        = setStripeID(s.stripe_id,':STRPID:')",
+								"           s.stripe_acct_id   = setStripeID(s.stripe_acct_id,':STRPID:'),",
+								"           s.stripe_cust_id   = setStripeID(s.stripe_cust_id,':CUSTID:')",
 								"WHERE      s.user_fk IN (:UIDS:);",
 								":/User/Settings(GET):",
 							],
 							Params: 	{ 
+								UIDs: 		true, 
 								TZone: 		true,
 								LGID: 		true,
-								STRPID:   ['HIDE'],
 								Provider: ['Provider'],
-								Transact: ['Transact'], 
-								UIDs: 		true, 
+								Transact: ['Transact'],
+								STRPID:   ['HIDE'],
+								CUSTID:   ['HIDE'],
+								UUID:		true,
 								Single: 	true 
 							},
 						};	},
@@ -3046,7 +3343,7 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 							Params: 	{
 								UserName: 	['QUERY'],
 								FirstName: 	  true,
-								LastName: 	  true,
+								LastName: 	['LastName'],
 								BirthDate: 	  true,
 								LID: 		['SEARCH'], 
 								UIDs: 		  true, 
@@ -3128,7 +3425,10 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 								"                   'name',        ps.provider_svc_name,",
 								"                   'description', ps.provider_svc_descr,",
 								"                   'charge',      ps.provider_svc_charge,",
-								"                   'rate',        ps.provider_svc_rate",
+								"                   'rate',        ps.provider_svc_rate+0,",
+								"                   'interact',    JSON_VALUE(ps.provider_svc_attr,'$.interaction')+0,",
+								"                   'quantity',    JSON_QUERY(ps.provider_svc_attr,'$.quantity'),",
+								"                   'recurring',   JSON_VALUE(ps.provider_svc_attr,'$.recurring')+0",
 								"               )  SEPARATOR ',' :SVCLIMIT: :SVCPAGE:),",
 								"           ']')) AS services",
 								"FROM       user_provider_services AS ps",
@@ -3159,25 +3459,46 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 							},
 							Query: 		[
 								"INSERT INTO user_provider_services (",
-								"    user_provider_fk,   provider_svc_type,   provider_svc_name, ",
-								"    provider_svc_descr, provider_svc_charge, provider_svc_rate",
-								") SELECT p.provider_detail_id,':SVCTYPE:',NILLIF(':SVCNAME:',''),NULLIF(':SVCDESCR:',''),:SVCCHARGE:,':SVCRATE:'",
+								"    user_provider_fk, ",
+								"    provider_svc_type,   provider_svc_name, provider_svc_descr, ",
+								"    provider_svc_charge, provider_svc_rate, provider_svc_attr",
+								") SELECT p.provider_detail_id,",
+								"         ':SVCTYPE:',",
+								"         NILLIF(':SVCNAME:',''),",
+								"         NULLIF(':SVCDESCR:',''),",
+								"         :SVCCHARGE:, ':SVCRATE:',",
+								"         JSON_OBJECT(",
+								"             'interaction', :SVCINTERACT:,",
+								"             'quantity', JSON_OBJECT(",
+								"                 'enabled', :SVCQUANT:,",
+								"                 'unit', COALESCE(:SVCQUNIT:,'Item'),",
+								"                 'step', :SVCQSTEP:,",
+								"                 'min', :SVCQMIN:,",
+								"                 'max', :SVCQMAX:),",
+								"             'recurring', 0",
+								"         )",
 								"  FROM   user_provider_details p",
 								"  WHERE  p.user_fk = :UUID:",
 								":/Provider/Services(GET):",
 							],
 							Params: 	{
-								PDIDs:		true,
-								SvcName:    true,
-								SvcType:    true,
-								SvcDescr:   true,
-								SvcCharge:  true,
-								SvcRate:    true,
-								SvcLimit:   true,
-								SvcPage:    true,
-								Page:      ['SQL'],
-								Limit:     ['SQL'],
-								UUID:       true,
+								PDIDs:		 true,
+								SvcName:     true,
+								SvcType:     true,
+								SvcDescr:    true,
+								SvcCharge:   true,
+								SvcRate:     true,
+								SvcInteract: true,
+								SvcQuant:   ['SVCQUANT'],
+								SvcQUnit:    true,
+								SvcQStep:    true,
+								SvcQMin:    ['QMIN'],
+								SvcQMax:    ['QMAX'],
+								SvcLimit:    true,
+								SvcPage:     true,
+								Page:       ['SQL'],
+								Limit:      ['SQL'],
+								UUID:        true,
 							},
 						};	},
 						Key: 		'user_id',
@@ -3274,8 +3595,8 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 								Files: 		{
 									field:	'file',
 									max:	1,
-									dest 	(prm, bdy, file) { return `${bdy.bucket}/${prm.uid}`; 	},
-									name	(prm, bdy, file) { return `${file.originalname}`; 		}
+									dest 	(prm, bdy, _file) { return `${bdy.bucket}/${prm.uid}`; },
+									name	(_prm, _bdy, file) { return `${file.originalname}`; }
 								},
 								Examples: 	{
 									"/:sid:3": [
@@ -3583,7 +3904,10 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 								"                   'name',        ps.provider_svc_name,",
 								"                   'description', ps.provider_svc_descr,",
 								"                   'charge',      ps.provider_svc_charge,",
-								"                   'rate',        ps.provider_svc_rate",
+								"                   'rate',        ps.provider_svc_rate+0,",
+								"                   'interact',    JSON_VALUE(ps.provider_svc_attr,'$.interaction')+0,",
+								"                   'quantity',    JSON_QUERY(ps.provider_svc_attr,'$.quantity'),",
+								"                   'recurring',   JSON_VALUE(ps.provider_svc_attr,'$.recurring')+0",
 								"               )  SEPARATOR ',' :SVCLIMIT: :SVCPAGE:),",
 								"           ']')) AS services",
 								"FROM       user_provider_services AS ps",
@@ -3614,10 +3938,44 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 							Query: 		[
 								"UPDATE  user_provider_services s",
 								"JOIN    user_provider_details  p ON s.user_provider_fk = p.provider_detail_id",
-								"SET     s.provider_svc_name    = COALESCE(NULLIF(':SVCNAME:',  ''), s.provider_svc_name),",
-								"        s.provider_svc_descr   = COALESCE(NULLIF(':SVCDESCR:', ''), s.provider_svc_descr),",
-								"        s.provider_svc_charge  = COALESCE(        :SVCCHARGE:,      s.provider_svc_charge),",
-								"        s.provider_svc_rate    = COALESCE(NULLIF(':SVCRATE:',  ''), s.provider_svc_rate)",
+								"JOIN   (SELECT '$.interaction' `Int`,",
+								"               '$.quantity.enabled' `Flg`,",
+								"               '$.quantity.unit' `Unt`,",
+								"               '$.quantity.step' `Stp`,",
+								"               '$.quantity.min' `Min`,",
+								"               '$.quantity.max' `Max`,",
+								"               '$.recurring' `Rec`",
+								"        )  A ON TRUE",
+								"JOIN   (SELECT NULLIF(':SVCNAME:',  '') `name`,",
+								"               NULLIF(':SVCDESCR:', '') `desc`,",
+								"                       :SVCCHARGE:      `chrg`,",
+								"               NULLIF(':SVCRATE:',  '') `rate`,",
+								"               JSON_OBJECT(",
+								"                   'interaction', :SVCINTERACT:,",
+								"                   'quantity', JSON_COMPACT(",
+								`                       CONCAT("{", CONCAT_WS(",",`,
+								`                           IF(:SVCQUANT:>=0,CONCAT('"enabled":',:SVCQUANT:),NULL),`,
+								`                           IF(ISNULL(:SVCQUNIT:),NULL,CONCAT('"unit":"',:SVCQUNIT:,'"')),`,
+								`                           IF(:SVCQSTEP:>0,CONCAT('"step":',:SVCQSTEP:),NULL),`,
+								`                           IF(:SVCQMIN:>0,CONCAT('"min":',:SVCQMIN:),NULL),`,
+								`                           IF(:SVCQMAX:>0,CONCAT('"max":',:SVCQMAX:),NULL)`,
+								`                       ),  "}")),`,
+								"                   'recurring', 0",
+								"               ) `attr`",
+								"        )  V ON TRUE",
+								"SET     s.provider_svc_name    = COALESCE(V.name, s.provider_svc_name),",
+								"        s.provider_svc_descr   = COALESCE(V.desc, s.provider_svc_descr),",
+								"        s.provider_svc_charge  = COALESCE(V.chrg, s.provider_svc_charge),",
+								"        s.provider_svc_rate    = COALESCE(V.rate, s.provider_svc_rate),",
+								"        s.provider_svc_attr    = JSON_SET(s.provider_svc_attr,",
+								"            A.Int, COALESCE(JSON_VALUE(V.attr,A.Int),JSON_VALUE(s.provider_svc_attr,A.Int))+0,",
+								"            A.Flg, COALESCE(JSON_VALUE(V.attr,A.Flg),JSON_VALUE(s.provider_svc_attr,A.Flg))+0,",
+								"            A.Unt, COALESCE(JSON_VALUE(V.attr,A.Unt),JSON_VALUE(s.provider_svc_attr,A.Unt)),",
+								"            A.Stp, COALESCE(JSON_VALUE(V.attr,A.Stp),JSON_VALUE(s.provider_svc_attr,A.Stp))+0,",
+								"            A.Min, COALESCE(JSON_VALUE(V.attr,A.Min),JSON_VALUE(s.provider_svc_attr,A.Min))+0,",
+								"            A.Max, COALESCE(JSON_VALUE(V.attr,A.Max),JSON_VALUE(s.provider_svc_attr,A.Max))+0,",
+								"            A.Rec, COALESCE(JSON_VALUE(V.attr,A.Rec),JSON_VALUE(s.provider_svc_attr,A.Rec))+0",
+								"        )",
 								"WHERE   p.user_fk              =  :UUID:",
 								"AND     s.provider_svc_id     IN (:SIDS:);",
 								":/Service(GET):",
@@ -3628,6 +3986,12 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 								SvcDescr: 	['EDIT'],
 								SvcCharge: 	['EDIT'],
 								SvcRate: 	['EDIT'],
+								SvcInteract: true,
+								SvcQuant:   ['SVCQEDIT'],
+								SvcQUnit:    true,
+								SvcQStep:   ['EDIT'],
+								SvcQMin:    ['MN_EDIT'],
+								SvcQMax:    ['MX_EDIT'],
 								SvcLimit:    true,
 								SvcPage:     true,
 								Page: 		['SQL'],
@@ -4012,6 +4376,24 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 			Locale: 		{
 				Actions: 	{
 					// MISC    ==============================================================
+						CountryISO:		new RouteDB({
+							Methods: 	Docs.Kinds.GET,
+							GET			() { return {
+								Scheme: 	'/',
+								Doc: 		{
+									Headers: 	{ Token: true },
+									Examples: 	{},
+								},
+								Query: 		[
+									"SELECT   c.name `label`, c.iso `value`, '' `adjct`, '' `more`",
+									"FROM     locale_countries c",
+									"ORDER BY c.name"
+								],
+								Params: 	{ ID: true },
+							};	},
+							Links: 		[]
+						}),
+						// ==================================================================
 						Radius: 		new RouteDB({
 							Methods: 	Docs.Kinds.GET,
 							GET			() { return {
@@ -4059,7 +4441,7 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 							Sub: 		null,
 							Methods: 	Docs.Kinds.GET,
 							GET			() { return {
-								Scheme: 	'/:term(.+)?/',
+								Scheme: 	'(?:/:term(\\b[^\\n\\/]+\\b))?/',
 								Limits: 	["Constant/Second"],
 								Doc: 		{
 									Headers: 	{ Token: true },
@@ -4068,29 +4450,35 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 									},
 								},
 								Query (cls) {
-									var TZone = Object.keys(TZ.zones), 
-										pgx   = /[^\d]/g, tgx = /(\[|[.({/})?+]|\])/g,
+									console.log('CLS', cls)
+									// --------------------------------------------------------------- //
+									var TZone = Object.keys(TZ.zones), tgx = /(\[|[.({/})?+]|\])/g,
 										term  = new RegExp(`^(.*)(${cls.Term.replace(tgx,'\\$1')})(.*)$`),
-										page  = Number(cls.Page .replace(pgx,'')),
-										limit = Number(cls.Limit.replace(pgx,'')),
-										res   = [ null,
-											TZone	.filter(v=>!!v.match(term))
-													.map(v=>({ m: v.match(term), k: v }))
-													.map(v=>({ m: v.m[1]+v.m[3], k: v.k }))
-													.sort((a,b)=>{ 
-														switch (true) {
-															case a.m < b.m: return -1;
-															case a.m > b.m: return  1;
-															default:		return  0;
-														};	
-													})
-													.map(v=>v.k)
+										page  = cls.Page, limit = cls.Limit, res = [null,[]];
+									// --------------------------------------------------------------- //
+										function FilterTZ (Zones, term) {
+											if (!!!term) return Zones; 
+											else return Zones
+															.filter(v=>!!v.match(term))
+															.map(v=>({ m: v.match(term), k: v }))
+															.map(v=>({ m: v.m[1]+v.m[3], k: v.k }))
+															.sort((a,b)=>{ 
+																switch (true) {
+																	case a.m < b.m: return -1;
+																	case a.m > b.m: return  1;
+																	default:		return  0;
+																};	
+															})
+															.map(v=>v.k)	
+										};
+									// --------------------------------------------------------------- //
+										res[1] = FilterTZ(TZone, term)
 													.slice(page,limit)
 													.map(v=>({label:v,value:v}))
-										]; 	return res;
+										return res;
 								},
 								Params: 	{
-									Term: ['TZ'], Page: ['SQL'], Limit: ['SQL'], ID: true
+									Term: ['TZ'], Page: true, Limit: true, ID: true
 								},
 							};	},
 							Links: 		[],
@@ -4386,13 +4774,20 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 				},
 				Errors: 	{ BAD_REQ: [
 					'/with/',
-				] }
+					'/with/genders/\\D+/',
+					'/with/orientations/\\D+/',
+					'/with/religions/\\D+/',
+					'/with/nationalities/\\D+/',
+					'/with/languages/\\D+/',
+					'/with/hobbies/\\D+/',
+					'/with/services/\\D+/',
+					'/radius/',
+				] 	}
 			},
 			List: 			{
 				Actions: 	{
 					// ======================================================================
 					Rates: 			new RouteDB({
-						Sub: 		null,
 						Methods: 	Docs.Kinds.GET,
 						GET			() { return {
 							Scheme: 	'/',
@@ -4412,7 +4807,7 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 						Sub: 		null,
 						Methods: 	Docs.Kinds.GET,
 						GET			() { return {
-							Scheme: 	'/:cids((?:\\d+)(?=;|$))?/',
+							Scheme: 	'(?:/:cids((?:\\d+)(?=;|$)))?/',
 							Doc: 		{
 								Headers: 	{ Token: true },
 								Examples: 	{
@@ -4432,7 +4827,7 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 						Sub: 		null,
 						Methods: 	Docs.Kinds.GET,
 						GET			() { return {
-							Scheme: 	'/:gids((?:\\d+)(?=;|$))?/',
+							Scheme: 	'(?:/:gids((?:\\d+)(?=;|$)))?/',
 							Doc: 		{
 								Headers: 	{ Token: true },
 								Examples: 	{
@@ -4452,7 +4847,7 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 						Sub: 		null,
 						Methods: 	Docs.Kinds.GET,
 						GET			() { return {
-							Scheme: 	'/:oids((?:\\d+)(?=;|$))?/',
+							Scheme: 	'(?:/:oids((?:\\d+)(?=;|$)))?/',
 							Doc: 		{
 								Headers: 	{ Token: true },
 								Examples: 	{
@@ -4472,7 +4867,7 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 						Sub: 		null,
 						Methods: 	Docs.Kinds.GET,
 						GET			() { return {
-							Scheme: 	'/:rids((?:\\d+)(?=;|$))?/',
+							Scheme: 	'(?:/:rids((?:\\d+)(?=;|$)))?/',
 							Doc: 		{
 								Headers: 	{ Token: true },
 								Examples: 	{
@@ -4492,7 +4887,7 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 						Sub: 		null,
 						Methods: 	Docs.Kinds.GET,
 						GET			() { return {
-							Scheme: 	'/:nids((?:\\d+)(?=;|$))?/',
+							Scheme: 	'(?:/:nids((?:\\d+)(?=;|$)))?/',
 							Doc: 		{
 								Headers: 	{ Token: true },
 								Examples: 	{
@@ -4512,7 +4907,7 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 						Sub: 		null,
 						Methods: 	Docs.Kinds.GET,
 						GET			() { return {
-							Scheme: 	'/:lgids((?:\\d+)(?=;|$))?/',
+							Scheme: 	'(?:/:lgids((?:\\d+)(?=;|$)))?/',
 							Doc: 		{
 								Headers: 	{ Token: true },
 								Examples: 	{
@@ -4532,7 +4927,7 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 						Sub: 		null,
 						Methods: 	Docs.Kinds.GET,
 						GET			() { return {
-							Scheme: 	'/:hids((?:\\d+)(?=;|$))?/',
+							Scheme: 	'(?:/:hids((?:\\d+)(?=;|$)))?/',
 							Doc: 		{
 								Headers: 	{ Token: true },
 								Examples: 	{
@@ -4552,7 +4947,7 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 						Sub: 		null,
 						Methods: 	Docs.Kinds.GET,
 						GET			() { return {
-							Scheme: 	'/:vtids((?:\\d+)(?=;|$))?/',
+							Scheme: 	'(?:/:vtids((?:\\d+)(?=;|$)))?/',
 							Doc: 		{
 								Headers: 	{ Token: true },
 								Examples: 	{
@@ -4653,9 +5048,7 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 						Parse  	(res) { return res[0].exists; }
 					}),
 					// ======================================================================
-					"/": 			new RouteDB({
-						Methods: 	Docs.Kinds.POST,
-					}),
+					"/": 			RouteDB.Namespace(),
 				},
 				Errors: 	{ BAD_REQ: ['/'] }
 			},
@@ -4766,8 +5159,939 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 				},
 				Errors: 	{ BAD_REQ: ['/'] }
 			},
+			Threads: 		{
+				Actions: 	{
+					// ======================================================================
+					"/": 			new RouteDB({
+						Methods: 	_Methods.FULL,
+						Scheme: 	'/:uids([\\d;]+)/',
+						GET			() { return {
+							Scheme: 	'/:uids([\\d;]+)?/',
+							Limits: 	["Conestant/Second"],
+							Doc: 		{
+								Headers: 	{ Token: true },
+								Examples: 	{
+									"/:uid:22;23": "Retrieves the Message Thread for the User with the Users of the {{User IDs}}, '22' & '23'.",
+									"/": "Retrieves the last 10 Message Threads of the current User",
+								},
+							},
+							async Query(cls) {
+								let pfx  = ['thread','activity'], 
+									gKey = (k,w=0) => (`${pfx[w]}:${k}`),
+									UUID = Number(cls.UUID), usrs = [], rslt = [], keys, UIDs, tkey,
+									tLst = (k) => (k.slice(1,-1).split('|').map(i=>Number(i))).filter(k=>!!k&&k!=UUID),
+									tMap = (l) => (l.reduce((p,c)=>(p[c]={},p),{})),
+									erms = 'Thread not Found';
+								// ----------------------------------------------------------- //
+									if (!!!cls.UIDs) {
+										keys =  await new Promise(res => (
+													Stores.Messages.ZREVRANGE(
+														gKey(UUID,1), 
+														cls.Page-1, cls.Limit-1, 
+														(_e,list)=>res(list||[])
+												)	)	);
+										rslt =  await Promise.all(
+													keys.map(k => (new Promise((R,J) => (
+														Stores.Messages.HMGET(
+															gKey(k), 'owner', 'messages', 
+															(e, rep)=>(!!e?J(e):R({
+																owned: UUID==rep[0],
+																users: tMap(tLst(k)),
+																messages: JSON.parse(rep[1]),
+												}))	)	))	)	)	);
+										// 
+										usrs =	(await Points.User['/'].GET({
+													params: { uids: tLst(keys.join('')) },
+													query:  { uuid: cls.UUID },
+												}))[1]
+										rslt.map((chat) => {
+											Object	.keys(chat.users)
+													.map(uid => {
+														let ousr = usrs[uid];
+														if (!!!ousr) return;
+														chat.users[uid] = {
+															name: {
+																First: ousr.name.first,
+																Last:  ousr.name.last,
+															},
+															img: ousr.photos.profile
+														};
+													});
+										});
+									} else {
+										UIDs =	[UUID].concat(cls.UIDs||[]).sort()
+													  .reduce((p,c)=>(!p.has(c)&&p.push(c),p),[])
+													  .join('|');
+										keys =  `|${UIDs}|`;
+										tkey =  gKey(keys);
+										rslt =  await new Promise((R,J) => (
+													Stores.Messages.HGETALL(tkey, (e, rep)=>(
+														(!!e||!!!rep)?J(e||new Error(erms)):R({
+															owned: UUID==rep.owner,
+															users: tMap(tLst(keys)),
+															messages: JSON.parse(rep.messages),
+												})	)	)	));
+										//
+										usrs =	(await Points.User['/'].GET({
+													params: { uids: tLst(keys) },
+													query:  { uuid: cls.UUID },
+												}))[1]
+										Object.keys(usrs).map((uid) => {
+											let ousr = usrs[uid];
+											rslt.users[uid] = {
+												name: ousr.name,
+												img: ousr.photos.profile
+											};
+										})
+										rslt =  [rslt];
+									};
+								// ----------------------------------------------------------- //
+									return [null, rslt];
+							},
+							Params: 	{ 
+								UIDs:   ['EMPTY'], 
+								Single:  true, 
+								Page:    true, 
+								Limit: 	 true, 
+								ID:      true, 
+								UUID: 	 true, 
+							},
+						};	},
+						POST		() { return {
+							Limits: 	["Tries/Second","5Tries/Second"],
+							Doc: 		{
+								Headers: 	{ Token: true },
+								Examples: 	{
+									"/": "Create a Message Thread for the User with the current User.",
+								},
+							},
+							async Query(cls) {
+								let pfx  = 'thread', 
+									UUID = Number(cls.UUID), rslt = [], keys, tkey,
+									tLst = (k) => (k.slice(1,-1).split('|').map(i=>Number(i))).filter(k=>k!=UUID),
+									tMap = (l) => (l.reduce((p,c)=>(p[c]={},p),{})),
+									UIDs = [UUID].concat(cls.UIDs||[]).sort()
+												 .reduce((p,c)=>(!p.has(c)&&p.push(c),p),[])
+												 .join('|');;
+								// ----------------------------------------------------------- //
+									keys =  `|${UIDs}|`;
+									tkey =  gKey(keys);
+									rslt =  await new Promise((R,J) => (
+												Stores.Messages.HGETALL(tkey, (e, rep)=>(
+													(!!e?J(e):R(!!!rep?rep:{
+														owned: UUID==rep.owner,
+														users: tMap(tLst(keys)),
+														messages: JSON.parse(rep.messages),
+											})	))	))	);
+									if (!!!rslt) {
+										rslt =  await new Promise((R,J) => (
+													Stores.Messages.HMSET(tkey, { 
+														owner: UUID, messages: '[]', archive: '[]' 
+													},	(e)=>(!!e?J(e):R({
+															owned: true,
+															users: tMap(tLst(keys)),
+															messages: [],
+												})	)	)	)	);
+									};	rslt =  [rslt];
+								// ----------------------------------------------------------- //
+									return [null, rslt];
+							},
+							Params: 	{ 
+								UIDs:   ['EMREQ'], 
+								Page:    true, 
+								Limit: 	 true, 
+								ID:      true, 
+								UUID: 	 true, 
+							},
+						};	},
+						PUT			() { return {
+							Scheme: 	'/:uids([\\d;]+)/:kind(add|rem|send)/',
+							Limits: 	["Tries/Second","5Tries/Second"],
+							Doc: 		{
+								Headers: 	{ Token: true },
+								Examples: 	{
+									"/14;22?kind=add&who=23": "Add the User at {{User ID}}, '23' to the Message Thread.",
+									"/14;22;23?kind=rem&who=23": "Remove the User at {{User ID}}, '23' from the Message Thread.",
+									"/14;22;23?kind=send&msg=I%20know%2C%20right%3F": "Send the message, 'I know, right?' to the Message Thread.",
+								},
+							},
+							async Query(cls) {
+								let pfx  = 'thread', 
+									gKey = (k) => (`${pfx}:${k}`),
+									UUID = Number(cls.UUID), rslt = [], user = [], keys, tkey, 
+									tLst = (k) => (k.slice(1,-1).split('|').map(i=>Number(i))).filter(k=>k!=UUID),
+									tMap = (l) => (l.reduce((p,c)=>(p[c]={},p),{})),
+									gUID = (uids)=>(uids.sort()
+													.reduce((p,c)=>(!p.has(c)&&p.push(c),p),[])
+													.join('|')),
+									UIDs = gUID([UUID,...cls.UIDs]),
+									Kind = cls.Kind;
+								// ----------------------------------------------------------- //
+									// Get existing Thread
+									keys =  `|${UIDs}|`;
+									tkey =  gKey(keys);
+									rslt =  await new Promise((R,J) => (
+												Stores.Messages.HGETALL(tkey, (e, rep)=>(
+													(!!e?J(e):R(!!!rep?rep:{
+														owned: UUID==rep.owner,
+														users: tMap(tLst(keys)),
+														messages: JSON.parse(rep.messages),
+											})	))	))	);
+									// Perform actions on Thread
+									if (!!rslt) { 
+										// Determine Actions
+										switch (Kind) {
+											// Add or Remove User(s)
+											case  'add': case  'rem':
+												if (!!cls.Who) {
+													let OWERR = `You're not the owner of this Thread`, 
+														alert = { who: 0, time: new Date().getTime(), uids: Who },
+														Who   = cls.Who, All = [];
+													switch (Kind) {
+														case 'add':
+															if (!rslt.owned) throw Error(OWERR);
+															UIDs = gUID([UUID,...cls.UIDs,Who]);
+															Who.map(k=>(rslt.users[k]={}));
+															alert = { action: 'added', ...alert };
+															All = UIDs.split('|');
+															break;;
+														case 'rem':
+															All = UIDs.split('|');
+															if (!rslt.owned) {
+																if (Who.length>1||!Who.has(UUID)) {
+																	throw Error(OWERR);
+																} else {
+																	UIDs = gUID(cls.UIDs.filter(k=>k!=UUID));
+																	alert = { action: 'left', ...alert };
+																};
+															} else {
+																UIDs = gUID([UUID, 
+																	...cls.UIDs.filter(k=>!Who.has(k))
+																]);
+																alert = { action: 'removed', ...alert };
+															}
+															rslt.users = Imm.Map(rslt.users).filter(
+																(_v,k) => (!Who.has(k))
+															);
+															break;;
+													};
+													// Rename the Thread
+													await new Promise((R,J) => (
+														Stores.Messages.RENAME(
+															tkey, gKey(`|${UIDs}|`), (e,r)=>(!!e?J(e):R(r)
+													))));
+													// Post the Notification
+													Alert.Post(All, { type:'message', payload: alert });
+												};	break;;
+											// Send a Message
+											case 'send':
+												let Oth = cls.UIDs.filter(u=>u!=UUID),
+													Msg = {
+														time: new Date().getTime(),
+														who: UUID, text: cls.Msg
+													};
+												// Append new Message
+												rslt.messages.push(Msg);
+												// Save the Message Thread
+												await new Promise((R,J) => (
+													Stores.Messages.HMSET(tkey, { 
+														messages: JSON.stringify(rslt.messages.slice(0,50)), 
+														archive: JSON.stringify(rslt.messages.slice(50)), 
+													},	(e,r)=>(!!e?J(e):R(r)
+												))));
+												// Post the Notification
+												Alert.Post(Oth, { 
+													type:'message', payload: { 
+														...{ uids: UIDs.split('|') }, 	
+														...Msg
+												}	});
+												break;;
+										};
+									} else {
+										throw new Error('Thread not found.');
+									};	rslt =  [rslt];
+								// ----------------------------------------------------------- //
+									return [null, rslt];
+							},
+							Params: 	{ 
+								UIDs:   ['EMREQ'], 
+								Kind:   new GNParam({
+											Name:	 	'Thread Action Type',
+											Default: 	null,
+											Format 		(cls) { return cls.kind; },
+											Desc: 		new GNDescr({
+												type: PT.Text({ selects: ['add','rem','send'] }), 
+												description: 'A valid <<NAME>>',
+												required: true, 
+												matches: { 
+													'Add' : 'Adds a User to the Message Thread',
+													'Rem' : 'Removes a User from the Message Thread',
+													'Send': 'Send a message to the Message Thread',
+												},
+												to: 'path',
+											})
+										}),
+								Who:	['WHO'],
+								Msg:   	new GNParam({
+											Name:	 	'Message',
+											Default: 	null,
+											Format 		(cls) { return cls.msg; },
+											Desc: 		new GNDescr({
+												type: PT.Text, 
+												description: 'Thread Message',
+												required: null, 
+												to: 'query',
+											})
+										}),
+								Page:   true, 
+								Limit: 	true, 
+								ID:     true, 
+								UUID: 	true, 
+							},
+						};	},
+						DELETE		() { return {
+							Scheme: 	'/:uids([\\d;]+)/',
+							Limits: 	["Tries/Second","5Tries/Second"],
+							Doc: 		{
+								Headers: 	{ Token: true },
+								Examples: 	{
+									"/14;22": "Deletes the Message Thread.",
+								},
+							},
+							async Query(cls) {
+								let pfx  = 'thread', 
+									gKey = (k) => (`${pfx}:${k}`),
+									UUID = Number(cls.UUID), rslt = [], keys, tkey, 
+									tLst = (k) => (k.slice(1,-1).split('|').map(i=>Number(i))).filter(k=>k!=UUID),
+									tMap = (l) => (l.reduce((p,c)=>(p[c]={},p),{})),
+									gUID = (uids)=>(uids.sort()
+													.reduce((p,c)=>(!p.has(c)&&p.push(c),p),[])
+													.join('|')),
+									UIDs = gUID([UUID,...cls.UIDs]);
+								// ----------------------------------------------------------- //
+									// Get existing Thread
+									keys =  `|${UIDs}|`;
+									tkey =  gKey(keys);
+									rslt =  await new Promise((R,J) => (
+												Stores.Messages.HGETALL(tkey, (e, rep)=>(
+													(!!e?J(e):R(!!!rep?rep:{
+														owned: UUID==rep.owner,
+														users: tMap(tLst(keys)),
+														messages: JSON.parse(rep.messages),
+											})	))	))	);
+									// Perform actions on Thread
+									if (!!rslt) { 
+										if (!rslt.owned) {
+											await new Promise((R,J) => (
+												Stores.Messages.DEL(tkey, (e,r)=>(!!e?J(e):R(r)
+											))));
+											rslt = [true];
+										} else throw new Error(
+											`You're not the owner of this Thread`
+										);
+									} else {
+										throw new Error('Thread not found.');
+									};	rslt =  [rslt];
+								// ----------------------------------------------------------- //
+									return [null, rslt];
+							},
+							Params: 	{ 
+								UIDs:   ['EMREQ'], 
+								UUID: 	true, 
+							},
+						};	},
+						Parse  	(res) { 
+							let { UIDs, Single } = this.QY;
+							if (!!UIDs||!!Single) {
+								return res[0]
+							} else {
+								return res;
+							}
+						}
+					})
+				},
+				Errors: 	{ BAD_REQ: [] }
+			},
 			PoS: 			{
 				Actions: 	{
+					// Transactions =========================================================
+					Order:			new RouteDB({
+						Methods: 	Docs.Kinds.FULL,
+						Scheme: 	'/',
+						// Scheme: 	'/:for(provider|customer)/',
+						Merge:		true,
+						GET		() { return {
+							Limits: 	["Tries/Second"],
+							Doc: 		{ 
+								Headers: 	{ Token: true },
+								Examples: 	{ 
+									"/:uid:14": "Retrieves the Stripe™ Payment Methods for the {{User}} with the {{User ID}}",
+								},
+							},
+							async Query	(cls) { 
+								let user = {}, error, Stripe = Plugins.Stripe, cards;
+								// Grab User Info
+									user = (await Points.User['/'].GET({
+												params: { uids: cls.UID },
+												query:  { uuid: cls.UUID, single: true },
+											}))[1];
+								// Filter ineligible Requests
+									switch (true) {
+										case !!!user.checks.validated:
+											throw new Error("NOT_VALIDATED");
+										case !!!user.settings.modes.transactional:
+											throw new Error("WRONG_MODE");
+										case !!!user.settings.stripe.cust_id:
+											throw new Error("NO_ACCOUNT");
+									}
+								// Get Cardss
+									let strpid = user.settings.stripe.cust_id;
+									cards = await Stripe.paymentMethods.list({ 
+										customer: strpid, type: 'card'
+									});
+								// Return Payload
+									return [error, cards.data];
+							},
+							Params: 	{ 
+								UID: 	  true,
+								UUID: 	  true,
+								ID: 	  true,
+							},
+							Parse  		(ret) { 
+								return ret.map(a=>({
+									id: a.id,
+									type: a.card.brand.toLowerCase(),
+									name: a.metadata.nickname,
+									number: a.card.last4,
+									holder: a.billing_details.name,
+									exp: [a.card.exp_month, a.card.exp_year],
+									address: {
+										...a.billing_details.address,
+										phone: a.billing_details.phone,
+									},
+									checks: {
+										street: a.card.checks.address_line1_check,
+										postal: a.card.checks.address_postal_code_check,
+										cvc: a.card.checks.cvc_check,
+									},
+								})); 
+							},
+						};	},
+						POST		() { return {
+							Limits: 	["Tries/Second","New/Day"],
+							Doc: 		{ 
+								Headers: 	{ Token: true },
+								Examples: 	{ 
+									"/:uid:14": "Attaches a Stripe™ Payment Method for the {{User}} with the {{User ID}}",
+								},
+							},
+							async Query	(cls) { 
+								let user = {}, error, Stripe = Plugins.Stripe, cards;
+								// Grab User Info
+									user = (await Points.User['/'].GET({
+												params: { uids: cls.UID },
+												query:  { uuid: cls.UUID, single: true },
+											}))[1];
+								// Filter ineligible Requests
+									switch (true) {
+										case !!!user.checks.validated:
+											throw new Error("NOT_VALIDATED");
+										case !!!user.settings.modes.transactional:
+											throw new Error("WRONG_MODE");
+										case !!!user.settings.stripe.cust_id:
+											throw new Error("NO_ACCOUNT");
+									}
+								// Add new Card
+									let strpid = user.settings.stripe.cust_id;
+									await Stripe.paymentMethods.attach(
+										cls.PMID, { customer: strpid }
+									);
+									cards = (await Points.PoS.Cards.GET({
+										params: { uid:  cls.UID  },
+										body:   { uuid: cls.UUID },
+									}))[1];
+									console.log(cards)
+								// Return Payload
+									return [error, cards];
+							},
+							Params: 	{ 
+								UID: 	   true,
+								PMID:	   true,
+								// NickName: ['Card'],
+								UUID: 	   true,
+								ID: 	   true,
+							},
+						};	},
+						PUT			() { return {
+							Merge:		'POST',
+							Limits: 	["Tries/Second"],
+							Doc: 		{ 
+								Headers: 	{ Token: true },
+								Examples: 	{ 
+									"/:uid:14": "Updates a Stripe™ Payment Method for the {{User}} with the {{User ID}}",
+								},
+							},
+							async Query	(cls) { 
+								let user = {}, error, Stripe = Plugins.Stripe,
+									fltr = (v)=>(leng(Map(v).filter(v=>!!v))),
+									leng = (v)=>(!!v.size?v.toJS():null),
+									sttg, cards, paym;
+								// Grab User Info
+									user = (await Points.User['/'].GET({
+												params: { uids: cls.UID },
+												body:   { uuid: cls.UUID, single: true },
+											}))[1];
+									sttg =  user.settings;
+								// Filter ineligible Requests
+									switch (true) {
+										case !!!user.checks.validated:
+											throw new Error("NOT_VALIDATED");
+										case !!!sttg.modes.transactional:
+											throw new Error("WRONG_MODE");
+										case !!!sttg.stripe.cust_id:
+											throw new Error("NO_ACCOUNT");
+									}
+								// Update Stripe Card
+									paym = 	fltr({
+										card: fltr({
+											exp_month : cls.Exp_Month,
+											exp_year  : cls.Exp_Year,
+										}),
+										billing_details: fltr({
+											email   : user.email_address,
+											address : fltr({
+												line1 		: cls.Line1,
+												line2 		: cls.Line2,
+												city 		: cls.City,
+												state 		: cls.State,
+												postal_code	: cls.Postal_Code,
+												country 	: cls.Country,
+											}),
+											name 	: cls.Name,
+											phone 	: cls.Phone,
+										}),
+									});
+									if (!!paym) { await (
+										Stripe.paymentMethods.update(
+											cls.PMID, paym
+									));	}
+									cards = (await Points.PoS.Cards.GET({
+										params: { uid:  cls.UID  },
+										body:   { uuid: cls.UUID },
+									}))[1];
+								// Return Payload
+									return [error, cards];
+							},
+							Params: 	{ 
+								UID:         true,
+								PMID:        true,
+								Exp_Month:   true,
+								Exp_Year:    true,
+								Name:      ['Name'],
+								// NickName:  ['Card'],
+								Line1:       true,
+								Line2:     ['Line2'],
+								City:        true,
+								State:     ['State'],
+								Country:   ['Country'],
+								Phone:       true,
+								UUID:        true,
+								ID:          true,
+							},
+						};	},
+						Parse  		(ret) {
+							return ret;
+						},
+						Key: 		'id',
+					}),
+					// Customer =============================================================
+					Cards:			new RouteDB({
+						Methods: 	Docs.Kinds.FULL,
+						Sub: 		['customer'],
+						Scheme: 	'/',
+						Merge:		true,
+						GET		() { return {
+							Limits: 	["Tries/Second"],
+							Doc: 		{ 
+								Headers: 	{ Token: true },
+								Examples: 	{ 
+									"/:uid:14": "Retrieves the Stripe™ Payment Methods for the {{User}} with the {{User ID}}",
+								},
+							},
+							async Query	(cls) { 
+								let user = {}, error, Stripe = Plugins.Stripe, cards;
+								// Grab User Info
+									user = (await Points.User['/'].GET({
+												params: { uids: cls.UID },
+												query:  { uuid: cls.UUID, single: true },
+											}))[1];
+								// Filter ineligible Requests
+									switch (true) {
+										case !!!user.checks.validated:
+											throw new Error("NOT_VALIDATED");
+										case !!!user.settings.modes.transactional:
+											throw new Error("WRONG_MODE");
+										case !!!user.settings.stripe.cust_id:
+											throw new Error("NO_ACCOUNT");
+									}
+								// Get Cardss
+									let strpid = user.settings.stripe.cust_id;
+									cards = await Stripe.paymentMethods.list({ 
+										customer: strpid, type: 'card'
+									});
+								// Return Payload
+									return [error, cards.data];
+							},
+							Params: 	{ 
+								UID: 	  true,
+								UUID: 	  true,
+								ID: 	  true,
+							},
+							Parse  		(ret) { 
+								return ret.map(a=>({
+									id: a.id,
+									type: a.card.brand.toLowerCase(),
+									name: a.metadata.nickname,
+									number: a.card.last4,
+									holder: a.billing_details.name,
+									exp: [a.card.exp_month, a.card.exp_year],
+									address: {
+										...a.billing_details.address,
+										phone: a.billing_details.phone,
+									},
+									checks: {
+										street: a.card.checks.address_line1_check,
+										postal: a.card.checks.address_postal_code_check,
+										cvc: a.card.checks.cvc_check,
+									},
+								})); 
+							},
+						};	},
+						POST		() { return {
+							Limits: 	["Tries/Second","New/Day"],
+							Doc: 		{ 
+								Headers: 	{ Token: true },
+								Examples: 	{ 
+									"/:uid:14": "Attaches a Stripe™ Payment Method for the {{User}} with the {{User ID}}",
+								},
+							},
+							async Query	(cls) { 
+								let user = {}, error, Stripe = Plugins.Stripe, cards;
+								// Grab User Info
+									user = (await Points.User['/'].GET({
+												params: { uids: cls.UID },
+												query:  { uuid: cls.UUID, single: true },
+											}))[1];
+								// Filter ineligible Requests
+									switch (true) {
+										case !!!user.checks.validated:
+											throw new Error("NOT_VALIDATED");
+										case !!!user.settings.modes.transactional:
+											throw new Error("WRONG_MODE");
+										case !!!user.settings.stripe.cust_id:
+											throw new Error("NO_ACCOUNT");
+									}
+								// Add new Card
+									let strpid = user.settings.stripe.cust_id;
+									await Stripe.paymentMethods.attach(
+										cls.PMID, { customer: strpid }
+									);
+									cards = (await Points.PoS.Cards.GET({
+										params: { uid:  cls.UID  },
+										body:   { uuid: cls.UUID },
+									}))[1];
+									console.log(cards)
+								// Return Payload
+									return [error, cards];
+							},
+							Params: 	{ 
+								UID: 	   true,
+								PMID:	   true,
+								// NickName: ['Card'],
+								UUID: 	   true,
+								ID: 	   true,
+							},
+						};	},
+						PUT			() { return {
+							Merge:		'POST',
+							Limits: 	["Tries/Second"],
+							Doc: 		{ 
+								Headers: 	{ Token: true },
+								Examples: 	{ 
+									"/:uid:14": "Updates a Stripe™ Payment Method for the {{User}} with the {{User ID}}",
+								},
+							},
+							async Query	(cls) { 
+								let user = {}, error, Stripe = Plugins.Stripe,
+									fltr = (v)=>(leng(Map(v).filter(v=>!!v))),
+									leng = (v)=>(!!v.size?v.toJS():null),
+									sttg, cards, paym;
+								// Grab User Info
+									user = (await Points.User['/'].GET({
+												params: { uids: cls.UID },
+												body:   { uuid: cls.UUID, single: true },
+											}))[1];
+									sttg =  user.settings;
+								// Filter ineligible Requests
+									switch (true) {
+										case !!!user.checks.validated:
+											throw new Error("NOT_VALIDATED");
+										case !!!sttg.modes.transactional:
+											throw new Error("WRONG_MODE");
+										case !!!sttg.stripe.cust_id:
+											throw new Error("NO_ACCOUNT");
+									}
+								// Update Stripe Card
+									paym = 	fltr({
+										card: fltr({
+											exp_month : cls.Exp_Month,
+											exp_year  : cls.Exp_Year,
+										}),
+										billing_details: fltr({
+											email   : user.email_address,
+											address : fltr({
+												line1 		: cls.Line1,
+												line2 		: cls.Line2,
+												city 		: cls.City,
+												state 		: cls.State,
+												postal_code	: cls.Postal_Code,
+												country 	: cls.Country,
+											}),
+											name 	: cls.Name,
+											phone 	: cls.Phone,
+										}),
+									});
+									if (!!paym) { await (
+										Stripe.paymentMethods.update(
+											cls.PMID, paym
+									));	}
+									cards = (await Points.PoS.Cards.GET({
+										params: { uid:  cls.UID  },
+										body:   { uuid: cls.UUID },
+									}))[1];
+								// Return Payload
+									return [error, cards];
+							},
+							Params: 	{ 
+								UID:         true,
+								PMID:        true,
+								Exp_Month:   true,
+								Exp_Year:    true,
+								Name:      ['Name'],
+								// NickName:  ['Card'],
+								Line1:       true,
+								Line2:     ['Line2'],
+								City:        true,
+								State:     ['State'],
+								Country:   ['Country'],
+								Phone:       true,
+								UUID:        true,
+								ID:          true,
+							},
+						};	},
+						DELETE		() { return {
+							Limits: 	["Tries/Second","New/Day"],
+							Doc: 		{ 
+								Headers: 	{ Token: true },
+								Examples: 	{
+									"/:uid:14": "Detaches a Stripe™ Payment Method for the {{User}} with the specified {{User ID}}",
+								},
+							},
+							async Query	(cls) { 
+								let error, user = {}, Stripe = Plugins.Stripe, cards;
+								// Grab User Info
+									user  	= (await Points.User['/'].GET({
+										params: { uids: cls.UID },
+										body:   { uuid: cls.UUID, single: true },
+									}))[1];
+								// Filter ineligible Requests
+									switch (true) {
+										case !!!user.checks.validated:
+											throw new Error("NOT_VALIDATED");
+										case !!!user.settings.modes.provider:
+											throw new Error("WRONG_MODE");
+										case !!!user.settings.stripe.cust_id:
+											throw new Error("NO_ACCOUNT");
+									}
+								// Delete Card
+									try { await Stripe.customers.detach(cls.PMID); } catch (e) {}
+									cards = (await Points.PoS.Cards.GET({
+										params: { uid:  cls.UID  },
+										body:   { uuid: cls.UUID },
+									}))[1];
+								// Return Payload
+									return [error, cards];
+							},
+							Params: 	{ 
+								UID: 	 true,
+								PMID:	  true,
+								UUID: 	 true,
+								ID: 	 true,
+							},
+						};	},
+						Parse  		(ret) {
+							return ret;
+						},
+						Key: 		'id',
+					}),
+					Customer: 		new RouteDB({
+						Methods: 	Docs.Kinds.FULL,
+						Scheme: 	'/',
+						Merge:		true,
+						GET			() { return {
+							Doc: 		{ 
+								Headers: 	{ Token: true },
+								Examples: 	{
+									"/:uid:14": "Retrieves a Stripe™ Customer Profile for the {{User}} with the {{User ID}}",
+								},
+							},
+							async Query	(cls) { 
+								let user = {}, error, Stripe = Plugins.Stripe, cust;
+								// Grab User Info
+									user  	= (await Points.User['/'].GET({
+										params: { uids: cls.UID },
+										body:   { uuid: cls.UUID, single: true },
+									}))[1];
+								// Filter ineligible Requests
+									switch (true) {
+										case !!!user.checks.validated:
+											throw new Error("NOT_VALIDATED");
+										case !!!user.settings.modes.transactional:
+											throw new Error("WRONG_MODE");
+										case !!!user.settings.stripe.cust_id:
+											cust = (await Points.PoS.Customer.POST({
+												params: { uid:  cls.UID  },
+												body:   { uuid: cls.UUID },
+											}))[1];
+											return [error, [cust]];
+									}
+								// Retrieve Stripe Account
+									let strpid = user.settings.stripe.cust_id;
+									cust = await Stripe.customers.retrieve(strpid);
+								// Return Payload
+									return [error, [cust]];
+							},
+							Params: 	{ 
+								UID: 	  true,
+								UUID: 	  true,
+								ID: 	  true,
+							},
+						};	},
+						POST		() { return {
+							Limits: 	["Tries/Second","New/Day"],
+							Doc: 		{ 
+								Headers: 	{ Token: true },
+								Examples: 	{ 
+									"/:uid:14": "Creates a Stripe™ Customer Profile for the {{User}} with the {{User ID}}",
+								},
+							},
+							async Query	(cls) { 
+								let user = {}, error, Stripe = Plugins.Stripe, cust;
+								// Grab User Info
+									user = (await Points.User['/'].GET({
+												params: { uids: cls.UID },
+												body:   { uuid: cls.UUID, single: true },
+											}))[1];
+								// Filter ineligible Requests
+									switch (true) {
+										case !!!user.checks.validated:
+											throw new Error("NOT_VALIDATED");
+										case !!!user.settings.modes.transactional:
+											throw new Error("WRONG_MODE");
+										case  !!user.settings.stripe.cust_id:
+											let strpid = user.settings.stripe.cust_id;
+											try {  await Stripe.customers.retrieve(strpid); } 
+											catch (err) { await Points.User.Settings.PUT({
+													params: { uids: cls.UID },
+													body:   { 
+														custid: 'ACCOUNT_DELETED', 
+														uuid: 	 cls.UUID, 
+														single:  true 
+													},	query:  {},
+												}); break;; 
+											};	throw new Error("ACCOUNT_EXISTS");
+									}
+								// Create Stripe Account
+									cust =await Stripe.customers.create({
+													metadata: { UID: cls.UID }
+												});
+								// Add StripeID to Database
+									await Points.User.Settings.PUT({
+										params: { uids: cls.UID },
+										body:   { 
+											custid: cust.id, 
+											uuid: 	cls.UUID, 
+											single: true 
+										},
+									});
+								// Return Payload
+									return [error, [cust]];
+							},
+							Params: 	{ 
+								UID: 	  true,
+								UUID: 	  true,
+								ID: 	  true,
+							},
+						};	},
+						DELETE		() { return {
+							Limits: 	["Tries/Second","New/Day"],
+							Doc: 		{ 
+								Headers: 	{ Token: true },
+								Examples: 	{
+									"/:uid:14": "Deletes the Stripe™ Customer Profile for the {{User}} with the specified {{User ID}}",
+								},
+							},
+							async Query	(cls) { 
+								let error, user = {}, Stripe = Plugins.Stripe;
+								// Grab User Info
+									user  	= (await Points.User['/'].GET({
+										params: { uids: cls.UID },
+										body:   { uuid: cls.UUID, single: true },
+									}))[1];
+								// Filter ineligible Requests
+									switch (true) {
+										case !!!user.checks.validated:
+											throw new Error("NOT_VALIDATED");
+										case !!!user.settings.modes.provider:
+											throw new Error("WRONG_MODE");
+										case !!!user.settings.stripe.cust_id:
+											throw new Error("NO_ACCOUNT");
+									}
+								// Delete Stripe Account
+									let strpid = user.settings.stripe.cust_id;
+									try { await Stripe.customers.del(strpid); } catch (e) {}
+								// Remove StripeID
+									await Points.User.Settings.PUT({
+										params: { uids: cls.UID },
+										body:   { 
+											custid: 'ACCOUNT_DELETED', 
+											uuid: 	 cls.UUID, 
+											single:  true 
+										},
+									});
+								// Return Payload
+									return [error, [{}]];
+							},
+							Params: 	{ 
+								UID: 	 true,
+								UUID: 	 true,
+								ID: 	 true,
+							},
+							Parse		(ret) { return ret[0]; }
+						};	},
+						Parse  		(ret) { 
+							let res = ret[0]; 
+							return (!!res.user_id ? res : ({
+								user_id: 	parseInt(res.metadata.UID),
+								customer: 	{
+									balance:	res.balance,
+									address:	res.address,
+									phone:		(res.phone||'').replace(/\D+/g,''),
+									sources:	res.sources,
+							}	})	); 
+						},
+						Key: 		'id',
+					}),
 					// ======================================================================
 					"/": 			new RouteDB({
 						Methods: 	Docs.Kinds.FULL,
@@ -4776,13 +6100,13 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 							Doc: 		{
 								Headers: 	{ Token: true },
 								Examples: 	{
-									"/:uid:14": "Retrieves a Stripe™ account for the {{User}} with the {{User ID}}",
+									"/:uid:14": "Retrieves a Stripe™ PoS Account for the {{User}} with the {{User ID}}",
 								},
 							},
 							async Query	(cls) { 
-								let result, user = {}, error, Stripe = Plugins.Stripe;
+								let user = {}, error, Stripe = Plugins.Stripe;
 								// Grab User Info
-									user  	= (await Points.User['/']({
+									user  	= (await Points.User['/'].GET({
 										params: { uids: cls.UID },
 										body:   { uuid: cls.UUID, single: true },
 										query:  {},
@@ -4793,30 +6117,14 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 											throw new Error("NOT_VALIDATED");
 										case !!!user.settings.modes.provider:
 											throw new Error("WRONG_MODE");
-										case !!!user.settings.stripe_id:
+										case !!!user.settings.stripe.acct_id:
 											throw new Error("NO_ACCOUNT");
 									}
 								// Retrieve Stripe Account
-									let strpid = user.settings.stripe_id, acct;
-									// LG.Timed(async () => {
-										acct = await Stripe.accounts.retrieve(strpid);
-									// },	strpid, 'STRIPE', '/', 'green');
-								// Construct User Data
-									result = {
-										user_id: 	user.user_id,
-										provider: 	{
-											pdid: 	 	acct.metadata.ppid,
-											address:	acct.individual.address,
-											phone:		(acct.individual.phone||'').replace(/\D+/g,''),
-											required:	acct.individual.requirements,
-											verify:		acct.individual.verification,
-											banking:	{
-												accounts: acct.external_accounts.data
-											}
-										}
-									};
+									let strpid = user.settings.stripe.acct_id, acct;
+									acct = await Stripe.accounts.retrieve(strpid);
 								// Return Payload
-									return [error, [result]];
+									return [error, [acct]];
 							},
 							Params: 	{ 
 								UID: 	  true, 
@@ -4829,13 +6137,13 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 							Doc: 		{
 								Headers: 	{ Token: true },
 								Examples: 	{
-									"/:uid:14": "Creates a Stripe™ account for the {{User}} with the {{User ID}}",
+									"/:uid:14": "Creates a Stripe™ PoS Account for the {{User}} with the {{User ID}}",
 								},
 							},
 							async Query	(cls) { 
 								let result, user = {}, error, Stripe = Plugins.Stripe;
 								// Grab User Info
-									user  	= (await Points.User['/']({
+									user  	= (await Points.User['/'].GET({
 												params: { uids: cls.UID },
 												body:   { uuid: cls.UUID, single: true },
 												query:  {},
@@ -4844,24 +6152,29 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 									switch (true) {
 										case !!!user.checks.validated:
 											throw new Error("NOT_VALIDATED");
-										case (new Date().getFullYear()-new Date(user.birth_date).getFullYear())<18:
+										case (new Date().getFullYear()-new Date(user.birth_date).getFullYear())<=18:
 											throw new Error("AGE_LIMIT");
 										case !!!user.settings.modes.provider:
 											throw new Error("WRONG_MODE");
 										case !!!user.location.codes.country:
 											throw new Error("NO_COUNTRY");
-										case !!user.settings.stripe_id:
-											let strpid = user.settings.stripe_id;
+										case  !!user.settings.stripe.acct_id:
+											let strpid = user.settings.stripe.acct_id;
 											try {  await Stripe.accounts.retrieve(strpid); } 
-											catch (err) { await Points.Edit.Settings({
+											catch (err) { await Points.User.Settings.PUT({
 													params: { uids: cls.UID },
 													body:   { 
 														strpid: 'ACCOUNT_DELETED', 
 														uuid: 	 cls.UUID, 
 														single:  true 
-													},	query:  {},
+													}
 												}); break;; 
 											};	throw new Error("ACCOUNT_EXISTS");
+										case !!!user.settings.stripe.cust_id:
+											await Points.PoS.Customer.GET({
+												params: { uid:  cls.UID  },
+												body:   { uuid: cls.UUID }
+											}); break;;
 									}
 								// Create Stripe Account
 									let dob = user.birth_date.split('-');
@@ -4897,7 +6210,7 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 												}
 											});
 								// Add StripeID to Database
-									await Points.Edit.Settings({
+									await Points.User.Settings.PUT({
 										params: { uids: cls.UID },
 										body:   { 
 											strpid: result.id, 
@@ -4922,13 +6235,13 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 							Doc: 		{
 								Headers: 	{ Token: true },
 								Examples: 	{
-									"/:uid:14": "Deletes the Stripe™ accounts for the {{User}} with the specified {{User ID}}",
+									"/:uid:14": "Deletes the Stripe™ PoS Account for the {{User}} with the specified {{User ID}}",
 								},
 							},
 							async Query	(cls) { 
 								let result, error, user = {}, Stripe = Plugins.Stripe;
 								// Grab User Info
-									user  	= (await Points.User['/']({
+									user  	= (await Points.User['/'].GET({
 										params: { uids: cls.UID },
 										body:   { uuid: cls.UUID, single: true },
 										query:  {},
@@ -4939,14 +6252,14 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 											throw new Error("NOT_VALIDATED");
 										case !!!user.settings.modes.provider:
 											throw new Error("WRONG_MODE");
-										case !!!user.settings.stripe_id:
+										case !!!user.settings.stripe.acct_id:
 											throw new Error("NO_ACCOUNT");
 									}
 								// Delete Stripe Account
-									let strpid = user.settings.stripe_id;
+									let strpid = user.settings.stripe.acct_id;
 									try { await Stripe.accounts.del(strpid); } catch (e) {}
 								// Remove StripeID
-									await Points.Edit.Settings({
+									await Points.User.Settings.PUT({
 										params: { uids: cls.UID },
 										body:   { 
 											strpid: 'ACCOUNT_DELETED', 
@@ -4955,7 +6268,7 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 										},	query:  {},
 									});
 								// Refresh User Data
-									result = (await Points.PoS['/']({
+									result = (await Points.PoS['/'].GET({
 										params: { uids: cls.UID },
 										body:   { uuid: cls.UUID, single: true },
 										query:  {},
@@ -4968,8 +6281,23 @@ const { RouteDB, GNHeaders, GNParam, GNDescr, PT, PType } = require('dffrnt.conf
 								UUID: 	 true, 
 								ID: 	 true,
 							},
+							Parse  		(res) { return res[0]; },
 						};	},
-						Parse  		(res) { return res[0]; },
+						Parse  		(ret) { 
+							let res = ret[0]; 
+							return (!!res.user_id ? res : ({
+								user_id: 		parseInt(res.metadata.UID),
+								provider_id: 	parseInt(res.metadata.PDID),
+								provider: 		{
+									address:	res.individual.address,
+									phone:		(res.individual.phone||'').replace(/\D+/g,''),
+									required:	res.individual.requirements,
+									verify:		res.individual.verification,
+									banking:	{
+										accounts: res.external_accounts.data
+									}
+							}	})	); 
+						},
 						Key: 		'id',
 					})
 				},

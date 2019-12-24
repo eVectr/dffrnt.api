@@ -1,18 +1,39 @@
 
 'use strict';
 
+/** @type {CFG.SPCE.SpaceHandler} */
 module.exports = {
 	Data:  [
 		function (path, req) { return {}; },
 	],
 	Call: function(path, params, query, body, files, user) {
-		return {
-			method:	'POST',
-			path: 	'/search',
-			params: params||{},
-			body:	Assign({links:true},body||{}),
-			files:	files||[]
-		};
+		var point = '/search', method = 'POST';
+		if (!!!body.terms) {
+			point  = point+'/advanced';
+			method = 'GET';
+			console.log('REQUEST', {
+				method:	method,
+				path: 	point,
+				params: params||{},
+				query:	Assign({
+					links: true,
+					uid: user.Scopes.user_id,
+				},body||{})
+			})
+			return {
+				method:	method,
+				path: 	point,
+				params: params||{},
+				query:	Assign({links:true},body||{})
+			};
+		} else {
+			return {
+				method:	method,
+				path: 	point,
+				params: params||{},
+				body:	Assign({links:true},body||{})
+			};
+		}
 	},
 	Build: function (Actions, Stores, LID) {
 		return function (res) {

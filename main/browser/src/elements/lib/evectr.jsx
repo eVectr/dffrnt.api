@@ -1,6 +1,11 @@
 'use strict';
 
-module.exports = function Comps(COMPS) {
+module.exports = /**
+ * Custom Components for the **eVectr** front-end Application.
+ * @param {FluxComponents} COMPS The global Component interface.
+ * @void
+ */
+function Comps(COMPS) {
 
 	////////////////////////////////////////////////////////////////////////
 	// CONSTANTS -----------------------------------------------------------
@@ -20,6 +25,7 @@ module.exports = function Comps(COMPS) {
 		const 	FA 			= COMPS.FA;
 		const 	iURL 		= COMPS.iURL;
 		const 	joinV 		= COMPS.joinV;
+		const 	onBrowser 	= COMPS.onBrowser;
 		const 	DATA_TMR 	= {};
 
 		const { StripeProvider,
@@ -31,31 +37,39 @@ module.exports = function Comps(COMPS) {
 				CardCVCElement,
 				Elements
 		} = COMPS.Elements.StripeJS;
+		const   Stripe 		= { Key: null };
 
-		const 	stripeOpts  = () => {
-			return { style: {
-				base: {
-					fontSize: '16px',
-					color: '#424770',
-					letterSpacing: '0.025em',
-					'::placeholder': {
-						color: '#aab7c4',
-					},
-				},
-				invalid: {
-					color: '#c23d4b',
-			},	},	};
-		};
-		const 	EV 			= {};
+		COMPS.Elements.Evectr = {};
+		const 	EV 			= COMPS.Elements.Evectr;
 
 		// Configs
+		const	RSignUp		= '/signup';
 		const	RLogin 		= '/auth/login';
 		const	RLogout 	= '/auth/logout';
+		const 	RNotify	 	= COMPS.RNotify;
 
 		function getBasic 	(user, pass) {
 			COMPS.Basic = 'Basic '+btoa(user.value+':'+pass.value);
 			return COMPS.Basic;
 		}
+		
+		function stripeOpts (config = {}) {
+			return Map({ style: {
+				invalid:  { color: '#c23d4b', },
+				base: 	  {
+					color: '#424770',
+					fontSize: '14px',
+					letterSpacing: '0.025em',
+					'::placeholder': {
+						fontSize: '12px',
+						color: '#aab7c4',
+					},
+					':-webkit-autofill': {
+						backgroundColor:'white'
+					}
+				},
+			}	}).mergeDeep(config).toJS();
+		};
 
 	////////////////////////////////////////////////////////////////////////
 	// MIXINS --------------------------------------------------------------
@@ -71,11 +85,72 @@ module.exports = function Comps(COMPS) {
 				}
 			},
 			getDefault(value) {
-				return !!value?{defaultValue:value}:{};
+				return !!value?{defaultValue:value||undefined}:{};
 			},
 			getValue(value) {
-				return !!value?{value:value}:{};
-			}
+				return !!value?{value:value||undefined}:{};
+			},
+			getFormats() {
+				let THS = this, props = THS.props, 
+					formatters = props.formatters,
+					keys = Object.keys(props);
+				if (!!formatters&&!keys.has('onChange')) {
+					return { onChange(e) {
+						e.stopPropagation(); e.preventDefault(); 
+						let elem = e.target;
+						elem.value = formatters.reduce((a,c)=>(
+							a.replace(c.pattern, c.replace)
+						),	elem.value);
+					}	};
+				} else return {};
+			},
+		};
+		MX.BTN		= {
+			Kinds: { button: 'button', submit: 'submit', a: 'a' },
+			Elems: { button: 'button', submit: 'button', a: 'a' },
+			Types: { button: 'button', submit: 'submit', a: 'text/html' },
+		};
+		MX.Trans 	= {
+			/**
+			 * @type {{[status: string]: MultiObj}}
+			 */
+			Status: {
+				INQUIRED:  { kind: 'info', label: 'Inquired'  },
+				IN_REVIEW: { kind: 'info', label: 'In Review' },
+				BOUNCED:   { kind: 'warn', label: 'Bounced'   },
+				REJECTED:  { kind: 'nope', label: 'Rejected'  },
+				OFFER:     { kind: 'info', label: 'Offer'     },
+				ACCEPTED:  { kind: 'warn', label: 'Accepted'  },
+				DECLINED:  { kind: 'nope', label: 'Declined'  },
+				ESCROW:    { kind: 'norm', label: 'Escrow'    },
+				CANCELLED: { kind: 'nope', label: 'Cancelled' },
+				CONFIRMED: { kind: 'warn', label: 'Confirmed' },
+				DISPUTED:  { kind: 'nope', label: 'Disputed'  },
+				REFUNDED:  { kind: 'mayb', label: 'Refunded'  },
+				COMPLETE:  { kind: 'good', label: 'Complete'  },
+			},
+			Shared: [
+				'OFFER',
+				'ACCEPTED',
+				'CANCELLED',
+				'CONFIRMED',
+			],
+			/**
+			 * Gets the Multi-props to create a Status token with.
+			 * @param {Props.Transact.Obj} props 
+			 * @returns {MultiObj}
+			 */
+			GetStatus(props) {
+				let stat = props.status, 
+					{ Status, Shared } = MX.Trans,
+					rslt = Assign({}, Status[stat]);
+				if (Shared.has(stat)) {
+					let isMe = COMPS.UID==props.history.who;
+					Assign(rslt, { level: ({
+						true: 'You', false: 'Them'
+					})[isMe] });
+				}; 	return rslt;
+			},
 		};
 
 	////////////////////////////////////////////////////////////////////////
@@ -84,26 +159,58 @@ module.exports = function Comps(COMPS) {
 		// IMPORTS /////////////////////////////////////////////////////////
 
 			const {
-				Tags, Bubble, NormalLink, SocketLink, 
+				Defer, Tags, Bubble, NormalLink, SocketLink, 
 				PhoneNum, PhoneExt, Address, 
 			} = COMPS.Elements.Stock;
 
+		// ERRORS  /////////////////////////////////////////////////////////
+		
+			class ErrorBoundary extends React.Component {
+				constructor(props) {
+					super(props);
+					this.state = { hasError: false };
+				}
+			
+				static getDerivedStateFromError(error) {
+					// Update state so the next render will show the fallback UI.
+					return { hasError: true };
+				}
+			
+				componentDidCatch(error, errorInfo) {
+					// You can also log the error to an error reporting service
+					console.error('REACT ERROR:', error, errorInfo);
+				}
+			
+				render() {
+					if (this.state.hasError) {
+						// You can render any custom fallback UI
+						return <h1>Something went wrong.</h1>;
+					}
+				
+					return this.props.children; 
+				}
+			}
+
 		// APP     /////////////////////////////////////////////////////////
-			EV.App 				= class App 		extends Mix('Reflux',MX.General) {
+			EV.App 				= class App 		extends Mix('Reflux','General') {
+				
+				/**
+				 * 
+				 * @param {*} props 
+				 */
 				constructor(props) {
 					super(props); this.name  = 'APP'; 
-					this.state = { stripe: null };
+					this.state = Assign({},props,{stripe:null});
 					this.mode  = NMESPC.page.type||'';
 					this.store = COMPS.Stores.App(props.LID); 
 				}
-
-				componentDidMount() {
-					// Create Stripe instance in componentDidMount
-					// (componentDidMount only fires in browser/DOM environment)
-					let pubKey = 'pk_test_O3cwbaxfELRW69hj3mpwJpOB';
-					this.setState({ stripe: window.Stripe(pubKey) });
-				}
-
+				
+				/**
+				 * Gets the Header.
+				 * @param {("stock"|"jumbo"|"main")} mode The structural style of the page.
+				 * @param {{cover:{},user:{}}} title ghdfghfhfdgh
+				 * @param {string[]} searches gdfghdfghfghd
+				 */
 				getHeader(mode, title, searches = []) {
 					let elems = [];
 					switch (mode) { case 'cover': case 'stock': 
@@ -113,6 +220,7 @@ module.exports = function Comps(COMPS) {
 					};
 					switch (mode) {
 						case 'cover': 
+							title = title||{};
 							elems = elems.concat([
 								<Frag key="plq">
 									<Cover img={title.cover} />
@@ -124,7 +232,7 @@ module.exports = function Comps(COMPS) {
 									<Title {...{
 										kind: 		'page', 
 										size: 		'large', 
-										mode: 		'shadow-only', 
+										mode: 		'shadowed', 
 										title: 		 title,
 									}}/>
 								</Frag>
@@ -136,51 +244,61 @@ module.exports = function Comps(COMPS) {
 					return (<Frag key="hdr">{elems}</Frag>);
 				}
 
-				getThreads(mode, props) {
+				/**
+				 * Render the Chat Threads.
+				 * @param {("stock"|"jumbo"|"main")} mode The structural style of the page.
+				 * @param {ChatProps[]} chats A list of the user's current Message Threads. 
+				 */
+				getThreads(mode, chats) {
 					if (mode=='jumbo') return null;
-					else return (<Threads {...props} />);
+					else return (<Threads {...{max:8,chats}} />);
 				}
 
 				render() {
 					var props 	= this.state,
 						mode 	= this.mode,
-						header 	= props.header,
-						search  = header.searches,
-						title 	= header.title,
-						user 	= header.user,
-						scopes  = user.Scopes,
-						content = props.content,
-						footer 	= props.footer,
+						header 	= props.header||{},
+						search  = header.searches||[],
+						title 	= header.title||null,
+						user 	= header.user||{},
+						scopes  = user.Scopes||{},
+						content = props.content||{},
+						footer 	= props.footer||{},
+						credits	= footer.credits||{},
+						chats	= footer.chats||[],
+						ident	= !!header.identified,
+						ready 	= props.ready||(()=>false),
 						classes = classN({
 							'gridMain':		true,
-							'loggedIn': 	header.identified,
-							'loggedOut': 	!header.identified,
-							'pause': 		props.paused,
-							'ready': 		props.ready(),
+							'loggedIn': 	ident,
+							'loggedOut': 	!ident,
+							// 'pause': 		!!props.paused,
+							'ready': 		ready(),
 						},	mode);
-					COMPS.Token 	= user.Token; 
-					COMPS.IsAuthd 	= header.identified;
-					COMPS.UID 		= scopes.user_id; 
-					return (
-						<StripeProvider stripe={props.stripe}>
+					// ------------------------------------------------- //
+						COMPS.Token 	= user.Token; 
+						COMPS.IsAuthd 	= ident;
+						COMPS.UID 		= scopes.user_id; 
+						COMPS.Email		= user.Account; 
+					// ------------------------------------------------- //
+						return (<ErrorBoundary>
 							<main id="content" className={classes}>
 								{this.getHeader(mode,title,search)}
-								<Foot {...footer} />
+								<Foot credits={credits} />
 								<Content {...content} />
-								<Head home={footer.credits.website} 
-									user={user.Profile.Name} 
-									alerts={header.alerts}
-									messages={header.messages} 
-									admin={header.admin}
+								<Head home={credits.website} 
+									alerts={header.alerts||{}}
+									messages={header.messages||{}} 
+									admin={header.admin||{}}
 									title={title} />
-								{this.getThreads(mode,footer)}
+								{this.getThreads(mode,chats)}
+								<div className="searchDim"></div>
 							</main>
-						</StripeProvider>
-					);
+						</ErrorBoundary>);
 				}
 			};
 
-			EV.App.Signup 		= class Signup 		extends Mix('Pure',  MX.Static) {
+			EV.App.Signup 		= class Signup 		extends Mix('React', 'Static') {
 				constructor(props) {
 					super(props); let _refs = {
 						'form'    : React.createRef(),
@@ -193,21 +311,40 @@ module.exports = function Comps(COMPS) {
 					this.handleSignup = this.handleSignup.bind(this);
 					this._refs 		  = _refs;
 					this.REFS 		  = {
+						/**
+						 * @type {HTMLFormElement}
+						 */
 						get     form() { return _refs.form.current; 	},
+						/**
+						 * @type {HTMLInputElement}
+						 */
 						get username() { return _refs.username.current; },
+						/**
+						 * @type {HTMLInputElement}
+						 */
 						get password() { return _refs.password.current; },
+						/**
+						 * @type {HTMLInputElement}
+						 */
 						get  confirm() { return _refs.confirm.current; 	},
+						/**
+						 * @type {HTMLInputElement}
+						 */
 						get    agree() { return _refs.agree.current; 	},
 					};
 				}
 
 				handleSignup(e) {
 					e.stopPropagation(); e.preventDefault();
-					var REF = this.REFS, usr = REF.username, pss = REF.password,
-						enc = `'Basic ${btoa(`${usr.value}:${pss.value}`)}`,
-						req = { headers: { authorization: enc } };
-					Actions.Data.auth(RLogin, req, false);
-					REF.form.submit(); usr.value=''; pss.value='';
+					let { username, password, confirm, agree } = this.REFS
+					Actions.Data.send(RSignUp, { 
+						method: 'POST', body: { 
+							email: username.value,
+							email: username.value,
+							email: username.value,
+							email: username.value,
+						}
+					}, 	false);
 				}
 
 				getAutoCompFix(name, source) {
@@ -226,23 +363,17 @@ module.exports = function Comps(COMPS) {
 						name	= 'user-signup',
 						styles	= ['spread','gridSlice','spaced'],
 						align	= classN(start,size),
-						autoc 	= 'auto-signin',
-						source 	= '/public/html/auto.htm',
 						terms 	= props.terms||[],
 						attrs 	= {
 							'id':			 name,
 							'name':			'signup',
-							'action':		 source,
 							'data-action': 	'/signup',
-							'method':		'post',
-							'encType':		'multipart/form-data',
-							'target':		 autoc,
+							'method':		'POST',
 							'className':	 classN(styles),
 							'onSubmit': 	 THS.handleSignup,
 						};
-					return ([
-						this.getAutoCompFix(autoc, source),
-						<form key='signupfrm' ref={REFS.form} {...attrs}>
+					return (
+						<Form key='signupfrm' ref={REFS.form} {...attrs}>
 							<Form.Xput 	   {...{id:			'signup-email',
 												kind:		'email',
 												icon:		'envelope',
@@ -285,16 +416,15 @@ module.exports = function Comps(COMPS) {
 							<hr  className={align}/>
 							<div className={align}>
 								<Form.Button kind="submit" label="Sign Up!"
-										styles={['good']} large block
-										action={THS.handleSignup}/>
+										styles={['good']} large block/>
 							</div>
-						</form>
-					]);
+						</Form>
+					);
 				}
 
 			}
 
-			EV.App.Login 		= class Login 		extends Mix('Pure',  MX.Static) {
+			EV.App.Login 		= class Login 		extends Mix('React', 'Static') {
 				constructor(props) {
 					super(props); let _refs = {
 						'form': 	React.createRef(),
@@ -307,24 +437,40 @@ module.exports = function Comps(COMPS) {
 					this.handleLogin = this.handleLogin.bind(this);
 					this._refs 		 = _refs;
 					this.REFS 		 = {
+						/**
+						 * @type {HTMLFormElement}
+						 */
 						get     form() { return _refs.form.current; },
+						/**
+						 * @type {HTMLInputElement}
+						 */
 						get username() { return _refs.username.current; },
+						/**
+						 * @type {HTMLInputElement}
+						 */
 						get password() { return _refs.password.current; },
+						/**
+						 * @type {HTMLInputElement}
+						 */
 						get remember() { return _refs.remember.current; },
 					};
 				}
 
 				handleLogin(e) {
 					e.stopPropagation(); //e.preventDefault();
-					var REF = this.REFS, usr = REF.username, pss = REF.password,
-						enc = `'Basic ${btoa(`${usr.value}:${pss.value}`)}`,
-						req = { 
-							method: 'POST',
-							headers: { authorization: enc },
-							body: { id: this.id }
-						};
-					Actions.Data.auth(RLogin, req, false);
-					REF.form.submit(); usr.value=''; pss.value='';
+					let enc, { username:usr, password:pss, remember:rem, form } = this.REFS;
+					usr.disabled = pss.disabled = true;
+					enc = `'Basic ${btoa(`${usr.value}:${pss.value}`)}`;
+					usr.value = pss.value = '';
+					Actions.Data.auth(RLogin, { 
+						method: 'POST',
+						headers: { authorization: enc },
+						body: { 
+							remember: rem.checked, 
+							id: this.id 
+						}
+					}, 	false);
+					form.submit(); 
 				}
 
 				getAutoCompFix(name, source) {
@@ -396,7 +542,7 @@ module.exports = function Comps(COMPS) {
 
 			}
 
-			EV.App.Logout 		= class Logout	 	extends Mix('Pure',  MX.Static) {
+			EV.App.Logout 		= class Logout	 	extends Mix('React', 'Static') {
 				constructor(props) {
 					super(props); this.name = 'LOGOUT';
 					this.id = 'user-logout';
@@ -435,7 +581,142 @@ module.exports = function Comps(COMPS) {
 				}
 			};
 
-			EV.App.Portal 		= class Portal	 	extends Mix('Pure',  MX.Static) {
+			EV.App.Sessions 	= class Sessions 	extends Mix('Reflux','Static') {
+				constructor(props) {
+					super(props); let THS = this; THS.name = 'SESSIONS';
+					// ---------------------------------------------------
+						THS.id    = 'user-sessions-tbl';
+					// ---------------------------------------------------
+						THS.mapStoreToState(COMPS.Stores.Data, store => {
+							let { stamp, items = {} } = (store[THS.id]||{});
+							if (!!stamp&&stamp!==THS.state.stamp) return {  
+								loaded: true, status: 'done', 
+								list: items.user||[], stamp,
+							};	else return null;
+						}	);
+				}
+
+				// CYCLE     /////////////////////////////////////////////////////////
+
+					static getDerivedStateFromProps(props, state) {
+						if (props.stamp !== state.stamp) {
+							let { stamp, status, list } = ( 
+								props.stamp>state.stamp?props:state
+							);  return {
+								stamp:	stamp, 
+								status:	status, 
+								list:	list,
+							};
+						};	return null;
+					}
+
+					componentDidMount() {
+						let prop = this.state, 
+							send = Actions.Data.auth,
+							load = !!prop.loaded;
+						if (!!document&&!load) {
+							let url = '/auth/sessions',
+								id  = this.id; 
+							setTimeout(() => send(url, {
+								method:	 'GET', 
+								headers: { token: COMPS.Token },
+								params:	 {}, 
+								query:   { id },
+							}	),	1000);	}
+					}
+
+				// FUNCTION  /////////////////////////////////////////////////////////
+
+					/**
+					 * Renders the user-sessions table.
+					 * @param {Object} props The component properties.
+					 * @param {{}[]} props.list A list of user sessions.
+					 */
+					SessList({ id, list = [], stamp, status } = props) {
+						let data, rslt,
+							NA   =  'N/A',
+							cnt  =  list.length,
+							empt =  cnt==0,
+							SSID =  '',
+							emph =  (SS) => (SS.current?{fontStyle:'italic'}:{}),
+							ofst =  (new Date().getTimezoneOffset()*60000),
+							dig2 =  '2-digit',
+							dopt =  [ 'en-US', { 
+										year: dig2, month:  dig2, day:  dig2, 
+										hour: dig2, minute: dig2, 
+									}	],
+							clnm =  { ipa:"IP",dev:"Device",brw:"Browser",snc:"Since",act:"..." },
+							dflt = 	FromJS({ 
+										cols:  ['.8fr','auto','1fr','1fr','.4fr'], 
+										items: [{ 	
+											[clnm.ipa]: { text: "" }, 
+											[clnm.dev]: { text: "" }, 
+											[clnm.brw]: { text: "No Sessions Here!" }, 
+											[clnm.snc]: { text: "" }, 
+											[clnm.act]: { text: "" },
+									}	] 	}), 
+							itms =  list.map((SS,i,_a,B) => (B=emph(SS), SS.current&&(SSID=SS.ssid), ({
+										[clnm.ipa]: { style: B, text: SS.ip||NA },
+										[clnm.dev]: { style: B, text: !!SS.browser ? (`${SS.device} [${SS.os}]`).replace('[]','').trim()||NA : NA },
+										[clnm.brw]: { style: B, text: SS.browser||SS.device||NA },
+										[clnm.snc]: { style: B, text: new Date(SS.since+ofst).toLocaleString(...dopt) },
+										[clnm.act]: { style: B, text: (<Frag>
+											<input key="ssid" type="hidden" name={`ssid@${i}`} value={SS.ssid} data-param/>
+											<Form.Button key="btn" styles={['nope']} kind="submit" id={`Kill@${i}`} 
+														action={(e)=>(e.currentTarget.dataset.id=i)}
+														font=".5rem" icon="trash" disabled={SS.current} 
+														/>
+										</Frag>)}
+									}))),
+							clra =  (!empt ? [{
+										[clnm.ipa]: { text: "" },
+										[clnm.dev]: { text: "" },
+										[clnm.brw]: { text: "" },
+										[clnm.snc]: { text: "Clear All Devices", style: { fontWeight:'bold' } },
+										[clnm.act]: { text: (<Frag>
+											<input key="vert" type="hidden" name={`invert@${cnt}`} value="true" />
+											<input key="ssid" type="hidden" name={`ssid@${cnt}`} value={SSID} data-param />
+											<Form.Button key="btn" styles={['nope']} kind="submit" id={`Kill@All`} 
+														action={(e)=>(e.currentTarget.dataset.id=i)} 
+														font=".5rem" icon="trash" />
+										</Frag>) }
+									}] : []);
+						// -----------------------------------------------------------
+							data = FromJS(Assign({ 
+								items: 	[...itms, ...clra]
+							},{ form: 	{
+								'id':			`${id}-form`,
+								'rid':			`${id}`,
+								'method':		'DELETE',
+								'data-action': 	`/auth/sessions`,
+								'data-differ':	 true,
+								'api':          'auth',
+								'params':		{},
+								'query':		{},
+								'stamp':		 stamp,
+								'status':		 status,
+								'style':		{ fontSize: 'small' },
+							}	}));
+						// -----------------------------------------------------------
+							rslt = 	dflt.mergeDeepWith((o,n)=>n||o,data).toJS();
+						// -----------------------------------------------------------
+							return (<Content.Table2 key="sess" {...rslt} />);
+					};
+
+				// MAIN      /////////////////////////////////////////////////////////
+
+					render() {
+						let THS = this, ID = THS.id, SESS = THS.SessList, { list, stamp, status } = THS.state;
+						return <SESS key="sess" id={ID} list={list} stamp={stamp} status={status}/>;
+					}
+			};
+			EV.App.Sessions.defaultProps = {
+				stamp:  new Date(),
+				status: 'load',
+				loaded: false,
+			};
+
+			EV.App.Modal 		= class Modal	 	extends Mix('React', 'Static') {
 				constructor(props) {
 					super(props); this.name = 'PORTAL';
 					// --------------------------------------------------
@@ -443,67 +724,86 @@ module.exports = function Comps(COMPS) {
 						this.Elem = document.createElement('div');
 				}
 
-				componentDidMount	() { this.Root.appendChild(this.Elem); }
-
-				componentWillUnmount() { this.Root.removeChild(this.Elem); }
+				componentDidMount	() { 
+					let { Root, Elem, props } = this;
+					Elem.setAttribute("role","dialogue");
+					Elem.setAttribute("aria-label",props.label);
+					Root.appendChild(Elem); 
+				}
+				componentWillUnmount() { 
+					this.Root.removeChild(this.Elem); 
+				}
 
 				render() {
-					let THS 	= this,
-						elem 	= THS.Elem, 
-						props 	= THS.state,
-						kids 	= props.children;
-					return RDOM.createPortal(kids, elem);
+					let { Elem, props } = this,	kids = props.children;
+					return RDOM.createPortal(kids, Elem);
 				}
 			};
 
-		// HEAD    /////////////////////////////////////////////////////////
-			EV.Head 			= class Head 		extends Mix('Pure',  MX.Static) {
-				constructor(props) {
-					super(props); this.name = 'HEAD';
-					this.mode  = NMESPC.page.type||'';
-				}
+			EV.App.Dialogue  = function Dialogue({ show = [], steps = [], step = 1, closer } = props) {
+				// ---------------------------------------------------------------------------------- //
+					steps = steps.filter(s=>!!s);
+				// ---------------------------------------------------------------------------------- //
+				let cnts = steps.length,
+					grid = { style: { gridTemplateColumns: `repeat(${cnts}, auto)` } },
+					stat = { true: { className: 'current trunc' }, false: { className: 'trunc' } },
+					stpr = (s,i)=>(s.step=(i+1), s.show=(step==s.step), s.key=`step-${s.step}`, s);
+				// ---------------------------------------------------------------------------------- //
+					steps = steps.map(stpr);
+				// ---------------------------------------------------------------------------------- //
+					return (!!show ? (
+						<App.Modal step={step} label={steps[step-1].title}>
+							<div className="dialog header" data-step={step}>
+								<h6 className="heading trunc noSelect" {...grid}>
+									{steps.filter(s=>!!!s.hidden).map(s=>(
+										<span key={s.key} {...stat[s.show]}><span className="trunc">{s.title}</span></span>
+									))}
+								</h6>
+								<button title="Close this Window" className="close tkn nope" onClick={closer}>X</button>
+							</div>
+							<div className="dialog box" data-step={step} {...grid}>{steps.map((s,i)=>(
+								<div key={`step${i}`} className={classN({show:s.show})}>{s.content}</div>
+							))}</div>
+						</App.Modal>
+					) : null);
+			};
 
-				render() {
-					let props = this.props, 
-						mode  = this.mode,
-						title = props.title,
-						home  = props.home,
-						msgs  = props.messages,
-						alert = props.alerts,
-						admin = props.admin,
-						jumbo = mode=='jumbo',
-						space = jumbo?'S':'B',
-						flex  = ['flex','flexDirRow',`flexSpace${space}`],
-						clss  = ['noSelect','gridItemBranding'],
-						style = { 
-							// backgroundImage: `url('public/images/Logo.png')` 
-						};
-					return (
-						<header className={classN('gridItemHeader','gridHeader')} id="header">
-							{/* <!-- BANNER --> */}
-								<section className={classN(...clss.concat(flex))} id="banner" role="banner">
-									<a href={`http://${home}`}>
-										<div id="logo" className="gpu" style={style} role="logo"></div>
-									</a>{jumbo && !!title ? 
-									<header><h1 className="title gpu"><span className="trunc">{title}</span></h1></header> 
-									: null}
-								</section>
-							{/* <!-- NAVIGATION --> */}
-								{ !jumbo ?
-								<nav className="gridItemNav gridTabs compact" tabIndex="0" role="menubar">
-									{ COMPS.IsAuthd ? <div className="gridDrop">
-										<label role="menuitem">
-											<a id="gotoSearch" className={FA('search')} href="#app-root"></a>
-										</label>
-									</div> : null }
-									<Head.Drop {...msgs} />
-									<Head.Drop {...alert} />
-									<Head.Drop {...admin} />
-									<input type="radio" className="ctrl" name="navDrops" id="navNone" tabIndex="1" defaultChecked/>
-								</nav> : null}
-						</header>
-					);
-				}
+		// HEAD    /////////////////////////////////////////////////////////
+			EV.Head 			= function Head(props) {
+				let mode  = NMESPC.page.type||'',
+					title = props.title,
+					home  = props.home,
+					msgs  = props.messages,
+					alert = props.alerts,
+					admin = props.admin,
+					jumbo = mode=='jumbo',
+					space = jumbo?'S':'B',
+					flex  = ['flex','flexDirRow',`flexSpace${space}`],
+					clss  = ['noSelect','gridItemBranding'],
+					style = { 
+						// backgroundImage: `url('public/images/Logo.png')` 
+					};
+				return (
+					<header className={classN('gridItemHeader','gridHeader')} id="header">
+						{/* <!-- BANNER --> */}
+							<section className={classN(...clss.concat(flex))} id="banner" role="banner">
+								<a href={`http://${home}`}>
+									<div id="logo" className="gpu" style={style} role="logo"></div>
+								</a>{jumbo && !!title ? 
+								<header><h1 className="title gpu"><span className="trunc">{title}</span></h1></header> 
+								: null}
+							</section>
+						{/* <!-- NAVIGATION --> */}
+							{ !jumbo ?
+							<nav className="gridItemNav gridTabs compact" tabIndex="0" role="menubar">
+								<Head.SearchBtn />
+								<Head.Drop {...msgs} />
+								<Head.Drop {...alert} />
+								<Head.Drop {...admin} />
+								<input type="radio" className="ctrl" name="navDrops" id="navNone" tabIndex="1" defaultChecked/>
+							</nav> : null}
+					</header>
+				);
 			};
 			EV.Head.defaultProps = {
 				title: 		'',
@@ -513,13 +813,25 @@ module.exports = function Comps(COMPS) {
 				admin:		[],
 			};
 
-			EV.Head.Drop 		= class Drop		extends Mix('Pure',  MX.Static) {
+			EV.Head.SearchBtn	= function SearchBtn({} = props) {
+				return (COMPS.IsAuthd ? 
+					<div className="gridDrop">
+						<label role="menuitem" id="btnSearch">
+							<a id="gotoSearch" className={FA('search')} href="#app-root"></a>
+						</label>
+					</div>
+				: null)
+			};
+
+			EV.Head.Drop 		= class Drop		extends Mix('React', 'Static') {
 				constructor(props) {
 					super(props); this.name = 'DROP';
 				}
 
 				render() {
 					let props = this.props, 
+						state = this.state, 
+						load  = state._meta.load,
 						group = props.group, 
 						id 	  = props.id, 
 						lid   = `${id}-lbl`, 
@@ -528,12 +840,14 @@ module.exports = function Comps(COMPS) {
 						icon  = props.icon,
 						label = props.label,
 						igroup= props.igroup,
-						items = props.items,
+						items = props.items||[],
 						all   = (!!props.all?{
-									id:   `${igroup}-${items.length}`,
-									href: props.all,
+									id:     `${igroup}-${items.length}`,
+									igroup: igroup,
+									href:   props.all,
+									label:  props.allLbl,
 								}:null),
-						DItem = Head.Drop[props.kind];
+						DItem = Head.Drop[props.kind||'MItem'];
 					return (
 						<div className="gridDrop">
 							<input type="radio" className="reveal" name={group} id={id} aria-hidden="true" role="presentation"/>
@@ -541,21 +855,26 @@ module.exports = function Comps(COMPS) {
 								<i className={FA(icon)} role="none"></i>
 								{!!label?(<span className="hidden-xs hidden-sm" role="none">{label}</span>):null}
 							</label>
-							<div id={mid} className="drop reveal" role="presentation">
-								<div className="menu" aria-labelledby={lid} role="menu">
-									{items.map((v,i) => {
-										let id = `${igroup}-${i}`;
-										return (<DItem key={id} id={id} group={igroup} tab={tab} {...v}/>);
-									}).concat(!!all?[
-										<Head.Drop.ALL key={all.id} id={all.id} group={igroup} tab={tab} />
-									]:[])}
+							<Defer load={load} what={()=>(
+								<div id={mid} className="drop reveal" role="presentation">
+									<div className="menu" aria-labelledby={lid} role="menu">
+										{items.map((v,i) => {
+											let id = `${igroup}-${i}`;
+											return (<DItem key={id} id={id} group={igroup} tab={tab} {...v}/>);
+										}).concat(!!all?[
+											<Head.Drop.ALL key={all.id} {...all} tab={tab} />
+										]:[])}
+									</div>
 								</div>
-							</div>
+							)} 	/>
 						</div>
 					);
 				}
 			};
 			EV.Head.Drop.defaultProps = {
+				_meta:	{
+					load: false
+				},
 				group:	null, 
 				id:		null, 
 				tab:	'0', 
@@ -566,48 +885,30 @@ module.exports = function Comps(COMPS) {
 				all:	'',
 			};
 
-			EV.Head.Drop.MItem 	= class MItem		extends Mix('Pure',  MX.Static) {
-				constructor(props) { super(props); this.name = 'MItem'; }
-
-				getMenuItem(MenuItem, BtnElem, hasOpt = true) {
-					let { group, id, tab, href } = this.props,
-						BProps  = BtnElem.props||{},
-						BTag    = Tag(BtnElem.tag);
-					
-							// console.log(`${this.name}.getMenuItem()`, {
-								// props: 		this.props,
-								// MenuItem: 	MenuItem,
-								// BtnElem: 	BtnElem,
-								// hasOpt: 	hasOpt,
-							// })
-					
-					return (<Frag>
-						{ !!hasOpt ? <input type="radio" className="ctrl" name={group} id={id} aria-hidden="true" role="presentation"/> 
-						: null }<BTag {...BProps} href={href} tabIndex={tab} role="menuitem">{MenuItem}</BTag>
-					</Frag>);
-				}
+			EV.Head.Drop.MItem 	= function MItem({ MenuItem, BtnElem, hasOpt = true, group, id, tab, href } = props) {
+				let BProps = BtnElem.props||{}, BTag = Tag(BtnElem.tag);
+				return (<Frag>
+					{ !!hasOpt ? <input type="radio" className="ctrl" name={group} id={id} aria-hidden="true" role="presentation"/> 
+					: null }<BTag {...BProps} href={href} tabIndex={tab} role="menuitem">{MenuItem}</BTag>
+				</Frag>);
 			};
 			
-			EV.Head.Drop.MSG 	= class MSG			extends EV.Head.Drop.MItem {
-				constructor(props) { super(props); this.name = 'MSG'; }
-
-				render() {
-					let props 	= this.props, 
-						label 	= props.label,
-						time 	= props.time,
-						detail 	= props.detail;
-					return this.getMenuItem((
-						<div className="message prev">
-							<header>
-								<strong>{label}</strong>
-								<span className="pull-right muted">
-									<em>{time}</em>
-								</span>
-							</header>
-							<div>{detail}</div>
-						</div>
-					), { tag: 'a' });
-				}
+			EV.Head.Drop.MSG 	= function MSG({ group, id, tab, href, time, label, detail } = props) {
+				return (
+					<Head.Drop.MItem {...{ group, id, tab, href }}
+						MenuItem={(
+							<div className="message prev">
+								<header>
+									<strong>{label}</strong>
+									<span className="pull-right muted">
+										<em>{time}</em>
+									</span>
+								</header>
+								<div>{detail}</div>
+							</div>
+						)} 
+						BtnElem={{ tag: 'a' }} />
+				);
 			};
 			EV.Head.Drop.MSG.defaultProps = {
 				group:	null, 
@@ -620,21 +921,17 @@ module.exports = function Comps(COMPS) {
 				detail:	'',
 			};
 
-			EV.Head.Drop.ALRT 	= class ALRT		extends EV.Head.Drop.MItem {
-				constructor(props) { super(props); this.name = 'ALRT'; }
-
-				render() {
-					let props 	= this.props, 
-						label 	= props.label,
-						time 	= props.time,
-						icon 	= props.icon;
-					return this.getMenuItem((
-						<div className="notification">
-							<i className={FA(icon)}></i>{` ${label.trim()}`}
-							<span className="pull-right muted small">{time}</span>
-						</div>
-					), { tag: 'a' });
-				}
+			EV.Head.Drop.ALRT 	= function ALRT({ group, id, tab, href, time, label, icon } = props) {
+				return (
+					<Head.Drop.MItem {...{ group, id, tab, href }}
+						MenuItem={(
+							<div className="notification">
+								<i className={FA(icon)}></i>{` ${label.trim()}`}
+								<span className="pull-right muted small">{time}</span>
+							</div>
+						)} 
+						BtnElem={{ tag: 'a' }} />
+				);
 			};
 			EV.Head.Drop.ALRT.defaultProps = {
 				group:	null, 
@@ -646,36 +943,29 @@ module.exports = function Comps(COMPS) {
 				time:	'',
 			};
 
-			EV.Head.Drop.BTN 	= class BTN			extends EV.Head.Drop.MItem {
-				constructor(props) { 
-					super(props); this.name = 'BTN'; 
-					this.Kinds = { a: 'a',  button: 'button', submit: 'submit' };
-					this.Elems = { a: 'a',  button: 'button', submit: 'button' };
-					this.Types = { a: null, button: 'button', submit: 'submit' };
-				}
-
-				render() {
-					let props 	= this.props, 
-						kind	= this.Kinds[props.kind||'a'],
-						id 		= props.id,
-						label 	= props.label,
-						icon 	= props.icon, 
-						Wrap 	= props.wrap,
-						hasWrap = !!Wrap,
-						iattrs  = { 
-							tag: 	this.Elems[kind], 
-							props: 	{ type: this.Types[kind] }	
-						},
-						attrs  = (hasWrap ? Wrap : iattrs), 
-						item 	= (
-							<label htmlFor={id}>
-								<i className={FA(icon)}></i>{` ${label.trim()}`}
-							</label>
-						);
-					return this.getMenuItem((
-						hasWrap ? this.getMenuItem(item, iattrs, false) : item
-					), 	attrs);
-				}
+			EV.Head.Drop.BTN 	= function BTN({ group, id, tab, href, kind, label, icon, wrap } = props) {
+				let Kind	= MX.BTN.Kinds[kind||'a'],
+					hasWrap = !!wrap,
+					mattrs  = { group, id, tab, href },
+					iattrs  = { 
+						tag: 	MX.BTN.Elems[Kind], 
+						props: 	{ type: MX.BTN.Types[Kind] }	
+					},
+					attrs  = (hasWrap ? wrap : iattrs), 
+					item 	= (
+						<label htmlFor={id}>
+							<i className={FA(icon)}></i>{` ${label.trim()}`}
+						</label>
+					);
+				return (
+					<Head.Drop.MItem {...mattrs}
+						MenuItem={(
+							hasWrap ? (<Head.Drop.MItem {...mattrs}
+								MenuItem={item} BtnElem={iattrs} hasOpt={false} 
+							/>) : item
+						)} 
+						BtnElem={attrs} />
+				);
 			};
 			EV.Head.Drop.BTN.defaultProps = {
 				group:	null, 
@@ -686,17 +976,12 @@ module.exports = function Comps(COMPS) {
 				href:	'#',
 			};
 
-			EV.Head.Drop.ALL 	= class ALL			extends EV.Head.Drop.MItem {
-				constructor(props) { super(props); this.name = 'ALL'; }
-
-				render() {
-					let props 	= this.props,
-						label 	= props.label,
-						icon 	= props.icon;
-					return this.getMenuItem((
-						<div className="msg all"><strong>{label}</strong> <i className={FA(icon)}></i></div>
-					), { tag: 'a' });
-				}
+			EV.Head.Drop.ALL 	= function ALL({ group, id, tab, href, label, icon } = props) {
+				return (
+					<Head.Drop.MItem {...{ group, id, tab, href }}
+						MenuItem={(<div className="msg all"><strong>{label}</strong> <i className={FA(icon)}></i></div>)} 
+						BtnElem={{ tag: 'a' }} />
+				);
 			};
 			EV.Head.Drop.ALL.defaultProps = {
 				group:	null, 
@@ -708,78 +993,64 @@ module.exports = function Comps(COMPS) {
 			};
 
 		// SEARCH  /////////////////////////////////////////////////////////
-			EV.Search 			= class Search 		extends Mix('React', MX.Dynamic) {
-				constructor(props) {
-					super(props); this.name = 'SEARCH';
-				}
-
-				render() {
-					let THS 	=   this,
-						props	=   THS.props,
-						id		=  "search",
-						name	=  "terms",
-						attrs 	= { id:id,name:id,method:'POST',action:'/results',accept:'text/html'},
-						classes = ["gridItemSearch","gridSearch"],
-						tokens	=   props.tokens||[],
-						isSrch	=   NMESPC.name == 'results';
-					return ( COMPS.IsAuthd ?
-						<form {...attrs} className={classN('norm-b',...classes)} role="search">
-							<div className="tkn norm" role="presentation"><span><i className={FA('search')}></i></span></div>
-							<Form.Tokens {...{
-								kind:			 "token",
-								search:			  true,
-								id:				  name,
-								name:			  name, 
-								placeholder: 	["i.e. New York, French, Tutor, etc."],
-								// placeholder: 	["I'm looking for People who...","and/or..."],
-								styles:			["gridItemSearchBox","bare"],
-								complete:	 	 "off", 
-								tokens:			  tokens,
-								clear:		 	  true,
-								verbs:		 	  true,
-								removal:		 "delete",
-								more: 			['Casual'],
-								data:			{
-									id:   		`${name}-sgst`, 
-									url:  		'/search/suggest',
-									context:     true,
-								},
-							}}/>
-							<input  type="hidden" id="search-uid" name="uid" value={COMPS.UID} required/>
-							<button type="submit" id="search-go"  className="tkn norm">
-								<span>GO</span>{ !isSrch ? <Frag> <a>Defined Search</a></Frag> : null }
-							</button>
-						</form> : <div className={classN(...classes)} role="presentation"></div>
-					);
-				}
+			EV.Search 			= function Search(props) {
+				let id		=  "search",
+					name	=  "terms",
+					attrs 	= { id:id,name:id,method:'POST',action:'/results',accept:'text/html'},
+					classes = ["gridItemSearch","gridSearch"],
+					tokens	=   props.tokens||[],
+					isSrch	=   NMESPC.name == 'results';
+				return ( COMPS.IsAuthd ?
+					<form {...attrs} className={classN('norm-b',...classes)} role="search">
+						<div className="tkn norm" role="presentation"><span><i className={FA('search')}></i></span></div>
+						<Form.Tokens {...{
+							kind:			 "token",
+							search:			  true,
+							id:				  name,
+							name:			  name, 
+							placeholder: 	["i.e. New York, French, Tutor, etc."],
+							// placeholder: 	["I'm looking for People who...","and/or..."],
+							styles:			["gridItemSearchBox","bare"],
+							complete:	 	 "off", 
+							tokens:			  tokens,
+							clear:		 	  true,
+							verbs:		 	  true,
+							removal:		 "delete",
+							more: 			['Casual'],
+							data:			{
+								id:   		`${name}-sgst`, 
+								url:  		'/search/suggest',
+								context:     true,
+							},
+						}}/>
+						<input  type="hidden" id="search-uid" name="uid" value={COMPS.UID} required/>
+						<button type="submit" id="search-go"  className="tkn norm">
+							<span>GO</span>{ !isSrch ? <Frag> <a href="/defined">Defined Search</a></Frag> : null }
+						</button>
+					</form> : <div className={classN(...classes)} role="presentation"></div>
+				);
 			}
 
 		// COVER   /////////////////////////////////////////////////////////
-			EV.Cover 			= class Cover 		extends Mix('Pure',  MX.Static) {
-				constructor(props) {
-					super(props); this.name = 'COVER';
-				}
-
-				render() {
-					let props 	= this.props,
-						img 	= props.img||'',
-						style 	= (!!img ? { 
-							backgroundImage: `url('${img}')` 
-						} : null);
-					return (
-						<header className="gridItemCover" role="complementary">
-							<div className="gpu" style={style} role="img"></div>
-						</header>
-					);
-				}
-			}
+			EV.Cover 			= function Cover({ img = '', load = false } = props) {
+				let image   = img||'',
+					style   = (!!image ? { 
+						backgroundImage: `url('${image}')` 
+					}  : null);
+				return (
+					<header className="gridItemCover" role="complementary">
+						<div className="gpu" style={style} role="img"></div>
+					</header>
+				);
+			};
 			EV.Cover.defaultProps = {
-				image: ''
+				img: '',
+				load: false,
 			}
 
 		// TITLE   /////////////////////////////////////////////////////////
 
-			EV.Title 			= class Title 		extends Mix('Pure',  MX.Static) {
+			EV.Title 			= class Title 		extends Mix('React', 'Static') {
 				constructor(props) {
 					super(props); this.name = 'TITLE';
 				}
@@ -792,7 +1063,7 @@ module.exports = function Comps(COMPS) {
 					if (!!res.label  ) res.label  = ['\u000a(',res.label,')'];
 					if (!!!res.badges) res.badges = [];
 					else if (isShadow) res.badges = res.badges.map(v => (
-						v.kind = v.kind.split('').reverse().join(''),v)
+						v.kind = v.kind/*.split('').reverse().join('')*/,v)
 					);	return res;
 				}
 				getFull(isShadow, title, subtitle) {
@@ -864,13 +1135,15 @@ module.exports = function Comps(COMPS) {
 
 		// PLAQUE  /////////////////////////////////////////////////////////
 			
-			EV.Plaque 			= class Plaque 		extends Mix('Pure',  MX.Static) {
+			EV.Plaque 			= class Plaque 		extends Mix('React', 'Static') {
 				constructor(props) {
 					super(props); this.name = 'PLAQUE';
 				}
 
 				render() {
 					let props 	= this.props,
+						uid     = props.uid,
+						isUser  = COMPS.UID == uid,
 						mode	= props.mode||'show',
 						pic		= props.photo,
 						uname	= props.uname||'',
@@ -909,10 +1182,15 @@ module.exports = function Comps(COMPS) {
 									</div>
 								</header>
 							{/* <!-- PROFILE JOIN  --> */}
-								{mode=='show' ? (
+								{mode=='show' && !isUser ? (
 								<header className="gridItemJoin" role="complementary">
 									<div className="cutout">
-										<button className="tkn good large block" type="submit">
+										<button className="tkn mayb large" type="submit" title={`Chat with ${uname}!`}>
+											<span><i className={FA('comments')}></i></span>
+										</button>
+									</div>
+									<div className="cutout">
+										<button className="tkn good large block" type="submit" title={`Invite ${uname} into your world!`}>
 											<span><i className={FA('user-plus')}></i> Join my Community</span>
 										</button>
 									</div>
@@ -1003,7 +1281,7 @@ module.exports = function Comps(COMPS) {
 			};
 
 		// CONTENT /////////////////////////////////////////////////////////
-			EV.Content 			= class Content 	extends Mix('Pure',  MX.Static) {
+			EV.Content 			= class Content 	extends Mix('React', 'Static') {
 				constructor(props) {
 					super(props); this.name = 'CONTENT';
 				}
@@ -1029,7 +1307,7 @@ module.exports = function Comps(COMPS) {
 									href = {href:`#${prps.name}`};
 								return (!!head?Assign({},dflts,head,href):null);
 							}).filter(v=>!!v)
-					}; }
+					}; 	}
 				}
 
 				render() {
@@ -1038,24 +1316,26 @@ module.exports = function Comps(COMPS) {
 						sgmnt = this.getSegments(props.segments),
 								{ copy, other } = sgmnt,
 						sideb = this.getSideBar(sgmnt),
-						jumbo = NMESPC.page.type=='jumbo';
+						jumbo = NMESPC.page.type=='jumbo',
+						style = props.style;
+						
 					return (
-						<section className="gridItemContent gridContent" role="main">
-							{!jumbo?<SideBar {...sideb} />:null}
-									<Copy    {...copy } />
-							{!jumbo?<Other   {...other} />:null}
+						<section className="gridItemContent gridContent" style={style} role="main">
+							{!jumbo?<SideBar {...sideb||[]} />:null}
+									<Copy    {...copy ||[]} />
+							{!jumbo?<Other   {...other||[]} />:null}
 						</section>
 					);
 				}
 			};
 
-			EV.Content.SideBar 	= class SideBar 	extends Mix('Pure',  MX.Static) {
+			EV.Content.SideBar 	= class SideBar 	extends Mix('React', 'Static') {
 				constructor(props) {
 					super(props); this.name = 'SIDEBAR';
 				}
 
 				render() {
-					let props = this.props, name = props.name, bttns = props.items;
+					let props = this.props, name = props.name||'', bttns = props.items||[];
 					return (
 						<nav id={name} className="gridItemSidebar gridMenu" aria-controls="copy other">
 							{bttns.map((v,i) => (
@@ -1079,7 +1359,7 @@ module.exports = function Comps(COMPS) {
 				}
 			};
 
-			EV.Content.Copy 	= class Copy 		extends Mix('Pure',  MX.Static) {
+			EV.Content.Copy 	= class Copy 		extends Mix('React', 'Static') {
 				constructor(props) {
 					super(props); this.name = 'COPY';
 				}
@@ -1087,7 +1367,7 @@ module.exports = function Comps(COMPS) {
 				render() {
 					let props 	= this.props, 
 						name 	= props.name, 
-						panels 	= props.items,
+						panels 	= props.items||[],
 						form 	= props.form||{},
 						Elem 	= !!props.form?Form:'section';
 					return (
@@ -1098,13 +1378,13 @@ module.exports = function Comps(COMPS) {
 				}
 			};
 
-			EV.Content.Other 	= class Other	 	extends Mix('Pure',  MX.Static) {
+			EV.Content.Other 	= class Other	 	extends Mix('React', 'Static') {
 				constructor(props) {
 					super(props); this.name = 'OTHER';
 				}
 
 				render() {
-					let props = this.props, name = props.name, panels = props.items;
+					let props = this.props, name = props.name, panels = props.items||[];
 					return (
 						<aside id={name} className="gridItemOther" aria-hidden="true">
 							{panels.map((v,i) => Agnostic(v, i))}
@@ -1113,7 +1393,7 @@ module.exports = function Comps(COMPS) {
 				}
 			};
 
-			EV.Content.Panel 	= class Panel 		extends Mix('Pure',  MX.Static) {
+			EV.Content.Panel 	= class Panel 		extends Mix('React', 'Static') {
 				constructor(props) {
 					super(props); this.name = 'PANEL';
 				}
@@ -1122,7 +1402,7 @@ module.exports = function Comps(COMPS) {
 					let props = this.props,   name  = props.name, 
 						head  = props.header, body  = props.body,
 						accrd = !!props.accordian?'accordian':null,
-						kind  = classN("panel",props.kind||''), 
+						kind  = classN("panel",props.kind||'',{full:!!props.full},{trail:!!props.trail}), 
 						fixed = !!(head||{}).fixed?'fixed':null,
 						align = props.align||'',
 						form  = props.form||null,
@@ -1140,38 +1420,47 @@ module.exports = function Comps(COMPS) {
 				}
 			};
 
-			EV.Content.Slab 	= class Slab 		extends Mix('Pure',  MX.Static) {
+			EV.Content.Slab 	= class Slab 		extends Mix('React', 'Static') {
 				constructor(props) {
-					super(props); this.name = 'SLAB';
-					this.kind = {true:'radio',false:'checkbox'};
-					this.clss = {true:'swap',false:''};
-					this.icon = {'data-open':'','data-close':''};
+					super(props); let THS = this; THS.name = 'SLAB';
+					THS.kind  = {true:'radio',false:'checkbox'};
+					THS.clss  = {true:'swap',false:''};
+					THS.icon  = {'data-open':'','data-close':''};
+					THS.hcls  = "heading reveal tkn norm block close";
+				}
+
+				getContent({ load = false, children }) {
+					return ((!!load ? (
+						<div key="ctn" className="body gridSlice gap reveal" aria-hidden="true">
+							{children}
+						</div>
+					) : null));
 				}
 
 				render() {
-					let { title, id, group, children, swap } = this.props,
-						hclass = "heading reveal tkn info block close";
+					let THS = this, Elem = THS.getContent, hclass = THS.hcls, { 
+							title, id, group, children, load, swap 
+						} = THS.props;
 					return (
-						<div key={id} className={classN("panel","slab","block",this.clss[!!swap])}>
-							<input type={this.kind[!!swap]} id={id} name={group||id} className="reveal open"/>
+						<div key={id} className={classN("panel","slab","block",THS.clss[!!swap])}>
+							<input type={THS.kind[!!swap]} id={id} name={group||id} className="reveal open"/>
 								{ !!swap ?
 							<input type="radio" id={`${id}-cls`} name={group||id} className="reveal close"/>
 								: null }
-							<label className={hclass} htmlFor={id}>
-								<h6>{title}</h6>
-							</label>
+							<label className={hclass} htmlFor={id}><h6>{title}</h6></label>
 								{ !!swap ? (
-							<label htmlFor={`${id}-cls`} className={hclass}><h6 {...this.icon}></h6></label>
+							<label htmlFor={`${id}-cls`} className={hclass}><h6 {...THS.icon}></h6></label>
 								) : null }
-							<div className="body gridSlice gap reveal" aria-hidden="true">
-								{children}
-							</div>
+							<Elem key="content" load={load}>{children}</Elem>
 						</div>
 					);
 				}
 			};
+			EV.Content.Slab.defaultProps = {
+				load: false
+			};
 
-			EV.Content.Trader 	= class Trader 		extends Mix('Pure',  MX.Static) {
+			EV.Content.Trader 	= class Trader 		extends Mix('React', 'Static') {
 				constructor(props) {
 					super(props); this.name = 'TRADER';
 				}
@@ -1184,6 +1473,7 @@ module.exports = function Comps(COMPS) {
 					let THS   	=  this,
 						props 	=  THS.props,
 						id    	=  props.id,
+						divide  =  !!props.divide,
 						styles 	=  this.styles.concat(props.style||['norm']),
 						lattr 	=  { 'htmlFor': id, 'className': classN(styles) },
 						kids  	=  KIDS.toArray(props.children),
@@ -1191,12 +1481,15 @@ module.exports = function Comps(COMPS) {
 					return (<Frag>
 						<input type="checkbox" id={id} name={id} className="reveal trade"/>
 						{kids[0]}
-						<div className="label spread">
+						<div className={classN(['label','spread'],{divide})}>
 							<label {...lattr}><span {...label}></span></label>
 						</div>
 						{kids[1]}
 					</Frag>);
 				}
+			};
+			EV.Content.Trader.defaultProps = {
+				divide: true,
 			};
 
 			EV.Content.Tabs 	= function Tabs(props) {
@@ -1214,80 +1507,146 @@ module.exports = function Comps(COMPS) {
 						: null )
 				}
 
-				let main   	= `tab-${props.id}`,
+				let main   	= `tab-${props.id||props.name}`,
+					dflted  =  props.default,
+					tabs 	=  props.tabs||[],
+					count   =  tabs.length,
+					gridEnd = {gridColumnEnd:count+1},
 					start 	=  props.start||'one',
-					size 	=  props.size||'spread',
-					tabs 	=  props.tabs||[];
-
+					size 	=  props.size||'spread';
+				// --------------------------------------------------------------------------------- //
 				return (
 					<div className={classN('tabs','flex','flexDirColR',start,size)}>
-						<div className="tabBody">
-							{tabs.map((t,i,l,k,id)=>(
-								k = `${main}-${i}`, id = `${main}-${t.name}`,
-								<div key={k}>
-									<input type="radio" id={id} name={main} className="reveal open" defaultChecked={i==0}/>
-									<div className="reveal gridSlice">{Agnolist(t.body||[])}</div>
-								</div>))}
-						</div>
 						<nav className="gridTabs buttons" role="tabgroup">
-							{tabs.map((t,i)=>(
-								<label key={`tab-btn-${i}`} htmlFor={`${main}-${t.name}`}>{getLabel(t)}{getIcon(t)}</label>
-							))}
+							{tabs.map((t,i,_l,k,id,s,e)=>(
+								/* Comp-Key  */ k  = `${main}-${i}`, 
+								/* Elem ID   */ id = `${main}-${t.name}`,
+								/* Tab-Start */ s  = i==0,
+								/* Tab-End   */ e  = i==(count-1),
+								<Frag key={k}>
+									<input type="radio" id={id} name={main} className="reveal open" defaultChecked={i==0}/>
+									<label key={`tab-btn-${i}`} className={classN({start:s,end:e})} htmlFor={`${main}-${t.name}`}>{
+										getLabel(t)}{getIcon(t)
+									}</label>
+									<div key={`tab-ctn-${i}`} className={classN("reveal","gridSlice",{default:dflted})} style={gridEnd}>{
+										Agnolist(t.body||[])
+									}</div>
+								</Frag>))}
 						</nav>
 					</div>
 				);
 			};
 
-			EV.Content.Table 	= function Table(props) {
-				let { id, cols, items, form, editable } = props,
-					hFrm = IS(form)=='object',
-					Elem = hFrm ? Form : 'div', 
-					cnum = (cols||[]).length,
-					edit = !!editable?'edit':null,
-					attr = Assign({
-						className: classN(["table","spread","reveal"],edit),
-						style: { gridTemplateColumns: cols.join(' ') },
-					}, hFrm ? form : {});
-				// -----------------------------------------------------------
-				function getStyles(id, cols) {
-					let temp = '.table#%s>.column:nth-child(%sn+%s){border-%s-width:1px;}',
-						args = [[id,cols,cols,'right'],[id,cols,1,'left']];
-					return args.map(a=>a.reduce((c,n)=>c.replace('%s',n),temp)).join('\n');
-				};
+			/**
+			 * Renders a Grid-based Table.
+			 * @param {TableProps} props The parameter object.
+			 */
+			EV.Content.Table 	= function Table({ id, cols, items, form, editable } = props) {
+				let hFrm = 	IS(form)=='object',
+					Elem = 	hFrm ? Form : 'div', 
+					cnum = 	(cols||[]).length,
+					edit = 	!!editable?'edit':null,
+					modu = 	(n)=>((n+1)%cnum), 
+					attr = 	FromJS({
+								className: classN(["table","spread","reveal"],edit),
+								style: { gridTemplateColumns: cols.join(' ') },
+							}).mergeDeep(FromJS(
+								hFrm ? form : {}
+							)).toJS();
 				// -----------------------------------------------------------
 				return (<Frag key={id}>
-					<style key="sty" dangerouslySetInnerHTML={{__html:getStyles(id,cnum)}}></style>
 					<Elem key="tbl" id={id} {...attr}>
-						{(items||[]).map((c,n,a,f,h)=>(
-							f = ((n+1)%cnum==1), h = (n<cnum),
-							<div key={`${id}-c${n}`} className={classN("column",f?"nowrap":null,h?"head":null)} style={c.style}>
-								<div className={classN(f?"trunc":null)}>{!!!c.link ? 
-									(IS(c.text)!='object'?<span>{c.text}</span>:c.text) :
-									(<a key={c.key||null} {...c.link}>{c.text}</a>)
-								}</div>
-							</div>
-						))}
+						{(items||[]).map((v,n)=>{
+							let /* is header-row */ h = (n<cnum),
+								/* modulo number */ m = modu(n),
+								/* is 1st-column */ f = cnum==1||(m==1),
+								/* is end-column */ e = (m==0);
+							return (
+								<div key={`${id}-n${n}`} className={classN("column",{nowrap:f,head:h,left:f,right:e})} style={v.style}>
+									<div className={classN({trunc:f},v.className)}>{!!!v.link ? 
+										(IS(v.text)!='object'?<span>{v.text}</span>:v.text) :
+										(<a key={v.key||null} {...v.link}>{v.text}</a>)
+									}</div>
+								</div>
+							);
+						})}
 					</Elem>
 				</Frag>);
 			}
 
-			EV.Content.Block 	= function Block(props) {
-				let { name, header: head, items = [], form, align } = props,
-					  slice = !!(align||'').match(/\bgridSlice\b/),
-					  Elem  = !!form?Form:'div';
+			/**
+			 * Renders a Grid-based Table.
+			 * @param {TableProps2} props The parameter object.
+			 */
+			EV.Content.Table2 	= function Table2({ id, cols, align, items, form, editable } = props) {
+				align = align||[];
+				/**
+				 * @type {TableRow[]}
+				 */
+				let clmn =  Imm.Map(items[0]).map((_C,CL)=>({text:CL}));
+				/**
+				 * @type {JSX.Element[]}
+				 */
+				let rows =  [], L = clmn.size-1, UND = undefined;
+				let hFrm = 	IS(form)=='object', 
+					Elem = 	hFrm ? Form : 'div', 
+					edit = 	!!editable?'edit':null, 
+					attr = 	FromJS({
+								className: classN(["table","spread","reveal"],edit),
+								style: { gridTemplateColumns: cols.join(' ') },
+							}).mergeDeep(FromJS(
+								hFrm ? form : {}
+							)).toJS();
+				// -----------------------------------------------------------
+				return (<Frag key={id}>
+					<Elem key="tbl" id={id} {...attr}>
+						{Imm.List([clmn.toJS()].concat(items)).reduce((T,R,RN) => {
+							Imm.Map(R).toList().map((C,CN) => {
+								let /* TableCell Key */ K = `${id}[${CN}:${RN}]`,
+									/* is header-row */ H = (RN==0),
+									/* is 1st-column */ F = (CN==0),
+									/* is end-column */ E = (CN==L),
+									/* column aligns */ A = align[CN]||'L';
+								T.push(
+									<div key={K} className={classN("column",A,{nowrap:F,head:H,left:F,right:E})} style={C.style}>
+										<div className={classN({trunc:F},C.className)||UND}>{ !!!C.link ? 
+											(IS(C.text)!='object'?<span>{C.text}</span>:C.text) :
+											(<a key={C.key||null} {...C.link}>{C.text}</a>)
+										}</div>
+									</div>
+								);
+							});	return T;
+						},	rows)}
+					</Elem>
+				</Frag>);
+			}
+
+			/**
+			 * ...
+			 * @param {Object} props ...
+			 * @param {string} props.name ...
+			 * @param {{label:string,icon:string}} props.header ...
+			 * @param {AgnoProps[]} [props.items] ...
+			 * @param {JSX.Element[]} [props.children=[]] ...
+			 * @param {{}} props.form ...
+			 * @param {string} props.align ...
+			 */
+			EV.Content.Block 	= function Block({ name, header: head, items, children = [], form, align } = props) {
+				let slice = !!(align||'').match(/\bgrid(Slice|Pair)\b/),
+					Elem  = !!form?Form:'div';
 				return (
 					<Elem id={name} className={classN('block',align)} {...form}>
 						{!!head?<h4 key={name} className={slice?"spread":null}>
 							{head.label}<i className={FA(head.icon)}></i>
 						</h4>:null}
-						{Agnolist(items)}
+						{!!items ? Agnolist(items) : children}
 					</Elem>
 				);
 			};
 
 		// SERVICE /////////////////////////////////////////////////////////
 
-			EV.Services 		= class Services 	extends Mix('Reflux',MX.Static) {
+			EV.Services 		= class Services 	extends Mix('Reflux','Static') {
 				constructor(props) {
 					super(props); let THS = this; THS.name = 'SERVICES';
 					// ---------------------------------------------------
@@ -1317,51 +1676,363 @@ module.exports = function Comps(COMPS) {
 					}
 			};
 
-			EV.Service 			= class Service 	extends Mix('Pure',  MX.Static) {
+			EV.Service 			= class Service 	extends Mix('React', 'Static') {
 				constructor(props) {
-					super(props); this.name = 'SERVICE';
-					this.tags = {true:'edit',false:'show'};
+					super(props); let THS = this; THS.name = 'SERVICE';
+					// -------------------------------------------------- //
+						THS.tags  = {true:'edit',false:'show'};
+						THS.state = props;
+					// -------------------------------------------------- //
+						THS.inquiryOpen  = THS.inquiryOpen.bind(THS);
+						THS.inquiryClose = THS.inquiryClose.bind(THS);
+						THS.gotoStep     = THS.gotoStep.bind(THS);
+						THS.prevStep     = THS.prevStep.bind(THS);
+						THS.nextStep     = THS.nextStep.bind(THS);
 				}
 
-				showService({ IDs, desc, rate, charge }) {
-					let svid  =  IDs.svid,
-						dllar = (<span className="muted">$</span>),
-						slash = (<span className="muted">/</span>),
-						chrg  = {
-							Free:	 c => ('Free!'),
-							Flat:	 c => (<Frag key="chrg">{dllar}{c}</Frag>),
-							Hourly:	 c => (<Frag key="chrg">{dllar}{c}{slash}hour</Frag>),
-							Daily:	 c => (<Frag key="chrg">{dllar}{c}{slash}daily</Frag>),
-							Monthly: c => (<Frag key="chrg">{dllar}{c}{slash}monthly</Frag>),
-							Quote:	 c => ('Quote'),
-						}[rate](charge);
-					return (<Frag>
-						<div className="greedy">{
-							desc.match(/(\S[\S\s]+?)(?=\n\n|$)/g).map((p,i) => (
-								<p key={`${IDs.svc}-${i}`} className="lead">
-									{p.match(/([^\n]+)(?=\n|$)/g).map((t,k)=>
-										<Frag key={`${i}-${k}`}>{t}<br/></Frag>
-									)}
-								</p>
-							)	)
-						}</div>
-						<div className="sliver gridR"><h5><dt>{chrg}</dt></h5></div>
-						<button className="tkn block good some"><span><i className="fas fa-credit-card"></i> Inquire</span></button>
-						<label className="tkn block norm more reveal" htmlFor={IDs.info}><span><i className="fas fa-binoculars"></i> Get more Info</span></label>
-						<input type="checkbox" id={IDs.info} name={IDs.info} className="reveal open"/>
-						<div className="reveal spread">
-							<p><small>Check out any relavent <b>Documents</b>, <b>Credentials</b>, <b>Images</b> &amp; <b>Links</b> regarding this Service below!</small></p>
-							<br/>
-							<Service.Files svid={svid} />
-						</div>
-					</Frag>);
-				}
+				// CYCLE     /////////////////////////////////////////////////////////
 
-				editService({ IDs, name, desc, rate, charge }) {
-					let id    = `${IDs.svc}-edit`,
-						svid  =  IDs.svid,
-						btns  = { font:'.8em' },
-						form  = {
+					//
+
+				// EVENTS    /////////////////////////////////////////////////////////
+
+					inquiryOpen(e) {
+						e.stopPropagation(); e.preventDefault(); 
+						this.setState({ inquire: true })
+					}
+					inquiryClose(e) {
+						e.stopPropagation(); e.preventDefault(); 
+						this.setState({ inquire: false })
+					}
+
+					gotoStep(step = 1) {
+						this.setState({ step });
+					}
+					prevStep(nextState = {}) {
+						let state = this.state;
+						nextState.step = state.step-1;
+						this.setState(nextState);
+					}
+					nextStep(nextState = {}) {
+						let state = this.state;
+						nextState.step = state.step+1;
+						this.setState(nextState);
+					}
+
+				// FUNCTIONS /////////////////////////////////////////////////////////
+
+					/**
+					 * Renders a display version of the Service.
+					 * @param {Props.SVC.Sub} props 
+					 */
+					showService({ IDs, desc, rate, charge, interact, quant, recur, handle } = props) {
+						quant = quant||{};
+						let svid  =  IDs.svid,
+							dllar = (<span className="muted">$</span>),
+							slash = (<span className="muted">/</span>),
+							chrg  = [null,
+								(c)=>('Free!'),
+								(c)=>(<Frag key="chrg">{dllar}{c}</Frag>),
+								(c)=>(<Frag key="chrg">{dllar}{c}{slash}hour</Frag>),
+								(c)=>(<Frag key="chrg">{dllar}{c}{slash}day</Frag>),
+								(c)=>(<Frag key="chrg">{dllar}{c}{slash}week</Frag>),
+								(c)=>(<Frag key="chrg">{dllar}{c}{slash}month</Frag>),
+								(c)=>('Quote'),
+							][rate](charge);
+						return (<Frag>
+							<div className="greedy">{
+								desc.match(/(\S[\S\s]+?)(?=\n\n|$)/g).map((p,i) => (
+									<p key={`${IDs.svc}-${i}`} className="lead">
+										{p.match(/([^\n]+)(?=\n|$)/g).map((t,k)=>
+											<Frag key={`${i}-${k}`}>{t}<br/></Frag>
+										)}
+									</p>
+								)	)
+							}</div>
+							<div className="sliver gridR"><h5><dt>{chrg}</dt></h5></div>
+							<button className="tkn good some" onClick={handle}><span><i className="fas fa-credit-card"></i> Inquire</span></button>
+							<label className="tkn info more reveal" htmlFor={IDs.info}><span><i className="fas fa-binoculars"></i> Get more Info</span></label>
+							<input type="checkbox" id={IDs.info} name={IDs.info} className="reveal open"/>
+							<div className="reveal spread">
+								<p><small>Check out any relavent <b>Documents</b>, <b>Credentials</b>, <b>Images</b> &amp; <b>Links</b> regarding this Service below!</small></p>
+								<br/>
+								<Service.Files svid={svid} />
+							</div>
+						</Frag>);
+					}
+					/**
+					 * Renders an editable version of the Service.
+					 * @param {Props.SVC.Sub} props 
+					 */
+					editService({ IDs, name, desc, rate, charge, interact = 1, quant, recur = false } = props) {
+						let id    = `${IDs.svc}-edit`,
+							svid  =  IDs.svid,
+							attrs = {
+								id: 	id,
+								style: ['info','large'],
+								label: {
+									'data-top':    ` Edit '${name}'`,
+									'data-tcon':   "",
+									'data-btm':    ` Add/Edit Credentials`,
+									'data-bcon':   "",
+								},
+							};
+						return (
+							<Content.Trader {...attrs}>
+								<Service.Form {...{ IDs, name, desc, rate, charge, interact, quant, recur }}/>
+								<div className="C12 reveal btm">
+									<p>
+										<small>Check out any relavent <b>Documents</b>, <b>Credentials</b>, <b>Images</b> &amp; <b>Links</b> regarding this Service below!</small>
+									</p>
+									<br/>
+									<Service.Files svid={svid} editable/>
+								</div>
+							</Content.Trader>
+						);
+					}
+
+				// MAIN      /////////////////////////////////////////////////////////
+
+					render() {
+						let THS   = this,
+							tag   = THS.tags,
+							props = THS.props,
+							state = THS.state,
+							meta  = state._meta,
+							order = state.order,
+							compl = state.complete,
+							svid  = props.id,
+							accid = props.acct_id,
+							cusid = props.cust_id,
+							inqr  = state.inquire,
+							IDs   = {
+								svid:	 svid,
+								svc: 	`showSvc-${svid}`,
+								info: 	`showSvcInfo-${svid}`,
+							},
+							edit  = !!props.editable,
+							Serv  = THS[`${tag[edit]}Service`],  
+							kind  = props.kind, 
+							name  = props.name, 
+							title = (<Frag>{name}<span className="mirror">{kind}</span></Frag>),
+							desc  = props.description,
+							chrg  = props.charge,
+							rate  = props.rate,
+							inter = props.interact,
+							quant = props.quantity,
+							recur = !!props.recurring,
+							nonDR = [1,7].has(rate),
+							step  = state.step,
+							load  = meta.load,
+							addr  = {
+								holder: "Arian LeShaun Johnson",
+								line1: "909-210 15 Ave SE",
+								line2: "",
+								city: "Calgary",
+								state: "AB",
+								postal_code: "T2G 0B5",
+								country: "CA",
+								phone: "4035619332",
+							};
+						return (
+							<Content.Slab key={IDs.svc} load={load} id={IDs.svc} group="svcs" title={title} swap>
+								<Defer load={load} what={()=>(
+									<Serv {...{ IDs, name, desc, rate, charge:chrg, interact:inter, quant, recur }} handle={THS.inquiryOpen}/>
+								)} 	/>{ edit ? null : 
+								<App.Dialogue key="inquire" show={inqr} steps={[{ 
+									title: `Purchasing ${name}`,
+									content: (
+										<PoS.Order {...{ 
+											order, rate, charge:chrg, interact:inter, quant, recur, 
+											onSubmit(req) {
+												let { quantity, datetime, notes, subtotal } = req.body, order;
+												subtotal = parseFloat(subtotal.replace(/[^\d.]+/g,''));
+												subtotal = (isNaN(subtotal) ? 0 : subtotal);
+												quantity = parseFloat(quantity||0);
+												order    = { unit: quant.unit, quantity, datetime, notes, subtotal };
+												THS.setState({ order, step: 2, complete: nonDR });
+											}
+										}} />
+									)
+								}].concat(( !nonDR ? [{ 
+									title: 'Payment Method',
+									content: (
+										<div className="gridSlice C12" style={{gridGap:'0'}}>
+											<Content.Trader {...{
+												id: 	'pay-options',
+												style: ['info','large','C12'],
+												divide:  false,
+												label: {
+													'data-top':    'Or Use a Saved-Card',
+													'data-tcon':   "\uf14a ",
+													'data-btm':    'Or Use a Different Card',
+													'data-bcon':   "\uf044 ",
+												},
+											}	}>
+												<div className="C12 reveal top">
+													<PoS.Methods {...{ 
+														select: true,
+														small: true,
+														form: { 
+															'repeated': true,
+															'data-action': (req)=>{
+																let order = THS.state.order, 
+																	card  = JSON.parse(req.body.pmethod||'{}'), {
+																		id, type, number, holder, exp, address = {}
+																	} = card, rslt = Assign({}, order, {
+																		card: { id, type, number, holder, exp, address }
+																	});
+																THS.setState({ step: 3, order: rslt });
+															},
+															'buttons': [{ 
+																kind:'button', label:'Previous Section',
+																style:'warn',   icon:'chevron-circle-left',
+																action(e) { THS.setState({ step:1 }); }, 
+																size:'C6', iconProps: { edge:true },
+															},	{ 
+																kind:'submit', label:'Use this Card',
+																style:'good',   icon:'chevron-circle-right', 
+																start:'S7',     size:'C6', iconProps: { 
+																	after: true, edge: true,
+															}	}]
+														},
+														cards: []	
+													}} />
+												</div>
+												<div className="C12 reveal btm">
+													<PoS.Card id="user-pay" mode="pick"
+														ids={{ acct_id: accid, cust_id: cusid }}  
+														onSubmit={(req)=>{
+															let { id, billing_details: bill, card } = req,
+																order = THS.state.order, 
+																rslt = Assign({}, order, {
+																	card: { id,
+																		type: card.brand,
+																		number: card.last4,
+																		holder: bill.name,
+																		exp: [
+																			card.exp_month,
+																			card.exp_year
+																		],
+																		address: Assign({
+																			phone: bill.phone
+																		}, 	bill.address),
+																}	});
+															THS.setState({ step: 3, order: rslt });
+														}}
+														form={{ 
+															stamp: new Date(),
+															buttons: [{ 
+																kind:'button', label:'Previous Section',
+																style:'warn',   icon:'chevron-circle-left',
+																action(e) { THS.setState({ step:1 }); }, 
+																size:'C6', iconProps: { edge:true },
+															},	{ 
+																kind:'submit', label:'Use this Card',
+																style:'good',   icon:'chevron-circle-right', 
+																start:'S7',     size:'C6', iconProps: { 
+																	after: true, edge: true,
+															}}/* ,	{ 
+																kind:'button', label:'Or Use a Saved-Card',
+																style:'info',   icon:'check-square',
+																action(e) { THS.setState({ addCard: false }); }, 
+																size:'C12', iconProps: { after:true },
+															} */]
+														}}
+														compact/>
+												</div>
+											</Content.Trader>
+										</div>
+									)
+								}, 	{ 
+									title: 'Summary',
+									content: (
+										<PoS.Summary {...{ svid, order }} form={{
+											'repeated': true,
+											'data-action': ((req)=>{
+												console.info('SUMMARY:', req);
+												THS.setState({ step: 4, complete: true });
+											}),
+											'buttons': [{ 
+												kind:'button', label:'Previous Section',
+												style:'warn',   icon:'chevron-circle-left',
+												action(e) { THS.setState({ step:2 }); }, 
+												size:'C6', iconProps: { edge:true },
+											},	{ 
+												kind:'submit', label:'Confirm',
+												style:'good',   icon:'check-double', 
+												start:'S7',     size:'C6',
+												iconProps: { after:true },
+											}],
+										}} stamp={(step==3?new Date():undefined)} />
+									)
+								}] : [] ), [{ 
+									title: 'Confirm',
+									hidden: true,
+									content: (
+										<PoS.Confirm {...{ 
+											svid, rate, order, complete:compl, stamp:new Date() 
+										}} form={{
+											'repeated': true,
+											'data-action': ((req)=>{
+												console.info('CONFIRM:', req);
+												THS.setState({ inquire: false });
+											})
+										}} />
+									)
+								}])} step={step} closer={THS.inquiryClose}/> }
+							</Content.Slab>
+						);
+					}
+			};
+			EV.Service.defaultProps = {
+				_meta:	  {
+					load: false
+				},
+				IDs: 	  {
+					svid:	null,
+					pdid:	null,
+					svc: 	'svc',
+					info: 	null,
+				},
+				inquire:  false,
+				order:    {},
+				step:     1,
+			};
+
+			EV.Service.Form  = function Form({ mode = 'edit', IDs, name, desc, rate, charge, interact = 1, quant, recur = false } = props) {
+				IDs = Assign({ svid: null, pdid: null, svc: 'svc', info: null }, IDs||{}); quant = quant||{};
+				// ------------------------------------------------------------------- //
+				let add   = mode=='add', 
+					edit  = mode=='edit', 
+					id    = ({add:'addSvc',edit:`${IDs.svc}-${mode}`})[mode],
+					pdid  =  IDs.pdid,
+					svid  =  IDs.svid,
+					quid  = `${IDs.svc}-quant`,
+					unid  = `${IDs.svc}-QUnit`,
+					btns  = { font:'.8em' },
+					rates = (O=>({
+						vals: O, keys: Object.keys(O)
+					}))({ 
+						3:'Hour', 4:'Day', 5:'Week', 6:'Monthly' 
+					}),
+					rtStr = (rate||'').toString(),
+					isRTE = rates.keys.has(rtStr),
+					form  = ({
+						add:  () => ({
+							'id':			`${id}-form`,
+							'rid':			'services',
+							'data-action': 	'/provider/service',
+							'method':		'POST',
+							'clear':		 true,
+							'className':	'C12 block gridSlice',
+							'buttons':		[
+								{ kind:'submit',label:'Add Service',style:'norm' },
+							],
+							'params':		{ pdid: pdid },
+							'query':		{ uids: COMPS.UID },
+						}),
+						edit: () => ({
 							'id':			`${id}-form`,
 							'data-action': 	`/service`,
 							'method':		'PUT',
@@ -1376,117 +2047,164 @@ module.exports = function Comps(COMPS) {
 							],
 							'params':		{ sids: svid },
 							'query':		{ uids: COMPS.UID },
+						}),
+					})[mode](),
+					inter = (v)=>(interact==v||undefined),
+					rattr = {
+						kind: 'radio',
+						name: 'SvcInteract',
+						labelRight: true,
+						compact:    true,
+					},
+					intid = `${IDs.svc}-int`,
+					chttr = {
+						styles: 	['C5','info-y','warn-n'],
+						yes:		'YES',
+						no:			'NO',
+						HOC:		true,
+					},
+					aattr = {
+						styles: 	['third'],
+						compact:	true,
+					},
+					nattr = Assign({
+						kind:		'number',
+						step:		 0.25,
+						min:		 0.25,
+					},	aattr),
+					dattr = {
+						className: 	"S5 C8",
+						style: {
+							fontSize: 'smaller',
+							alignSelf: 'center',
 						},
-						attrs = {
-							id: 	id,
-							style: ['info','large'],
-							label: {
-								'data-top':    ` Edit '${name}'`,
-								'data-tcon':   "",
-								'data-btm':    ` Add/Edit Credentials`,
-								'data-bcon':   "",
-							},
-						};
-					return (
-						<Content.Trader {...attrs}>
-							<Form {...form}>
-								<div className="spread">
-									<p><small>Edit your <b>Service Name</b>, <b>Description</b> & <b>Charge</b>/<b>Rate</b>. <i>Keep in mind; changing this info may hinder your current clientele's ability to find you.</i> Be sure to alert them of said changes.</small></p>
-									<p><small>You can also <b>Delete</b> your Service as well. <b>This CANNOT be undone!</b></small></p>
-								</div>
-								<div className="more">
-									<Form.Xput {...{
-										id:			`${IDs.svc}-name`,
-										name:		"SvcName",
-										icon:		'sign',
-										kind:		'text',
-										placeholder:'Service Name',
-										priority:	'*',
-										value:		 name,
-										validate: 	{
-											pattern: /[\w &|\/:;'"#@!?+,.-]+/,
-											invalid: 'Please specify a valid Service Name.',
-										},
-									}	} />
-								</div>
-								<div className="eight some">
-									<Form.Select {...{
-										kind:		 'slc-txt',
-										id: 		 `${IDs.svc}-rate`,
-										name:		 'SvcRate',
-										icon:		 'dollar-sign',
-										reverse:	  true,
-										title:		 'Rate',
-										priority:	 '*',
-										options:	[],
-										data:		{ url:'/list/rates',id:'select-rate' },
-										value:		  rate,
-										input:		{
-											kind: 		'number',
-											id: 		`${IDs.svc}-charge`,
-											name:		'SvcCharge',
-											placeholder:'0.00',
-											min:		'0.00',
-											max:		'10000.00',
-											step:		'0.01',
-											value:		 (Number(charge)||0).toFixed(2),
-											validate: 	{
-												pattern: /\d{1,5}\.\d{2}/,
-												invalid: 'That price ain\'t legit',
-											},
-											restrict: 	['Free','Quote'],
-										},
-									}	} />
-								</div>
-								<div className="spread">
-									<Form.Area {...{
-										id: 		`${IDs.svc}-descr`,
-										name:		'SvcDescr',
-										icon:		'newspaper',
-										rows:		 5,
-										priority:	'*',
-										placeholder:'Use this to provide as many details as possible regarding your Service. This can contain any Rules or Restrictions, Hours of Pperation, etc.',
-										value:		 desc,
-									}	}/>
-								</div>
-							</Form>
-							<div className="spread reveal btm">
-								<p>
-									<small>Check out any relavent <b>Documents</b>, <b>Credentials</b>, <b>Images</b> &amp; <b>Links</b> regarding this Service below!</small>
-								</p>
-								<br/>
-								<Service.Files svid={svid} editable/>
-							</div>
-						</Content.Trader>
-					);
-				}
+					};
+				// ------------------------------------------------------------------- //
+				return (
+					<EV.Form {...form}>
+						<div className="C7">
+							<EV.Form.Xput {...{
+								id:			`${IDs.svc}-name`,
+								name:		"SvcName",
+								icon:		'sign',
+								kind:		'text',
+								placeholder:'Service Name',
+								priority:	'*',
+								value:		 name,
+								compact:	 true,
+								validate: 	{
+									pattern: /[\w &|\/:;'"#@!?+,.-]+/,
+									invalid: 'Please specify a valid Service Name.',
+								},
+							}	} />
+						</div>
+						<div className="S8 C5">
+							<EV.Form.Select {...{
+								kind:		 'slc-txt',
+								id: 		 `${IDs.svc}-rate`,
+								name:		 'SvcRate',
+								icon:		 'dollar-sign',
+								reverse:	  true,
+								title:		 'Rate',
+								priority:	 '*',
+								options:	[   ],
+								value:		  rate,
+								nullValue:	  "",
+								compact:	  true,
+								data:		{ url:'/list/rates',id:'select-rate' },
+								onChange(e) {
+									let targ  = e.currentTarget, { form, value } = targ,
+										check = form.querySelector(`#${quid}`),
+										input = form.querySelector(`#${unid}`);
+									if (rates.keys.has(value)) {
+										input.disabled = false;
+										input.value = rates.vals[value];
+										check.checked = check.disabled = input.disabled = true;
+									} else {
+										check.disabled = input.disabled = false;
+										input.value = null;
+									}
+								},
+								input:		{
+									kind: 		'number',
+									id: 		`${IDs.svc}-charge`,
+									name:		'SvcCharge',
+									placeholder:'0.00',
+									min:		'0.00',
+									max:		'10000.00',
+									step:		'0.01',
+									value:		 (Number(charge)||0).toFixed(2),
+									validate: 	{
+										pattern: /\d{1,5}\.\d{2}/,
+										invalid: 'That price ain\'t legit',
+									},
+									restrict: 	[1,7,"1","7"],
+								},
+							}	} />
+						</div>
+						<div className="C12">
+							<EV.Form.Area {...{
+								id: 		`${IDs.svc}-descr`,
+								name:		'SvcDescr',
+								icon:		'newspaper',
+								rows:		 5,
+								priority:	'*',
+								placeholder:'Use this to provide as many details as possible regarding your Service. This can contain any Rules or Restrictions, Hours of Preperation, etc.',
+								value:		 desc,
+							}	}/>
+						</div>
+						<div className="C12 flex flexDirRow flexAlignC flexSpaceB MB">
+							<span style={{fontSize:'smaller'}}>Client Interaction Method:</span>
+							<EV.Form.Xput {...rattr} id={`${intid}-1`} value={1} defaultChecked={inter(1)} label="In-Person" />
+							<EV.Form.Xput {...rattr} id={`${intid}-2`} value={2} defaultChecked={inter(2)} label="Mobile" />
+							<EV.Form.Xput {...rattr} id={`${intid}-3`} value={3} defaultChecked={inter(3)} label="Correspondence" />
+							<EV.Form.Xput {...rattr} id={`${intid}-4`} value={4} defaultChecked={inter(4)} label="Shipment" />
+						</div>
+						<EV.Form.Checkbox {...Assign({
+							id: 	quid,
+							name:	'SvcQuant',
+							label:	'Is this a Quantified Service?',
+							checked: quant.enabled || isRTE,
+							disabled: isRTE,
+						},	chttr)} />
+						<div className="C12 reveal gridSlice PB" style={{order:500}}>
+							<EV.Form.Xput {...Assign({
+								id:			unid,
+								name:		"SvcQUnit",
+								kind:		'text',
+								label:      'Unit Name',
+								placeholder:'Item',
+								value:		 add ? undefined : (quant.unit || rates.vals[rtStr]),
+								disabled: 	 isRTE,
+							},	aattr)} />
+							<div {...dattr}>The unit at which the quantity measured. (i.e.: per [UNIT])</div>
+							<EV.Form.Xput {...Assign({
+								id:			`${IDs.svc}-QStep`,
+								name:		"SvcQStep",
+								label:      'Multiples',
+								value:		add ? 1 : quant.step,
+							},	nattr)} />
+							<div {...dattr}>The multiple of quantities your Clients must purchase in.</div>
+							<EV.Form.Xput {...Assign({
+								id:			`${IDs.svc}-QMin`,
+								name:		"SvcQMin",
+								label:      'Minimum',
+								value:		 add ? 1 : quant.min,
+							},	nattr)} />
+							<div {...dattr}>The minimum quanity your Clients must purchase.</div>
+							<EV.Form.Xput {...Assign({
+								id:			`${IDs.svc}-QMax`,
+								name:		"SvcQMax",
+								label:      'Maximum',
+								value:		 add ? 1 : quant.max,
+							},	nattr)} />
+							<div {...dattr}>The maximum quanity your Clients can purchase.</div>
+						</div>
+					</EV.Form>
+				);
+			}
 
-				render() {
-					let tag   = this.tags,
-						props = this.props,
-						svid  = props.id,
-						IDs   = {
-							svid:	 svid,
-							svc: 	`showSvc-${svid}`,
-							info: 	`showSvcInfo-${svid}`,
-						},
-						edit  = !!props.editable,
-						Serv  = this[`${tag[edit]}Service`],  
-						kind  = props.kind, 
-						name  = props.name, 
-						title = (<Frag>{name}<span className="mirror">{kind}</span></Frag>),
-						desc  = props.description,
-						chrg  = props.charge,
-						rate  = props.rate;
-					return (
-						<Content.Slab id={IDs.svc} group="svcs" title={title} swap>
-							<Serv IDs={IDs} name={name} desc={desc} rate={rate} charge={chrg}/>
-						</Content.Slab>
-					);
-				}
-			};
-
-			EV.Service.Files 	= class Files 		extends Mix('Reflux',MX.Static) {
+			EV.Service.Files 	= class Files 		extends Mix('Reflux','Static') {
 				constructor(props) {
 					super(props); let THS = this; THS.name = 'FILES'; THS.state = props;
 					// ---------------------------------------------------
@@ -1568,7 +2286,7 @@ module.exports = function Comps(COMPS) {
 					}
 			};
 
-			EV.Service.Bucket 	= class Bucket 		extends Mix('Reflux',MX.Static) {
+			EV.Service.Bucket 	= class Bucket 		extends Mix('Reflux','Static') {
 				constructor(props) {
 					super(props); let THS = this, which; THS.name = 'BUCKET';
 					// ---------------------------------------------------
@@ -1585,20 +2303,12 @@ module.exports = function Comps(COMPS) {
 					// ---------------------------------------------------
 						which = THS.which;
 						THS.mapStoreToState(COMPS.Stores.Data, store => {
-							let id = THS.fid, {stamp,items=[]} = (store[id]||{});
+							let id = THS.fid, {stamp,items={}} = (store[id]||{});
 							if (!!stamp&&stamp!==THS.state.stamp) {
-								let files = Imm.List(THS.state.files),
-									rslts = (((items[0]||{}).services||{})[which]||[]),
-									findr = (n)=>([files.findKey((o)=>o.id==n.id),n]),
-									mergr = (f)=>(files=funcs[!!f[0]](f)),
-									funcs = { 
-										true:  (f)=>(files.set(f[0],f[1])),
-										false: (f)=>(files.push(f[1])),
-									};
-								rslts.map(findr).map(mergr);
+								let files = (((items||{}).services||{})[which]||[]);
 								return { 
-									stamp: stamp, loaded: true, status: 'done', 
-									files: files.toJS(),	
+									loaded: true, status: 'done', 
+									stamp,  files,	
 								}; 	
 							} else return null;
 						}	);
@@ -1678,6 +2388,7 @@ module.exports = function Comps(COMPS) {
 						// -----------------------------------------------------------
 							rslt = 	dflt.mergeDeepWith((o,n)=>n||o,data).toJS();
 						// -----------------------------------------------------------
+							// console.log(rslt)
 							return 	(<Frag>
 								<Content.Table 
 									key={THS.fid} 
@@ -1704,7 +2415,7 @@ module.exports = function Comps(COMPS) {
 					}
 			};
 
-			EV.Service.Uploader = class Uploader 	extends Mix('Reflux',MX.Static) {
+			EV.Service.Uploader = class Uploader 	extends Mix('Reflux','Static') {
 				constructor(props) {
 					super(props); let THS = this; THS.name = 'UPLOADER';
 					// ---------------------------------------------------
@@ -1819,65 +2530,806 @@ module.exports = function Comps(COMPS) {
 
 		// STRIPE  /////////////////////////////////////////////////////////
 
-			EV.PoS = {};
+			EV.PoS = {
+				/**
+				 * Renders an Address form.
+				 * @param {Props.Address} props 
+				 */
+				Address({ id, line1, line2, city, state, postal_code, country, phone, compact = false, noDefer = false } = props) {
+					let NDF = !!noDefer?{defer:false}:undefined; compact = !!compact;
+					return (<Frag key="address">
+						<div key="street1" className="half">
+							<Form.Xput _meta={NDF} id={`${id}-st1`} name="line1"
+								icon="map-signs" kind="text" placeholder="Street 1"
+								value={line1} priority="~" validate={{
+									pattern: /^(?:[A-z0-9"\/#+-]+\b[?,.]?(?: \b|$))+$/,
+									invalid: "You have to provide either your Full Address, or Postal/Zip Code.",
+								}}	compact={compact}/>
+						</div>
+						<div key="street2" className="half">
+							<Form.Xput _meta={NDF} id={`${id}-st2`} name="line2"
+								kind="text" placeholder="Street 2"
+								value={line2} validate={{
+									pattern: /^(?:[A-z0-9"\/#+-]+\b[?,.]?(?: \b|$))+$/,
+									invalid: "Invalid Unit/Apt/Suite/Building.",
+								}} compact={compact}/>
+						</div>
+						<div key="city"  className="some">
+							<Form.Xput _meta={NDF} id={`${id}-city`} name="city"
+								icon="city" kind="text" placeholder="City" 
+								value={city} priority="~" formatters={[{
+									pattern: /(\b[a-z])/g, replace: $0=>$0.toUpperCase() 
+								}]}
+								validate={{
+									pattern: /[\w\d% ,;.-]+/,
+									invalid: 'Invalid City.',
+								}} 	compact={compact}/>
+						</div>
+						<div key="state"  className="quart">
+							<Form.Xput _meta={NDF} id={`${id}-state`} name="state"
+								kind="text" placeholder="Region" 
+								value={state} formatters={[{
+									pattern: /(\b[a-z])/g, replace: $0=>$0.toUpperCase() 
+								}]}
+								validate={{
+									pattern: /^\b(?:[\w\d]|\b[% ,;.-]\b)+(?:\.|\b)$/,
+									invalid: 'Invalid Province/State.',
+								}} 	compact={compact}/>
+						</div>
+						<div key="postal"  className="third">
+							<Form.Xput _meta={NDF} id={`${id}-postal`} name="postal_code"
+								icon="mail-bulk" kind="text" placeholder="Postal/Zip Code" 
+								value={postal_code} priority="~" formatters={[{
+									pattern: /([a-z]+)/g, 
+									replace: $0=>$0.toUpperCase() 
+										}, {
+									pattern: /^([A-Z]\d[A-Z]) ?(\d(?:[A-Z]\d?)?)$/,
+									replace: ($0,$1,$2)=>(`${$1} ${$2}`)
+								}]}
+								validate={{
+									pattern: /^\b(?:[A-Z0-9 -]){3,10}\b$/,
+									invalid: 'Invalid Postal/Zip Code.',
+								}} 	compact={compact}/>
+						</div>
+						<div key="country"  className="more">
+							<Form.Select _meta={NDF} id={`${id}-country`} name="country"
+								title="Select a Country" value={country} nullValue="" 
+								priority="*" icon="globe-americas" compact={compact} data={{ 
+									id: "user-pay-country", url: "/locale/countryiso" 
+								}} 	
+								validate={{
+									pattern: /^[A-Z]{2}$/,
+									invalid: 'Please select your Country.',
+								}}  />
+						</div>
+						<div key="phone"  className="some">
+							<Form.Xput _meta={NDF} id={`${id}-phone`} name="phone"
+								icon="phone" value={phone} 
+								placeholder="Phone Number" validate={{
+									pattern: /^(\+?\b[0-9( )-]+\b)$/,
+									invalid: 'Invalid Phone Number.',
+								}} 	compact={compact}/>
+						</div>
+					</Frag>);
+				},
+				/**
+				 * Renders a Service-Order form.
+				 * @param {Props.SVC.Sub} props 
+				 */
+				Order({ order = {}, rate, charge, interact, quant = {}, recur = false, onSubmit } = props) {
+					// ------------------------------------------------------------------------- //
+						function GetTotal(quantity) {
+							if (rate==7) return "TBD";
+							return `$${(quantity*charge).toFixed(2)}`;
+						}
+					// ------------------------------------------------------------------------- //
+					let today = new Date(),
+						ordID = 'order',
+						noPay = [1].has(rate),
+						isDur = [1,2].has(interact),
+						isQnt = !!quant.enabled,
+						qMin  = quant.min||1,
+						qVal  = order.quantity||qMin,
+						year  = today.getFullYear(),
+						ttREF = React.createRef(),
+						attrs = {
+							name: 	'svc-order', 
+							align:	'spread gridSlice',
+							header: { fixed: true, label: 'Your Order' },
+							form: {
+								'id':			'user-order',
+								'method':		'POST',
+								'data-action':	onSubmit,
+								'aria-label':	'Service Order Form',
+								'buttons': 		[{ 
+									kind:   'submit',
+									label:  ({	1: 'Confirm Your Order',
+												2: 'Select Pay Method',
+												3: 'Select Pay Method',
+												4: 'Select Pay Method',
+												5: 'Select Pay Method',
+												6: 'Select Pay Method',
+												7: 'Get a Quote',
+											})[rate],
+									style:  'good',
+									icon:   'chevron-circle-right',
+									iconProps: { 
+										after: true, 
+										edge: true, 
+									},
+								}],
+								'no1stSnap':	true,
+								'noLoad':		true,
+								'repeated':		true,
+							},
+						}; 
+					// ------------------------------------------------------------------------- //
+					return (
+						<Content.Block key="block" {...attrs}>
+								{ isQnt ? (
+							<div className="C12 flex flexDirRow flexAlignC flexSpaceB">
+								<EV.Form.Xput {...{
+									id:			`${ordID}-quant`,
+									name:		"quantity",
+									kind:		'number',
+									label:      `${quant.unit}(s):`,
+									value:		 qVal,
+									step:		 quant.step||1,
+									min:		 qMin,
+									max:		 quant.max,
+									priority:	'*',
+									compact:	 true,
+									styles:		['compact'],
+									onInput(e)	{
+										let valu = GetTotal(e.currentTarget.value);
+										ttREF.current.value = valu;
+									},
+								}	} />
+								<span className="PLR">Price:</span>
+								<input type="value" name="subtotal" defaultValue={GetTotal(qVal)} ref={ttREF} disabled/>
+							</div>
+								) : (<Frag>
+							<div className="C6">Price:</div>
+							<div className="C6" style={{textAlign:'right'}}>{`$${charge.toFixed(2)}`}</div>
+								</Frag>) }
+							{ !noPay && isDur ? (<Frag>
+								<div className="C6 center">What date is this to occur?</div>
+								<div className="C6 center" style={{justifySelf:'end'}}>
+									<Form.DateTime {...{
+										id: 		`${ordID}-date`,
+										name: 		'datetime',
+										icon:		'clock',
+										limit:		{ min: year, max: year+1 },
+										value:		order.date || `${year}-${today.getMonth()+1}-${today.getDate()} ${today.getHours()}:${today.getMinutes()}`,
+										time:  		true,
+										compact: 	true,
+										priority:	'*',
+										validate: 	{
+											pattern: /\d{4}-\d{2}-\d{2} \d{2}:\d{2}/,
+											invalid: 'Specify',
+											allowed: ['mm','dd','yyyy'],
+										},
+									}} />
+								</div>	
+							</Frag>) : null }
+							<div className="C12">
+								<EV.Form.Area {...{
+									id: 		`${ordID}-notes`,
+									name:		'notes',
+									icon:		'sticky-note',
+									rows:		 3,
+									priority:	'~',
+									compact:	true,
+									placeholder:'Any notes that the Provider should know.',
+									value:		 order.notes,
+								}	}/>
+							</div>
+							<hr key="divide" className="MTB spread"/>
+						</Content.Block>
+					);
+				},
+				/**
+				 * 
+				 * @param {*} props 
+				 */
+				Summary({ svid, order = {}, form = {}, stamp } = props) {
+					if (!!!order.card) return null;
+					let { card = {}, datetime, notes, unit, quantity, subtotal:price } = order,
+						{ line1:Street, line2:Line2, city:City, state:Region, postal_code:Postal, country:Country } = card.address, 
+						grGP  = {gridGap:'.5em 0'},
+						grTC  = Assign({gridTemplateColumns:'75% 25%'},grGP),
+						clss  = "C12 gridPair MLR",
+						fees  = ((price*0.029)+0.30),
+						subtl = price+fees,
+						tax   = subtl*0.05,
+						total = subtl+tax,
+						attrs = {
+							name: "pay-summary",
+							align: "spread gridSlice",
+							header: { fixed: true, label: 'Order Summary' },
+							form: Assign({
+								'id':			'pay-summary',
+								'method':		'POST',
+								'aria-label':	'Order Summary',
+								'stamp':		 stamp,
+								'style':		{ fontSize:'smaller' },
+								'buttons':		[{ 
+									kind:'submit',   label:'Confirm',
+									style:'good',     icon:'check-double', 
+									size:'C12', iconProps:{ after:true },
+								}],
+								'no1stSnap':	true,
+								'noLoad':		true,
+								'repeated':		true,
+							},	form)
+						};
+					return (
+						<Content.Block {...attrs}>
+							{/* Expand for Conditions */}
+								{ !!(datetime||notes) ? <Frag>
+							<div className={clss} style={grGP}>
+								{/* Expand for Conditions */}
+									{ !!datetime ? <Frag>
+								<span>Service Date:</span><span align="right">
+									<time dateTime={datetime}>{new Date(...(
+										datetime.split(/[: -]/).map((p,i)=>Number(i==1?p-1:p))
+									)	).toLocaleString('en-US', { 
+										year:'numeric', month:'long', day:'numeric', 
+										hour:'numeric', minute:'numeric' 
+									})}</time>
+								</span> 
+									</Frag> : null }{ !!notes ? <Frag>
+								<span>Notes for Provider:</span><span align="right">{notes}</span>
+									</Frag> : null }
+							</div>
+							<hr className="spread dashed" />
+								</Frag> : null }
+							<div className={clss} style={grGP}>
+								<span>Payment Method:</span><div align="right"><i className={`fab fa-cc-${card.type}`}/><strong> {card.number.toString().padStart(4,'0')}</strong></div>
+								<span>Billing Address:</span><span align="right"><Address key="addr" {...{ Street, Line2, City, Region, Postal, Country }} collapse/></span>
+								<span> </span><span align="right">PH: <PhoneNum number={{'#':card.address.phone}} /></span>
+							</div>
+							<hr className="spread dashed" />
+							<div className={clss} style={grTC}>
+								{/* Expand for Conditions */}
+									{ quantity ? <Frag>
+								<span>Quantity:</span><span align="right">{`${quantity} ${unit}(s)`}</span>
+									</Frag> : null }
+								<span>Price:</span><span className="accounting" align="right">{price.toFixed(2)}</span>
+								<span>Fees:</span><span className="accounting" align="right">{fees.toFixed(2)}</span>
+							</div>
+							<hr className="spread dashed" />
+							<div className={clss} style={grTC}>
+								<span>Subtotal:</span><span className="accounting" align="right">{subtl.toFixed(2)}</span>
+								<span>Estimated Tax:</span><span className="accounting" align="right">{tax.toFixed(2)}</span>
+								<strong>Order Total:</strong><strong className="accounting" align="right">{total.toFixed(2)}</strong>
+							</div>
+							<br/>
+						</Content.Block>
+					);
+				},
+				/**
+				 * 
+				 * @param {*} props 
+				 */
+				Confirm({ svid, rate, order = {}, form = {}, complete, stamp } = props) {
+					if (!!!complete) return null;
+					let attrs = {
+							name: "pay-confirm",
+							align: "spread gridSlice",
+							header: { fixed: true, label: 'All Set.' },
+							form: Assign({
+								'id':			'pay-confirm',
+								'method':		'POST',
+								'aria-label':	'Order Confirmation',
+								'stamp':		stamp || new Date(),
+								'style':		{ fontSize:'smaller' },
+								'buttons':		[{ 
+									kind:'submit',   label:'Got It',
+									style:'good',     icon:'thumbs-up', 
+									size:'C12', iconProps:{ after:true },
+								}],
+								'no1stSnap':	true,
+								'noLoad':		true,
+								'repeated':		true,
+							},	form)
+						};
+					return (<Content.Block {...attrs}>
+						<div className="C12">
+							<p>You'll be notified once the Provider {({true:`accepts your Order`, false:`is ready with your Quote`})[rate<7]}. A couple things:</p>
+							<ul style={{fontSize:'smaller'}}>
+								<li>You can always review, manage, and check the <b>Status</b> of your Order in your <a href="/wallet"><b>Wallet</b></a>.</li>
+								<li>If you've changed you mind, or need to change your order, head over to your <a href="/wallet"><b>Wallet</b></a>, cancel the order, and re-order (<i>if applicable</i>).</li>
+								<li>You will be <b>charged</b> {({true:`once the Provider confirms their acceptance of your Order`, false:`when both you, and the Provider agree on the Quoted pricing`})[rate<7]}:</li>
+								<ul>
+									<li>The Provider only be paid-out when <b>both parties confirm</b> the Service has been rendered; or if the Provider confirms on their end, but you fail to do so within <b>24 hours</b>.</li>
+									<li>You have the option of disputing this Purchase if you feel it was not satifactory. This must be requested within 24 hours of the Service's completion.</li>
+									<li>It is possible to receive a <b>Refund</b> in the event of a cancellation or a dispute; however{'\u2014'}unless your Order is cancelled by the Provider{'\u2014'}all fees are <b>final</b>, and <b>will not</b> be refunded.</li>
+								</ul>
+							</ul>
+							<small><p><i>By clicking "<b>Got It</b>" below, you acknowledge that you have <b>read</b> and <b>understand</b> the above, in addition to your prior agreement to our <a href="/terms"><b>Terms of Service</b></a>.</i></p></small>
+						</div>
+					</Content.Block>);
+				},
+			};
+			const CardForm  = INJECT(class _Card extends Mix('React', 'General') {
+				constructor(props) {
+					super(props); let THS = this; THS.name = '_CARD';
+					// Handles ------------------------------------------- //
+						THS.handleChange = THS.handleChange.bind(THS);
+						THS.handleSubmit = THS.handleSubmit.bind(THS);
+						THS.onSubmit = props.onSubmit||(()=>null);
+					// Properties ---------------------------------------- //
+						THS.fid = (props.form||{}).id||'user-newcard';
+						THS.state = props;
+						THS._refs = {
+							Number: React.createRef(),
+							Expiry: React.createRef(),
+							CVCNum: React.createRef(),
+							Change: React.createRef(),
+						};
+						THS.form  = Assign({
+							'id':			THS.fid,
+							'method':		'POST',
+							'data-action':	THS.handleSubmit,
+							'aria-label':	'Credit Card & Billing Address',
+							'stamp':		props.stamp,
+							'buttons': 		[
+								{ kind:'submit',label:'Update Pay Method',style:'info' },
+							],
+						},	props.form||{});
+					// Attributes ---------------------------------------- //
+						let bill = 'billing_details', addr = 'address';
+						THS.attrs = {
+							name:			[bill],
+							email:			[bill],
+							phone:			[bill],
+							line1:			[bill,addr],
+							line2:			[bill,addr],
+							city:			[bill,addr],
+							state:			[bill,addr],
+							postal_code:	[bill,addr],
+							country:		[bill,addr],
+						};
+				}
 
-			// EV.PoS.Card  = INJECT(class Card		extends Mix('React', MX.Dynamic) {
-			// 	constructor(props) {
-			// 		super(props); let THS = this; THS.name = 'UPLOADER';
-			// 		// ---------------------------------------------------
-			// 	}
+				// EVENTS    /////////////////////////////////////////////////////////
 
-			// 	handleChange = ({error}) => {
-			// 		if (error) this.setState({errorMessage: error.message});
-			// 	};
+					handleChange({ error }) {
+						this.cntChanges();
+						if (error) this.setState({
+							errorMessage: error.message
+						});
+					};
 
-			// 	handleSubmit = (evt) => {
-			// 		evt.preventDefault();
-			// 		if (this.props.stripe) {
-			// 			this.props.stripe.createToken().then(this.props.handleResult);
-			// 		} else {
-			// 			console.log("Stripe.js hasn't loaded yet.");
-			// 		}
-			// 	};
+					handleSubmit(req) {
+						let THS = this, props = THS.props, 
+							FID = THS.fid, stripe = props.stripe;
+						if (stripe) {
+							let paym  = Map({}),
+								pths  = THS.attrs,
+								attr  = Object.keys(pths),
+								fltr  = (v,k)=>(!!v&&attr.has(k)),
+								pthr  = (k)=>(pths[k].concat([k])),
+								mapr  = (v,k)=>(paym=paym.setIn(pthr(k),v)),
+								body  = req.body,
+								rqst  = { metadata: { 
+									UID: COMPS.UID, 
+									nickname: body.nickname 
+								} 	};
+							// ------------------------------------------------ //
+								Map(body).filter(fltr).map(mapr);
+								Assign(rqst, paym.toJS());
+								stripe
+									.createPaymentMethod('card', rqst)
+									.then(({ error, paymentMethod: method }) => {
+										if (!!!error) {
+											let send = Actions.Data.send,
+												pmid = method.id;
+											console.info('StripeMethod:', method);
+											// THS.setState({ brand: method.card.brand });
+											send('/pos/customer/cards', { 
+												method:	 	'POST',
+												headers:    { token: COMPS.Token },
+												params:	 	{ uid: COMPS.UID },
+												body: 		{ pmid: pmid, id: FID },
+											});
+											THS.onSubmit(method);
+										} else console.error('StripeERROR:', error);
+									});
+						} else {
+							console.error("Stripe.js hasn't loaded yet.");
+						}
+					}
+
+				// FUNCTIONS /////////////////////////////////////////////////////////
+
+					cntChanges() {
+						let change = this._refs.Change.current,
+							amount = parseInt(change.value)+1;
+						change.value = amount;
+					}
+
+				// MAIN      /////////////////////////////////////////////////////////
+
+					render() {
+						let THS   = this, 
+							refs  = THS._refs,
+							state = THS.state,
+							props = THS.props,
+							mode  = props.mode||'add',
+							id    = props.id,
+							defer = {defer:false},
+							cmpct = !!props.compact,
+							style = { width: '100%' },
+							cls   = 'fill card',
+							cattr = Assign(stripeOpts(), { 
+										onChange: THS.handleChange,
+										// onReady(e) { e.focus(); },
+									}),
+							attrs = Assign({}, {
+										name: 	'pay-method', 
+										align:	'spread gridSlice',
+										header: { fixed: true, label: 'New Payment Method' },
+										form: 	THS.form,
+									}, 	state.block||{}); 
+						return (<ErrorBoundary>
+							<Content.Block key="block" {...attrs}>
+								<input key="email" type="hidden" name="email" defaultValue={COMPS.Email}/>
+								<div key="card" className="more">
+									<Form.Xput key="card" priority="*" style={style} icon="credit-card" _meta={defer} compact>
+										<div key="scaffold" className="fill scaffold">&nbsp;</div>
+										<input key="change" ref={refs.Change} type="hidden" name="changes" defaultValue={0} />
+										<CardNumberElement key="num" ref={refs.Number} className={`${cls} number`} {...cattr}/>
+										<CardExpiryElement key="exp" ref={refs.Expiry} className={`${cls} expiry`} {...cattr}/>
+										<CardCVCElement    key="cvc" ref={refs.CVCNum} className={`${cls} cvcnum`} {...cattr}/>
+										<Form.Validate     key="vld" invalid="Please fill-in your Card/CVC numbers, as well as it's Expiry Date."/>
+									</Form.Xput>
+								</div>
+								<div key="holder" className="some">
+									<Form.Xput id={`${id}-holder`} _meta={defer} name="name" 
+										kind="text" priority="*" placeholder="Card-Holder Name" 
+										value={state.holder||null} validate={{
+											pattern: /^\b(?:[A-z'-]+(?:\b|\.) ?)+\b\.?$/i,
+											invalid: "Please specifiy a valid Card Holder name.",
+										}} compact/>
+								</div>
+								<h6 key="bill_head" className="spread">Billing Address</h6>
+								<PoS.Address key="address" noDefer={true} id={id} {...(state.address||{})} compact={cmpct}/>
+									{({add:(
+								<Form.Xput id={`${id}-nick`} _meta={defer} name="nickname" 
+									kind="text" priority="~" placeholder="Card Nickname" 
+									validate={{ invalid: "Please specifiy a valid Nickname." }} 
+									styles={['C6']} value={state.name||null} 
+									compact/>
+										),pick:(<Frag>
+								<EV.Form.Checkbox {...{
+									id: 	 'saveCard',
+									name:	 'saveCard',
+									label:	 'Save this Card',
+									checked:  state.save,
+									styles: ['C4','good-y','warn-n'],
+									yes:	 'YES',
+									no:		 'NO',
+									HOC:	  true,
+									compact:  true,
+								}	} />
+								<Form.Xput id={`${id}-name`} _meta={defer} name="holder" 
+									kind="text" priority="~" placeholder="Card Nickname" 
+									validate={{ invalid: "Please specifiy a valid Nickname." }} 
+									styles={['S7','C6','reveal']} value={state.name||null} 
+									maxlength="25" compact/>
+								</Frag>)})[mode]}
+								<hr key="divide" className="MTB spread"/>
+							</Content.Block>
+						</ErrorBoundary>);
+					}
+			});
+			EV.PoS.Card  = class Card extends Mix('React', 'General') {
+				constructor(props) {
+					super(props); let THS = this; 
+					THS.name = 'CARD'; THS.state = props;
+				}
+
+				render() { 
+					return (
+						<StripeProvider apiKey='pk_test_O3cwbaxfELRW69hj3mpwJpOB'>
+							<Elements><CardForm {...this.state}/></Elements>
+						</StripeProvider>
+					);
+				}
+			};
+
+			EV.PoS.Method =  function Method({ id = 'card', type = 'visa', name, number = 1234, holder, exp = [1,1970], address = {}, select = false, small = true } = props) {
+				/**
+				 * @param {number} val 
+				 * @param {number} by 
+				 */
+				let zeroPad = (val,by) => (val.toString().padStart(by,'0')),
+					third   = !!small ? '' : 'third',
+					checkid = `${type}-${number}`,
+					CardEl  = (<Frag>
+						{/* Expand to see Conditions */}
+							{ !!select ? 
+						<input key="rdo" type="radio" name="pmethod" id={checkid} defaultChecked={false} 
+							   value={JSON.stringify({id,type,name,number,holder,exp,address})}
+							   required />
+							: null }
+						<label key="lbl" htmlFor={checkid} className={`ccard noSelect ${type} ${third}`.trim()}>
+							<div>
+								<div className="cname trunc">{name}</div>
+								<i className="cedit" title="Manage Your Card"/>
+								<div className="cnum">{zeroPad(number,4)}</div>
+								<div className="chold trunc">{holder}</div>
+								<div className="cexp">
+									<span>{zeroPad(exp[0],2)}</span>
+									<span>{zeroPad(exp[1],2).slice(-2)}</span>
+								</div>
+								<div className="ciss">
+									<i className={`fab fa-cc-${type}`}/>
+								</div>
+							</div>
+						</label>
+					</Frag>);
+				// --------------------------------------------------------------------------- //
+					return ( !!small ? 
+						<small className="third">{CardEl}</small> : CardEl 
+					);
+			};
+
+			EV.PoS.Methods 		= class Methods 	extends Mix('Reflux', 'Static') {
+				/**
+				 * Instantiates a new `PoS.Methods` component.
+				 * @param {Props.Cards} props The props.
+				 */
+				constructor(props) {
+					super(props); let THS = this; THS.name = 'METHODS';
+					// -------------------------------------------------- //
+						THS.fid = 'user-cards';
+						if (!!props.form&&!!props.select) {
+							THS.form  = Assign({
+								'id':			THS.fid,
+								'method':		'POST',
+								'aria-label':	'Saved Card Selection',
+								'buttons': 		[{ 
+									kind:'submit',label:'Use This Card',style:'good' 
+								}],
+							},	props.form||{});
+						};
+					// -------------------------------------------------- //
+						THS.addOpen  = THS.addOpen.bind(THS);
+						THS.addClose = THS.addClose.bind(THS);
+					// -------------------------------------------------- //
+						THS.mapState({
+							[THS.fid]: {
+								default: [],
+								state(items) {
+									return { cards: items||[] }
+								}
+							},
+						}	);
+				}
+
+				// CYCLE     /////////////////////////////////////////////////////////
+
+					componentDidMount() {
+						let prop = this.state, 
+							send = Actions.Data.send,
+							load = !!prop.loaded;
+						if (!!document&&!load) {
+							let url = '/pos/customer/cards'; 
+							setTimeout(() => send(url, { 
+								method:	 	'GET',
+								headers:    { token: COMPS.Token },
+								params:	 	{ uid: COMPS.UID },
+								body: 		{ id: this.fid },
+							}),	0);	
+						}
+					}
+
+				// EVENTS    /////////////////////////////////////////////////////////
+
+					addOpen(e) {
+						e.stopPropagation(); e.preventDefault(); 
+						this.setState({ addNew:  true });
+					}
+					addClose(e) {
+						e.stopPropagation(); e.preventDefault(); 
+						this.setState({ addNew: false });
+					}
 				
-			// 	render() {
-			// 		return (
-			// 		<form onSubmit={this.handleSubmit.bind(this)}>
-			// 			<div className="split-form">
-			// 			<label>
-			// 				Card number
-			// 				<CardNumberElement {...createOptions()} onChange={this.handleChange} />
-			// 			</label>
-			// 			<label>
-			// 				Expiration date
-			// 				<CardExpiryElement {...createOptions()} onChange={this.handleChange} />
-			// 			</label>
-			// 			</div>
-			// 			<div className="split-form">
-			// 			<label>
-			// 				CVC
-			// 				<CardCVCElement {...createOptions()} onChange={this.handleChange} />
-			// 			</label>
-			// 			<label>
-			// 				Postal code
-			// 				<input name="name" type="text" placeholder="94115" className="StripeElement" required/>
-			// 			</label>
-			// 			</div>
-			// 			<div className="error" role="alert">
-			// 			{this.state.errorMessage}
-			// 			</div>
-			// 			<button>Pay</button>
-			// 		</form>
-			// 		);
-			// 	}
-			// });
-			// EV.PoS.Card.defaultProps = {
-			// 	errorMessage: '',
-			// }
+				// FUNCTIONS /////////////////////////////////////////////////////////
+
+					GetMethods({ addNew = false, stamp, acct_id, cust_id, form, cards = [], select = false, small = false, addOpen, addClose } = props) {
+						let Elem = (!!form?Form:'div'); !!form && (form.stamp = stamp);
+						return (<Frag>
+							<Elem key="cards" className="spread gridSlice" {...(form||{})}>
+								{/* Expand to see Conditions */}
+									{ !!select ?
+								<h4 className="spread">Choose a Payment Method</h4>
+									: null }
+									{!!cards ? cards.map((C,I) => (
+								<PoS.Method key={`cc${I}`} id={C.id} type={C.type} name={C.name} number={C.number} 
+											exp={C.exp} holder={C.holder} address={C.address}
+											select={select} small={small}/>
+									)) : 
+								<p className="spread" style={{textAlign:'center'}}>You have no Saved Pay-Methods.</p>
+									}
+								<hr key="hr" className="MTB spread"/>
+							</Elem>
+								{ !select ? <Frag>
+							<button key="btn" className={`tkn good block spread`} onClick={addOpen}>
+								<span><i className="fas fa-credit-card"></i> Add a New Card</span>
+							</button>
+							<App.Dialogue key="save" show={addNew} steps={[{ 
+								title: 'Save a Payment Method', 
+								content: (
+									<PoS.Card id="user-pay" ids={{ 
+										uid: COMPS.UID, acct_id, cust_id
+									}}  form={{ 'buttons': [{ 
+										kind:'submit', label:'Save this Card',
+										style:'good',  icon:'chevron-circle-right'
+									}]	}} compact/>
+							)}]} step={1} closer={addClose}/>
+								</Frag> : null }
+						</Frag>);
+					}
+
+				// MAIN      /////////////////////////////////////////////////////////
+
+					render() {
+						let THS = this, 
+							{ GetMethods, addOpen, addClose, form, props, state } = THS, 
+							{ addNew = false, cards, stamp } = state, 
+							{ acct_id, cust_id, select = false, small = false } = props;
+						// ------------------------------------------------------------------------ //
+						return (
+							<GetMethods {...{ addNew, stamp, acct_id, cust_id, form, cards, select, small, addOpen, addClose }}/>
+						);
+					}
+				
+			};
+			EV.PoS.Methods.defaultProps = {
+				_meta:	{ load: false, defer: false },
+				addNew: false,
+				cards: [],
+			};
+
+			EV.PoS.Transacts 	= class Transacts 	extends Mix('Reflux','General') {
+				constructor(props) {
+					super(props); let THS = this; THS.name = 'TRANSACTS';
+					// -------------------------------------------------- //
+						THS.state = props;
+					// -------------------------------------------------- //
+						// THS.addOpen  = THS.addOpen.bind(THS);
+						// THS.addClose = THS.addClose.bind(THS);
+				}
+
+				// CYCLE     /////////////////////////////////////////////////////////
+
+					static getDerivedStateFromProps(props, state) {
+						if (props.stamp !== state.stamp) {
+							let { stamp, status, transactions, loaded } = ( 
+								props.stamp>state.stamp?props:state
+							);  return { 
+								stamp, status, transactions, loaded
+							};
+						};	return null;
+					}
+
+					componentDidMount() {
+						if (!!document) {
+							/* let url  = '/threads', 
+								id   = this.id.all,
+								send = Actions.Data.send; 
+							setTimeout(() => send(url, {
+								method:	 'GET', 
+								headers: { token: COMPS.Token },
+								query:   { id },
+							}	),	0);	 */
+						}
+					}
+
+				// GETTERS   /////////////////////////////////////////////////////////
+
+					//
+
+				// FUNCTION  /////////////////////////////////////////////////////////
+
+					/**
+					 * Renders the user-sessions table.
+					 * @param {Object} props The component properties.
+					 * @param {('client'|'provider')} props.mode The mode of this table.
+					 * @param {string} props.id The element identifier.
+					 * @param {Props.Transact.Obj[]} props.trnscts A list of user transactions.
+					 */
+					TransList({ mode = 'provider' , id, trnscts = [], stamp, status } = props) {
+						// ------------------------------------------------------------------------ //
+						let data, rslt,
+							isCl =  mode=="client",
+							isPr =  mode=="provider",
+							NA   =  'N/A',
+							cnt  =  trnscts.length,
+							GetS =  MX.Trans.GetStatus,
+							ofst =  (new Date().getTimezoneOffset()*60000),
+							dig2 =  '2-digit',
+							dopt =  [ 'en-US', { year:dig2, month:dig2, day:dig2 }],
+							dtop =  [ 'en-US', { year:dig2, month:dig2, day:dig2, hour:dig2, minute:dig2, second:dig2 }],
+							clnm =  { dte:"Date",nme:"Service",who:"Client",chg:"Amount",sts:"Status",act:"..." },
+							dflt = 	FromJS({ 
+										cols:  ['.35fr','auto','auto','auto','auto','.2fr'], 
+										align: ['C','L','L','R','C','C'], 
+										items: [{ 	
+											[clnm.dte]: { text: "" }, 
+											[clnm.nme]: { text: "" }, 
+											[clnm.who]: { text: "No Orders Yet!" }, 
+											[clnm.chg]: { text: "" }, 
+											[clnm.sts]: { text: "" },
+											[clnm.act]: { text: "" },
+									}	] 	}), 
+							itms =  trnscts.map((TR,i,_a,L,D) => (L=`/user_${TR.who.uid}`, 
+									D=new Date(TR.date+ofst), {
+										[clnm.dte]: { text: (<span className="mono" title={D.toLocaleString(...dtop)}>{D.toLocaleString(...dopt)}</span>) },
+										[clnm.nme]: Assign({ text: TR.service||NA }, (isPr?{}:{link:{href:`${L}#service_${TR.svid}`}})),
+										[clnm.who]: { text: joinV(TR.who.name,' '), link: { href:L } },
+										[clnm.chg]: { text: (TR.charge||0).toFixed(2), className:'accounting bold' },
+										[clnm.sts]: { text: (<Content.Multi weight="small" {...GetS(TR)} collapse/>) },
+										[clnm.act]: { text: (<Frag>
+											<input key="trid" type="hidden" name={`trid@${i}`} value={TR.trid} data-param/>
+											<Form.Button key="btn" styles={['info']} kind="button" id={`More@${i}`} 
+														action={(e)=>(e.currentTarget.dataset.id=i)}
+														font=".5rem" icon="bars" />
+										</Frag>)}
+									}));
+						// ------------------------------------------------------------------------ //
+							data = FromJS(Assign({ items: itms },{ form: {
+								'id':			`${id}-form`,
+								'rid':			`${id}`,
+								'method':		'PUT',
+								'data-action': 	`/pos/transactions`,
+								'data-differ':	 true,
+								'params':		{},
+								'query':		{},
+								'stamp':		 stamp,
+								'status':		 status,
+								'style':		{ fontSize: 'small' },
+							}	}));
+						// ------------------------------------------------------------------------ //
+							rslt = 	dflt.mergeDeepWith((o,n)=>n||o,data).toJS();
+						// ------------------------------------------------------------------------ //
+							return (<Content.Table2 {...rslt} />);
+					};
+
+				// MAIN      /////////////////////////////////////////////////////////
+
+					render() {
+						let TransList = this.TransList, { mode, charges, transactions } = this.state,
+							Chrg = (<TransList key="chrg" id="charges" trnscts={charges} mode="client" />);
+						return (mode == 'client' ? Chrg :
+							<Content.Tabs name="dashboard" size="C12" tabs={[{
+								name: 	'orders',
+								label:	'Orders',
+								icon: 	"file-invoice-dollar",
+								checked: true, 
+								body: 	[<TransList key="trans" id="trnscts" trnscts={transactions} mode="provider" />]
+							}, {
+								name: 	'charge',
+								label:	'Charges',
+								icon: 	"receipt",
+								body:   [Chrg]
+							}]} />
+						);
+					}
+			};
+			EV.PoS.Transacts.defaultProps = {
+				_meta:	{ defer: false },
+				transactions: [],
+				charges: [],
+			};
 
 		// FORMS   /////////////////////////////////////////////////////////
 
-			EV.Form 			= class Form 		extends Mix('Reflux',MX.Static) {
+			EV.Form 			= class Form 		extends Mix('Reflux','Static') {
 				constructor(props) {
 					super(props); let THS = this, rid; THS.name = 'FORM';
 					// ---------------------------------------------------
@@ -1887,6 +3339,8 @@ module.exports = function Comps(COMPS) {
 						THS.SnapShot    = null; rid = props.rid;
 						THS.Statuses    = { true:'fail', false:'done' };
 						THS.ShouldClear = !!props.clear;
+						THS.deferSS 	= !!props.no1stSnap;
+						THS.noLoad    	= !!props.noLoad;
 					// ---------------------------------------------------
 						THS.mapStoreToState(
 							COMPS.Stores.Data, store => {
@@ -1909,23 +3363,21 @@ module.exports = function Comps(COMPS) {
 				// CYCLE     /////////////////////////////////////////////////////////
 
 					componentDidMount() {
-						super.componentDidMount();
-						this.mkeSnapShot();
+						// super.componentDidMount();
+						!!!this.deferSS && this.mkeSnapShot();
 					}
 
 					componentDidUpdate() {
-						super.componentDidUpdate();
+						// super.componentDidUpdate();
 						this.mkeSnapShot();
 					}
 
 					static getDerivedStateFromProps(props, state) {
 						if (props.stamp !== state.stamp) {
-							let { stamp, status, children } = ( 
+							let { loaded, stamp, status, children } = ( 
 									props.stamp>state.stamp?props:state
 								), 	result = {
-									stamp:		stamp, 
-									status:		status, 
-									children:	children,
+									loaded, stamp, status, children
 								};
 							return result;
 						};	return null;
@@ -1933,11 +3385,25 @@ module.exports = function Comps(COMPS) {
 
 				// GETTERS   /////////////////////////////////////////////////////////
 
-					get eid 	() { return this.state.rid||this.state.id; }
-					get action 	() { return this.state['data-action']; }
-					get differ  () { return !!this.state['data-differ']; }
-					get method 	() { return this.state.method; }
-					get timeout () { return this.state.timeout; }
+					/**
+					 * @type {string}
+					 */
+					get eid 	() { return this.props.rid||this.props.id; }
+					/**
+					 * @type {string}
+					 *//**
+					 * @type {(req:TPAction)=>void}
+					 */
+					get action 	() { return this.props['data-action']; }
+					get differ  () { return !!this.props['data-differ']; }
+					/**
+					 * @type {HMETHOD}
+					 */
+					get method 	() { return this.props.method; }
+					/**
+					 * @type {number}
+					 */
+					get timeout () { return this.props.timeout; }
 					get is 		() { 
 						let THS = this, stat = THS.state.status;
 						return {
@@ -1952,24 +3418,36 @@ module.exports = function Comps(COMPS) {
 							rslt = ((form.querySelector(slct)||{}).dataset||{}); 
 						return !!rslt.id ? `[name$="@${rslt.id}"]` : '';
 					}
+					/**
+					 * @type {boolean}
+					 */
+					get changed () {
+						return !!this._changed;
+					}
+					/**
+					 * @type {TPAction}
+					 */
 					get request () {
 						let THS = this, bdy = 'body', qry = 'query', mth = THS.method,
 							wch = {'GET':qry,'POST':bdy,'PUT':bdy,'DELETE':bdy}[mth],
 							inputs = THS.getForm(), eid = THS.eid, req = {}, prm = {},
-							fillVals = (name,value,dataset) => {
+							fillVals = (kind,name,value,dataset,checked) => {
 								name = name.toLowerCase().replace(/@\d+$/,'');
+								// console.log('TYPE:', kind, checked)
 								if (!!dataset.param) prm[name]=value;
+								else if (kind=='checkbox') req[name]=Number(checked);
+								else if (kind=='radio'&&!checked) return;
 								else req[name]=value;
 							}, { params, query } = THS.props;
 						// ------------------------------------------------------------
-							for (let {name,value,dataset} of inputs) 
-								fillVals(name,value,dataset);
+							for (let {type,name,value,dataset,checked} of inputs) 
+								fillVals(type,name,value,dataset,checked);
 						// ------------------------------------------------------------
 							return { 
 								method:	 	mth,
 								headers:    { token: COMPS.Token },
-								params:	 	Assign(params, prm),
-								[wch]: 		Assign(query, req, {
+								params:	 	Assign({}, params, prm),
+								[wch]: 		Assign({}, query, req, {
 												id: eid, single: true
 											}),
 							};
@@ -1978,21 +3456,25 @@ module.exports = function Comps(COMPS) {
 				// EVENTS    /////////////////////////////////////////////////////////
 
 					handleSubmit(e) {
-						if (!!this.props['data-action']) {
+						let THS = this, props = THS.props, 
+							api = props.api||'send';
+						if (!!this.action) {
 							e.stopPropagation(); e.preventDefault(); 
-							let THS 	= this,
-								send 	= Actions.Data.send,
-								current = Map(THS.getSnapShot()),
-								snapsht = Map(THS.SnapShot);
-							if (ImmIs(current,snapsht)===false) {
-								let url = THS.action, req = THS.request;
-								console.info('REQUEST:', url, req);
-								setTimeout(()=>send(url,req),0);
-								THS.setState({status:'load'});
+							if (THS.chkSnapShot()) {
+								let doLD = THS.noLoad,
+									send = Actions.Data[api], { 
+										action:act, request:req, changed:chg
+									} = THS, typ = ISS(act), wch = {
+										'function': ['function',()=>(act(req,chg),
+														doLD||THS.setState({status:'done'})
+													)],
+										'string': 	[act,()=>(send(act,req))],
+									};
+								console.info('REQUEST:',wch[typ][0],req);
+								setTimeout(wch[typ][1],0);
+								THS.noLoad||THS.setState({status:'load'});
 							}
-						} else {
-							e.submit();
-						}
+						} else e.submit();
 					}
 
 					handleReset() {
@@ -2010,7 +3492,7 @@ module.exports = function Comps(COMPS) {
 					getForm() {
 						let THS   = this, 
 							subid = THS.subid,
-							css   = `:not([form])${subid}`,
+							css   = `[name]:not([form])${subid}`,
 							elems = ['input','textarea','select'], 
 							query = `${elems.join(`${css},`)}${css}`;
 						return THS.refs.form.querySelectorAll(query);
@@ -2033,12 +3515,11 @@ module.exports = function Comps(COMPS) {
 					}
 
 					getAttrs(props) {
-						let mappr = (v,k)=>(IS(v)=="boolean"),
-							filtr = (v,k)=>(k=='style'||!['object','array'].has(IS(v))),
+						let stats = props.status,
+							omttd = ['loaded','clear','stamp','status','timeout','api','no1stSnap','repeated','noLoad'],
+							mappr = (v,k)=>(IS(v)=="boolean"),
+							filtr = (v,k)=>(!omttd.has(k)&&(k=='style'||!['object','array'].has(IS(v)))),
 							attrs = Map(props).filter(filtr).toJS();
-						// if (Map(props).has('clear')) {
-							// console.log('FORM PROPS:',props);
-						// }
 						attrs.className = classN(attrs.className,'loaded'); 
 						return Assign({onSubmit:this.handleSubmit},attrs);
 					}
@@ -2051,17 +3532,18 @@ module.exports = function Comps(COMPS) {
 							name:		 stid,
 							form:		 stid,
 							className:	'invisible loadit',
-							value:	 	 stat,
-							checked:	!!{
+							value:	 	 stat||undefined,
+							readOnly:	 true,
+							checked:	 !!{
 								done: 0, time: 0,
 								fail: 0, load: 1
-							}[stat],
+							}[stat]||0,
 						}
 					}
 					getButtons(buttons) {
 						let THS = this, bKinds = ['button','submit'];
 						return buttons.map((b,i) => {
-							let {kind,label,style,start,size,font,icon} = b,
+							let {kind,label,style,start,size,font,icon,iconProps,action} = b,
 								type = !bKinds.has(kind)?bKinds[0]:kind,
 								rset = kind=='reset',
 								key  = `btn-${i}`,
@@ -2074,14 +3556,12 @@ module.exports = function Comps(COMPS) {
 									style:     	{ order: 1000+i },
 								};
 							return (
-								<div key={key} {...attr}><Form.Button {...{
-									kind:	 kind,
+								<div key={key} {...attr}><Form.Button key={`${key}-elem`} {...{
+									kind, font, icon, iconProps,
 									styles: [style||'info'],
 									block:	 true,
 									label:	 label||'Submit',
-									action:  rset?THS.handleReset:null,
-									font:	 font||'1rem',
-									icon:	 icon,
+									action:  rset?THS.handleReset:action,
 								}}/></div>
 							);
 						});
@@ -2101,8 +3581,10 @@ module.exports = function Comps(COMPS) {
 							let name = EL.name||EL.id, 
 								kind = EL.type;
 							switch (kind) {
-								case 'radio': case 'checkbox': 
+								case 'checkbox': 
 									snap[name] = EL.checked; break;;
+								case 'radio': 
+									if (!EL.checked) break;;
 								default: 
 									snap[name] = EL.value;
 							}
@@ -2117,26 +3599,43 @@ module.exports = function Comps(COMPS) {
 							let name = EL.name||EL.id, 
 								kind = EL.type;
 							switch (kind) {
-								case 'radio': case 'checkbox': 
+								case 'radio': 
+									if (snap[name]!=EL.value) break;;
+								case 'checkbox': 
 									EL.checked = snap[name]; break;;
 								default: 
 									EL.value = snap[name];
 							}
 						});
 					}
+					chkSnapShot() {
+						let { repeated, method } = this.props,
+							current = Map(this.getSnapShot()),
+							snapsht = Map(this.SnapShot);
+						this._changed = (ImmIs(current,snapsht)===false);
+						return (!!repeated||method!='DELETE')||this.changed;
+					}
 
 					setTimer() {
-						let THS = this; 
-						!!!THS.timer && THS.is.load && (
-							THS.timer = setTimeout(()=>{
-								THS.timer = null;
-								THS.setState({status:'time'})
-							},	THS.timeout*1000));
+						try { !!document;
+							let THS = this; 
+							!!!THS.timer && THS.is.load && (
+								THS.timer = setTimeout(()=>{
+									THS.timer = null;
+									THS.setState({status:'time'})
+								},	THS.timeout*1000));
+						} catch (e) {};
 					}
 					clrTimer() {
 						let THS = this; !!THS.timer && (
 							clearTimeout(THS.timer),
 							THS.timer = null);
+					}
+
+					clrDone() {
+						try { !!document; if (this.state.status=='done') {
+							setTimeout(()=>this.setState({status:'idle'}),2000)
+						};	} catch (e) {};
 					}
 
 				// DOERS     /////////////////////////////////////////////////////////
@@ -2147,36 +3646,38 @@ module.exports = function Comps(COMPS) {
 
 					render() {
 						let THS 	= this, 
-							props 	= THS.state, 
-							id 		= props.id,
-							chattr  = THS.getCheckAttr(props),
-							attrs 	= THS.getAttrs(props),
-							buttons = props.buttons||[];
-						THS.clrTimer(); THS.setTimer();
+							state 	= THS.state, 
+							id 		= state.id,
+							chattr  = THS.getCheckAttr(state),
+							attrs 	= THS.getAttrs(state),
+							buttons = state.buttons||[];
+						THS.clrTimer(); THS.setTimer(); THS.clrDone();
 						return (<Frag key={id}>
 							<input key="status" ref="status" {...chattr}/>
 							<form key="form" ref="form" {...attrs}>
 								{THS.getButtons(buttons)}
-								{props.children}
+								{state.children}
 							</form>
 						</Frag>);
 					}
 			};
 			EV.Form.defaultProps = {
 				get params() { return { uids: COMPS.UID }; },
+				method:  'GET',
 				query:	 {},
 				timeout: 30,
 			}
 
-			EV.Form.Validate 	= function Validate(props) {
+			EV.Form.Validate 	= function Validate({ more, invalid, allowed, delim } = props) {
+				let clss = classN({ trunc: true, more: !!more });
 				return (
-					<div className="validate">
-						<label className="trunc">
-							{ props.invalid }
-							{ !!props.allowed ? (
+					<div className="validate" role="alert">
+						<label className={clss}>
+							{ invalid }
+							{ !!allowed ? (
 								<Frag>&nbsp;<div className="bracket">
-									{props.allowed.map((a,k) => 
-										<span key={k} className="mono" data-delim={props.delim}>{a}</span>
+									{allowed.map((a,k) => 
+										<span key={k} className="mono" data-delim={delim}>{a}</span>
 									)}
 								</div></Frag>
 							) : null }
@@ -2185,32 +3686,63 @@ module.exports = function Comps(COMPS) {
 				);
 			}
 
-			EV.Form.Input 		= class Input 		extends Mix('Pure',  MX.Static, MX.Forms) {
+			EV.Form.Input 		= class Input 		extends Mix('React', 'Static', 'Forms') {
 				constructor(props) {
-					super(props); this.name = 'INPUT';
+					super(props); let THS = this; THS.name = 'INPUT';
+					// ------------------------------------------------ //
+						THS.handleInput   = THS.handleInput.bind(THS);
+						THS.handleInvalid = THS.handleInvalid.bind(THS);
+					// ------------------------------------------------ //
+						THS.onInput = props.onInput||(()=>null);
+						THS.validator = {pattern:{}};
+						THS.getValidate(props);
 				}
 
+				handleInput(e) {
+					this.onInput(e);
+					e.target.setCustomValidity('');
+				}
+				handleInvalid(e) {
+					e.target.setCustomValidity(' ');
+				}
+
+				getValidate(props = {}) {
+					let THS = this, vldtr = THS.validator;
+					if (!!props.validate) {
+						THS.validator = Assign({},vldtr,props.validate);
+						if (!!THS.validator.invalid) THS.validMsg = (
+							<Form.Validate key="valid" {...THS.validator}/>
+						);
+					}; 	return THS.validator;
+				} 
+
 				getAttrs(props = {}, calculated = {}) {
-					let omits = [true,false], 
-						regex = /^(on([A-Z][a-z]+)+|data-\w+)$/,
-						filtr = (p,n)=>(!omits.has(p)&&!!n.match(regex));
-					return Assign(
+					let omits = [true,false,'onInput'],
+						filtr = (p,n)=>(!omits.has(p)&&!!n.match(regex)), 
+						regex = /^(on([A-Z][a-z]+)+|data-\w+)$/;
+					return Map(Assign(
 						{}, calculated,
 						Map(props).filter(filtr).toJS(),
-						this.getDefault(props.value)
-					);
+						this.getDefault(props.value),
+						this.getFormats()
+					)).filter(v=>!!v).toJS();
 				}
 
 				render() {
 					let THS    = this,
-						props  = THS.props, 
+						props  = THS.state, 
+						meta   = props._meta, 
+						defer  = meta.defer,
+						load   = meta.load,
 						kind   = props.kind, 
 						token  = kind=='tokens',
 						num    = kind=='number',
 						search = !!props.search,
+						contnr = !!props.container,
 						id     = props.id, 
 						name   = props.name||id, 
-						valid  = props.validate||{},
+						Elem   = (contnr ? 'div' : 'input'),
+						valid  = THS.getValidate(props),
 						autoc  = THS.getAutoComp(name,props),
 						attrs  = THS.getAttrs(props, { 
 							type: 			!!!kind||search||token?'text':kind,
@@ -2220,35 +3752,51 @@ module.exports = function Comps(COMPS) {
 							placeholder:	props.placeholder, 
 							tabIndex: 		props.tab,
 							className:		classN(...(props.classes||[]).
-												concat(['fill','grow'])),
+												concat(['fill','grow'],
+													props.kind=='radio'?['rdo']:[]
+												)),
 							autoComplete:	autoc,
 							autoFocus:		props.autoFocus,
 							required:		props.required||props.priority=='*',
 							disabled:		props.disabled,
-							pattern:		(valid.pattern||{}).source,
+							pattern:		valid.pattern.source,
 							min:			!!num ? props.min  : null,
 							max:			!!num ? props.max  : null,
 							step:			!!num ? props.step : null,
+							defaultChecked: props.defaultChecked,
+							onInput:		THS.handleInput,
+							onInvalid:		THS.handleInvalid,
 						});
+
 					return (<Frag>
-						<input ref={props.forRef} {...attrs}/>
-							{ !!valid.invalid ?
-						<Form.Validate {...valid}/> 
-							: null }
+						<Elem key={name} ref={props.forRef||'input'} {...attrs}/>
+						{ !!valid.invalid ? ( !!defer ?
+							<Defer key="defer" load={load} what={()=>(THS.validMsg)} /> :
+							THS.validMsg
+						) : null }
 					</Frag>);
 				}
 			};
+			EV.Form.Input.defaultProps = {
+				_meta: { load: false, defer: true },
+				defer: true,
+			}
 
 			EV.Form.Xput 		= function Xput(props) {
 				let id    = props.id, 
 					icon  = props.icon?`fa-${props.icon}`:'',
+					cmpct = !!props.compact,
+					isRdo = props.kind=='radio',
+					lblRt = !!props.labelRight,
 					attr  = {
 						'htmlFor':	 !!!props.noFor?id:null,
 						'data-nfo':   !!props.help?'':null,
-						'data-rel': 	props.priority,
+						'data-rel': 	props.priority||" ",
 						'className':	classN(...[
-											'input','MB'
+											'input',
 										].concat(
+											isRdo?['rdo']:[],
+											cmpct?[]:['MB'],
 											props.styles||[],
 											[!!icon?'glyph':'',icon],
 										)),
@@ -2280,16 +3828,18 @@ module.exports = function Comps(COMPS) {
 						: null );
 					};
 				// -----------------------------------------------------------------------
-					return (
+					return (<Frag>
+						{isRdo ? <Nput key="npt" {...props}/> : null}
 						<label {...attr}>
-							<Labl key="lbl" {...props}/>
-							<Nput key="npt" {...props}/>
+							{lblRt ? null : <Labl key="lbl" {...props}/>}
+							{isRdo ? null : <Nput key="npt" {...props}/>}
+							{lblRt ? <Labl key="lbl" {...props}/> : null}
 							<Help key="hlp" {...props}/>
 						</label>
-					);
+					</Frag>);
 			};
 
-			EV.Form.DataList 	= class DataList 	extends Mix('React', MX.Static) {
+			EV.Form.DataList 	= class DataList 	extends Mix('React', 'Static') {
 				constructor(props) {
 					super(props); this.name = 'DATALIST';
 					// ----------------------------------------------------
@@ -2336,11 +3886,12 @@ module.exports = function Comps(COMPS) {
 						return {
 							input: 	((group, props, maxed, data) => {
 										let token = props.hasOwnProperty('tokens'),
+											seprt = !!props.separate,
 											value = props.value;
 										return {
 											kind:		  token?'tokens':'text',
 											id:			 `${group}-input`,
-											form:		  group,
+											form:		  seprt?null:group,
 											disabled:	!!maxed,
 											placeholder:  this.getPlacehold(props,maxed),
 											forRef:		  this.input,
@@ -2353,13 +3904,14 @@ module.exports = function Comps(COMPS) {
 											value:		 (value||{}).label,
 										};
 									}).bind(this),
-							hiden: 	((props, value) => {
-										let {id,name,required,priority} = props;
+							hiden: 	((group, props, value) => {
+										let {id,name,required,priority,separate} = props;
 										value = value||props.value;
 										return {
 											type: 		'hidden',
 											name:		 name||id,
 											id:			 id,
+											form:		 separate?group:null,
 											required:   !!required||priority=='*',
 											value:		(value||{}).value,
 										}
@@ -2523,11 +4075,11 @@ module.exports = function Comps(COMPS) {
 							group 	= `tag-${props.id}`,
 							open	= props.open,
 							iattr 	= THS.attrs.input(group,props,false,data),
-							hattr 	= THS.attrs.hiden(props);
+							hattr 	= THS.attrs.hiden(group,props);
 						return (
 							<div id={group} className="tags fill grow">
 								<Frag key={group}>
-									<Form.Input    {...props} {...iattr}/>
+									<Form.Input    {...props} {...iattr} spellcheck="off"/>
 									<input         {...hattr} ref={this.hidden}/>
 										{ !!data ?
 									<Form.Complete {...THS.attrs.compl(open)}/>
@@ -2866,7 +4418,7 @@ module.exports = function Comps(COMPS) {
 							open	= props.open,
 							mounted = this.mounted,
 							iattr 	= THS.attrs.input(group,props,maxed,data),
-							hattr 	= THS.attrs.hiden(props, value),
+							hattr 	= THS.attrs.hiden(group,props,value),
 							tattr 	= {},
 							more    = false,
 							adjct   = '';
@@ -2881,7 +4433,7 @@ module.exports = function Comps(COMPS) {
 											<input {...tattr.rad} ref={i}/>
 											<label {...tattr.lbl}>
 												<span>{t.label}</span>
-													{ more ?
+													{ more && !!adjct ?
 												<span className="more">{adjct}</span>
 													: null }
 											</label> 
@@ -2891,7 +4443,7 @@ module.exports = function Comps(COMPS) {
 													value: '', checked: !!!length
 												},length),
 										<input ref={length} {...tattr.rad}/> )}
-									<Form.Input    {...props} {...iattr} autoFocus={mounted&&!!!length}/>
+									<Form.Input    {...props} {...iattr} autoFocus={mounted&&!!!length} spellcheck="off"/>
 									<Frag>
 										<input         {...hattr} ref={this.hidden}/>
 										{ clear }
@@ -2905,7 +4457,7 @@ module.exports = function Comps(COMPS) {
 					}
 			};
 
-			EV.Form.Complete 	= class Complete	extends Mix('Reflux',MX.Static) {
+			EV.Form.Complete 	= class Complete	extends Mix('Reflux','Static') {
 				constructor(props) {
 					super(props); let THS = this, state = THS.state, id = state.id; 
 					// ------------------------------------------------------------
@@ -3078,8 +4630,8 @@ module.exports = function Comps(COMPS) {
 									more  = THS.getMore(s.more),
 									adjct = THS.getAdjct(more, s.adjct),
 									clss  = more?"more":null,
-									rslt  = (<span className={clss}>{adjct}</span>);
-								console.log('TOKEN:', more, !!rslt, s)
+									rslt  = !!adjct ? (<span className={clss}>{adjct}</span>) : null;
+								// console.log('TOKEN:', more, !!rslt, s)
 								return rslt;
 							},
 							labelr 	= {
@@ -3098,7 +4650,6 @@ module.exports = function Comps(COMPS) {
 												onKeyDown={THS.handleKeyDown}
 												onChange={THS.handleChange}
 												onFocus={THS.handleOpen} 
-												onBlur={THS.handleClose}
 												data-idx={i}/>
 										<label 	className="trunc"
 												onMouseEnter={THS.handleMEnter}
@@ -3120,9 +4671,18 @@ module.exports = function Comps(COMPS) {
 				more: 	true,
 			};
 
-			EV.Form.Area 		= class Area 		extends Mix('Pure',  MX.Static, MX.Forms) {
+			EV.Form.Area 		= class Area 		extends Mix('React', 'Static', 'Forms') {
 				constructor(props) {
 					super(props); this.name = 'AREA';
+					this.forRef = props.forRef||React.createRef();
+				}
+
+				componentDidUpdate() {
+					let props = this.props,
+						value = (props.value||''),
+						len   = value.length,
+						input = this.forRef.current;
+					input.setSelectionRange(len,len);
 				}
 
 				render() {
@@ -3130,37 +4690,51 @@ module.exports = function Comps(COMPS) {
 						id      = props.id, 
 						name    = props.name||id, 
 						place 	= props.placeholder,
+						kyPress = props.onKeyPress,
 						value   = this.getDefault(props.value);
 					return (
 						<Form.Xput {...props}>
 							<textarea key={id} {...{  
+								ref:            this.forRef||null,
 								id: 			id, 
 								name: 			name, 
 								rows: 			props.rows||'2',
 								placeholder:	IS(place)=='function'?place.bind(props)():place, 
+								autoFocus:      props.autoFocus,
 								tabIndex: 		props.tab,
 								className:		'fill grow',
+								onKeyPress:     kyPress,
 							}} {...value}/>
 						</Form.Xput>
 					);
 				}
 			};
 
-			EV.Form.Select 		= class Select 		extends Mix('Pure',  MX.Static) {
+			EV.Form.Select 		= class Select 		extends Mix('React', 'Static') {
 				constructor(props) {
 					super(props); this.name = 'SELECT';
 				}
 
+				// FUNCTIONS /////////////////////////////////////////////////////////
+
+					getInputProps(input) {
+						let restrict = input.restrict||[];
+						return Assign({
+							'style': ['slc','grow'],
+						}, 	input);
+					}
+
 				// MAIN      /////////////////////////////////////////////////////////
 
 					render() {
-						let props 	= this.state, 
+						let props 	= Assign({},this.props), 
 							kind  	= props.kind, 
 							id      = props.id, 
 							name    = props.name||id, 
 							input 	= props.input,
 							rev 	= !!props.reverse,
 							styles 	= [kind].concat(rev?['rev']:[]),
+							valid 	= props.validate,
 							attrs 	= {  
 								id: 		id, 
 								name: 		name, 
@@ -3169,55 +4743,77 @@ module.exports = function Comps(COMPS) {
 								className:	classN('fill',!!input?'':'grow'),
 								value:		props.value,
 								options:	props.options,
+								nullValue:	props.nullValue,
 								data:		props.data,
+								required:	props.required||props.priority=='*',
 								restrict:	!!input?input.restrict:null,
+								onChange: 	props.onChange,
 							};
 						return (
 							<Form.Xput {...props} id={!!input?input.id:id} styles={styles} name={!!input?input.name:name}>
 								<Form.Selector {...attrs} />
 								<span></span>
+									{ !!valid ?
+								<Form.Validate {...valid} /> 
+									: null }
 								{ !!input ? ( input.kind=='tokens' ?
-									<Form.Tokens {...input} styles={['slc','grow']}/> :
-									<Form.Input  {...input} styles={['slc','grow']}/>
+									<Form.Tokens {...this.getInputProps(input)}/> :
+									<Form.Input  {...this.getInputProps(input)}/>
 								): null }
 							</Form.Xput>
 						);
 					}
 			};
-			EV.Form.Selector 	= class Selector 	extends Mix('Reflux',MX.Static) {
+			EV.Form.Selector 	= class Selector 	extends Mix('Reflux','Static') {
 				constructor(props) {
 					super(props); this.name = 'SELECT';
 					// ------------------------------------------------------------
 						let THS = this, data = props.data, id;
 					// ------------------------------------------------------------
-						THS.handleChange = THS.handleChange.bind(THS);
+						THS.handleChange  = THS.handleChange.bind(THS);
+						THS.handleInput   = THS.handleInput.bind(THS);
+						THS.handleInvalid = THS.handleInvalid.bind(THS);
+						THS.change = props.onChange||(()=>(null));
 					// ------------------------------------------------------------
-						if (!!data&&data.id) { id = data.id;
-							THS.mapStoreToState(COMPS.Stores.Data, store => {
-								let data = store[id]||{}, stamp = data.stamp;
-								if (!!stamp&&stamp!==THS.state.stamp) return { 
-									stamp: stamp, loaded: true, options: data.items, 
-								}; 	else return null;	
-							}	);
-						}
+						onBrowser(() => {
+							if (!!data&&data.id) { id = data.id;
+								Actions.Data.grab(id, (store) => {
+									console.log('SELECT ITEMS:', id, store)
+									THS.state = {
+										stamp: store.stamp,
+										options: store.items,
+										loaded: true
+									};
+								});
+								THS.mapStoreToState(COMPS.Stores.Data, store => {
+									let data = store[id]||{}, stamp = data.stamp;
+									if (!!stamp&&stamp!==THS.state.stamp) return { 
+										stamp: stamp, loaded: true, options: data.items, 
+									}; 	else return null;	
+								}	);
+							}
+						});
 				}
 
 				// CYCLE     /////////////////////////////////////////////////////////
 
 					componentDidMount() {
-						let prop = this.state, 
-							send = Actions.Data.send,
+						let THS  = this,
+							prop = THS.state, 
+							actn = Actions.Data,
+							send = actn.send,
 							data = prop.data,
 							load = !!prop.loaded;
 						if (!!data&&!!document&&!load) {
 							let url = data.url, id = data.id; 
-							if (!!!DATA_TMR[id]) DATA_TMR[id] = setTimeout(() => {
-								send(url, {
-									method:	'GET', headers: { token: COMPS.Token },
-									params:	{}, query: { id: id, limit: 100 },
-								}	); 
-								setTimeout(()=>(DATA_TMR[id]=null), 100);
-							}, 	50);	}
+							if (!!!DATA_TMR[id]) DATA_TMR[id] = setTimeout(
+								() => { send(url, {
+										method:	'GET', headers: { token: COMPS.Token },
+										params:	{}, query: { id: id, limit: 100 },
+									}	); 
+									setTimeout(()=>(DATA_TMR[id]=null), 100);
+								}, 	100);
+						};
 					}
 
 				// GETTERS   /////////////////////////////////////////////////////////
@@ -3234,16 +4830,18 @@ module.exports = function Comps(COMPS) {
 							value = this.value,
 							will  = strct.has(value),
 							key   = 'restrict'; 
-						console.log('RESTRICT:', {
-							strict: strct,
-							value:	value,
-							will: 	will,
-						});
 						if (!will) {
 							delete this.selector.dataset[key];
 						} else {
 							this.selector.dataset[key] = "";
-						}
+						};	this.change(e);
+					}
+
+					handleInput(e) {
+						e.target.setCustomValidity('');
+					}
+					handleInvalid(e) {
+						e.target.setCustomValidity(' ');
 					}
 
 				// FUNCTIONS /////////////////////////////////////////////////////////
@@ -3253,33 +4851,65 @@ module.exports = function Comps(COMPS) {
 				// MAIN      /////////////////////////////////////////////////////////
 
 					render() {
-						let props 	= this.state, 
-							opts  	= props.options||[],
+						let THS     = this,
+							props 	= THS.props, 
+							state 	= THS.state, 
+							opts  	= state.options||[],
 							title 	= props.title,
+							nullval = props.nullValue,
+							hasOpts = !!opts.length,
+							selval  = hasOpts?state.value:undefined,
+							rstrct  = THS.restrictions.has(selval)?"":undefined,
 							attrs 	= {  
 								id: 			props.id, 
 								name: 			props.name, 
 								title: 			title, 
 								tabIndex: 		props.tab,
 								className:		props.className,
-								defaultValue:	props.value||'none',
-								onChange:		this.handleChange,
+								required:		!!props.required,
+								defaultValue:	selval,
+								onChange:		THS.handleChange,
+								onInput:		THS.handleInput,
+								onInvalid:		THS.handleInvalid,
 							};
 						return (
-							<select ref="slc" {...attrs}>{[{
-									disabled:true,value:'none',label:title
-								}].concat(opts).map((o,i) => 
-									(<option key={`opt-${i}`} {...o}>{o.label}</option>)
+							<select ref="slc" {...attrs} data-restrict={rstrct}>{ 
+								[{ disabled:true, value:nullval, label:title }].concat(opts).map((o,i) => {
+									let { disabled, value, label } = o, selected = (value==selval); return (
+										<option key={`opt-${i}`} {...{ value, disabled, selected }}>{label}</option>
+								); 	}
 							)}</select>
 						);
 					}
 			};
 
-			EV.Form.DateTime 	= class DateTime 	extends Mix('Pure',  MX.Static) {
+			EV.Form.DateTime 	= class DateTime 	extends Mix('React', 'Static') {
 				constructor(props) {
 					super(props); this.name = 'DATETIME'; this._date = null;
-					this.limit = {min:1900,max:new Date().getFullYear()};
-					this.timer = null;
+					// -------------------------------------------------------------//
+						this.limit  = {min:1900,max:new Date().getFullYear()};
+						this.hidden = (props.hide||[]);
+						this.timer  = null;
+					// -------------------------------------------------------------//
+						let { id, names = {}, autos = {} } = props
+					// -------------------------------------------------------------//
+						let defNM = `${id}-group`,
+							NAMES = Map(Assign({
+								mth: defNM, day: defNM, yrs: defNM,
+								hrs: defNM, min: defNM,
+							},	names));
+						this.names 	= NAMES.map(v=>({name:v})).toJS();
+					// -------------------------------------------------------------//
+						let AUTOS = Map(Assign(autos, {
+								mth: 'bday-month', 
+								day: 'bday-day', 
+								yrs: 'bday-year',
+								hrs:  null, 
+								min:  null,
+							}));
+						this.autos 	= AUTOS.map(v=>({
+							autoComplete: v
+						})).toJS();
 				}
 
 				// GETTERS ///////////////////////////////////////////////////////////
@@ -3289,28 +4919,18 @@ module.exports = function Comps(COMPS) {
 
 					get Which( ) { return Map({mth:1,day:0,yrs:0,hrs:0,min:0}); }
 					get Acts ( ) { return {mth:'Month',day:'Date',yrs:'FullYear',hrs:'Hours',min:'Minutes',}; }
-					get Limit( ) { return {
-						mth: hndl('mth'),
-						day: hndl('day'),
-						yrs: hndl('yrs'),
-						hrs: hndl('hrs'),
-						min: hndl('min'),
-					}; 	}
 
 					get Get  ( ) {
 						let THS   = this,
 							date  = THS.Date,
 							which = THS.Which,
 							acts  = THS.Acts,
+							gtNum = (act,ofs)=>(date[`get${act}`]()+ofs),
+							frNum = (num)=>(num.toString().padStart(2,'0')),
 							hndl  = (wch)=>(()=>{
-								let act = acts[wch], ofs = which.get(wch);
-								try {
-									return (date[`get${act}`]()+ofs)
-										.toString()
-										.padStart(2,'0');
-								} catch (e) {
-									return '';
-								}
+								let res = '', act = acts[wch], ofs = which.get(wch);
+								try { res = frNum(gtNum(act,ofs)); } catch (e) {}
+								return res;
 							}).bind(THS);
 						return {
 							mth: hndl('mth'),
@@ -3375,7 +4995,13 @@ module.exports = function Comps(COMPS) {
 						return ((year%4==0)&&(year%100!=0))||(year%400==0);
 					}
 
-					getLimit(limit) { return Assign({},this.limit,limit||{}); }
+					hasHidden(which) {
+						return this.hidden.has(which)
+					}
+
+					getLimit(limit) { 
+						return Assign({},this.limit,limit||{}); 
+					}
 
 					getEoM(month, year) {
 						let leap = this.hasLeap(year),
@@ -3390,8 +5016,10 @@ module.exports = function Comps(COMPS) {
 					}
 
 					getAttrs(props) {
-						let THS 	= this,
-							{id,value,limit,tab,required,priority} = props, 
+						let THS 	= this, {
+								id, value, limit, tab, required, 
+								priority, separate = false
+							} 		= props, 
 							parts 	= THS.getParts(value),
 							specs 	= {
 								mth: Assign({ min: "01", max: "12" }),
@@ -3400,27 +5028,31 @@ module.exports = function Comps(COMPS) {
 								hrs: Assign({ min: "00", max: "23" }),
 								min: Assign({ min: "00", max: "59", step: 10 }),
 							},
-							attrs 	= { 
-								type: 		'number', 
-								name: 		`${id}-group`, 
-								form: 		`${id}-form`, 
-								align: 		'center', 
-								tabIndex: 	 tab,
-								className:	'fill',
-								size:		 2,
-								required:	 !!required||priority=='*',
-							};
+							split	= (separate?{}:{form:`${id}-form`}),
+							names   = THS.names,
+							autos   = THS.autos,
+							attrs 	= Assign({ 
+								type: 		 'number', 
+								align: 		 'center', 
+								tabIndex: 	  tab,
+								className:	 'fill',
+								size:		  2,
+								required:	  !!required||priority=='*',
+							}, 	split);
 						return THS.Which.map((i,w)=>Assign(
 							{}, attrs, {
 								id: 			`${id}-${w}`, 
 								onChange: 		 THS.setParts(w),
 								defaultValue:	 parts[w],
-						},  specs[w])).toObject();
+							},  specs[w], names[w], autos[w])
+						).toObject();
 					}
 
 					getParts(value = '') {
-						try { let spl = value.match(/\d+/g).map(p=>parseInt(p));
-							spl.splice(1,1,spl[1]-1);this.Date=new Date(...spl);
+						let THS = this; try { 
+							let spl = value.match(/\d+/g).map(p=>parseInt(p));
+							if (spl.length>1) spl.splice(1,1,spl[1]-1);
+							THS.Date = new Date(...spl);
 						} catch(e) {};
 						return {
 							mth: this.Get.mth(), day: this.Get.day(),
@@ -3437,6 +5069,7 @@ module.exports = function Comps(COMPS) {
 							}
 							// ----------------------------------------------
 							e.persist(); clearTimeout(this.timer);
+							if (!!!this.Date) this.Date = new Date();
 							// ----------------------------------------------
 							this.timer = setTimeout((() => {
 								let time = !!this.props.time, 
@@ -3457,22 +5090,38 @@ module.exports = function Comps(COMPS) {
 				// MAIN    ///////////////////////////////////////////////////////////
 
 					render() {
-						let props 	= this.props, 
-							id  	= props.id, 
-							name  	= props.name||id, 
-							value 	= props.value||"", 
-							attrs 	= this.getAttrs(props),
-							valid 	= props.validate,
-							time  	= !!props.time,
-							divider = (<i className="fill"></i>);
+						let props 	 = this.props, 
+							id  	 = props.id, 
+							name  	 = props.name||id, 
+							value 	 = props.value||"", 
+							hide	 = this.hasHidden.bind(this),
+							attrs 	 = this.getAttrs(props),
+							valid 	 = props.validate,
+							time  	 = !!props.time,
+							separate = !!props.separate,
+							divider  = (<i className="fill"></i>),
+							nputAttr = Assign({
+								type: "hidden", id: id, name: name,
+								pattern: (valid||{}).pattern,
+								defaultValue: value,
+							}, (separate ? { 
+								form: `${id}-validate` 
+							} : {}));
 						return (
 							<Form.Xput priority=" " {...props} styles={['date',time?'time':'']}>
-								<input ref="mth" {...attrs.mth} placeholder="MM"  />{divider}
-								<input ref="day" {...attrs.day} placeholder="DD"  />{divider}
-								<input ref="yrs" {...attrs.yrs} placeholder="YYYY"/>{time ? <Frag>
-								<input ref="hrs" {...attrs.hrs} placeholder="00"  />{divider}
-								<input ref="min" {...attrs.min} placeholder="00"  /></Frag> : null}
-								<input ref="input" type="hidden" id={id} name={name} pattern={(valid||{}).pattern} defaultValue={value}/>
+								{/* Expand to see conditions... */}
+									{	!hide("mth") ? <Frag>
+								<input ref="mth" {...attrs.mth} placeholder="MM"  />{divider}</Frag> : null 
+									}{	!hide("day") ? <Frag>
+								<input ref="day" {...attrs.day} placeholder="DD"  />{divider}</Frag> : null 
+									}{	!hide("yrs") ? <Frag>
+								<input ref="yrs" {...attrs.yrs} placeholder="YYYY"/></Frag> : null }{time ? <Frag>
+									{	!hide("hrs") ? <Frag>
+								<input ref="hrs" {...attrs.hrs} placeholder="00"  />{divider}</Frag> : null 
+									}{	!hide("min") ? <Frag>
+								<input ref="min" {...attrs.min} placeholder="00"  /></Frag> : null 
+									}</Frag> : null}
+								<input ref="input" {...nputAttr}/>
 									{ !!valid ?
 								<Form.Validate {...valid} delim="/"/> 
 									: null }
@@ -3481,7 +5130,7 @@ module.exports = function Comps(COMPS) {
 					}
 			};
 
-			EV.Form.Checkbox 	= class Checkbox 	extends Mix('Pure',  MX.Static, MX.Forms) {
+			EV.Form.Checkbox 	= class Checkbox 	extends Mix('React', 'Static', 'Forms') {
 				constructor(props) {
 					super(props); this.name = 'CHECKBOX';
 					this.Face = []; this._faces = [
@@ -3547,27 +5196,28 @@ module.exports = function Comps(COMPS) {
 						let THS 	= this,
 							props 	= THS.props, { 
 								name,  id, yes, ycon, required, 
-								form, tab,  no, ncon, checked, follows
+								form, tab,  no, ncon, checked, 
+								follows, classes = [],
 							} 		= props, 
+							HOC     = !!props.HOC,
 							styles	= THS.getStyles(props.styles),
 							autoc  	= THS.getAutoComp(name,props),
 							value   = THS.getDefault(props.value),
 							click 	= THS.getClick(props),
 							face 	= THS.Face||[],
 							attrs 	= {
-								'htmlFor':		name,
+								'htmlFor':		id,
 								'className': 	classN('tgl','gpu',...face),
 								'data-yes':		yes,
 								'data-ycon':	ycon,
 								'data-no':		no,
 								'data-ncon':	ncon,
-							};
-						return (
-							<Form.Xput {...props} noFor={true} styles={styles}>
-								<label {...attrs}><input ref={props.forRef} {...{ 
+							},
+							box     = (
+								<input ref={props.forRef} {...{ 
 									'type': 			 "checkbox", 
 									'id': 				  id, 
-									'name': 			  name, 
+									'name': 			  name||id, 
 									'form': 			  form, 
 									'tabIndex': 		  tab,
 									'autoComplete':		  autoc,
@@ -3575,13 +5225,22 @@ module.exports = function Comps(COMPS) {
 									'defaultChecked':	!!checked,
 									'onClick':			  click,
 									'data-follows':		  follows,
-								}} {...value}/></label>
+									'className':		classN({hoc:HOC}),
+									'disabled':			!!props.disabled,
+								}} {...value}/>
+							);
+						return (<Frag>
+							{ HOC ? box : null }
+							<Form.Xput {...props} noFor={true} styles={styles}>
+								<label {...attrs} htmlFor={HOC?id:undefined}>{ 
+									HOC ? <div> </div> : box 
+								}</label>
 							</Form.Xput>
-						);
+						</Frag>);
 					}
 			};
 
-			EV.Form.Button 		= class Button 		extends Mix('Pure',  MX.Static) {
+			EV.Form.Button 		= class Button 		extends Mix('React', 'Dynamic') {
 				constructor(props) {
 					super(props); this.name = 'BUTTON';
 					this.Kinds  = { button: 'button', submit: 'submit' };
@@ -3596,20 +5255,34 @@ module.exports = function Comps(COMPS) {
 				getButton(props) {
 					let kind	= this.Kinds[props.kind.trim()], 
 						styles	= this.getStyles(props),
-						font	= props.font||'1rem',
+						font	= props.font/* ||'1rem' */,
 						action 	= props.action,
 						label 	= props.label,
 						icon 	= props.icon,
+						icProps = props.iconProps||{},
+						icAfter = !!icProps.after,
+						icEdge  = !!icProps.edge,
+						icSpace = (!!label?'\u00a0':null),
+						ICON    = (!!icon?(
+							<Frag key="icon">
+								{icAfter ? icSpace : null}
+								<i className={classN(FA(icon),{edge:icEdge})}></i>
+								{icAfter ? null : icSpace}
+							</Frag>
+						):null),
 						attrs 	= {
+							id:  		props.id,
 							type:		kind||'button',
-							className:	classN(...styles),
-							style:		{ fontSize:font },
+							className:	classN(...styles,{after:icAfter}),
+							style:		!!font?{ fontSize:font }:null,
 							onClick:	action,
+							disabled:	props.disabled,
 						};
 					return (
 						<button key="bttn" {...attrs}><span key="text">
-							{!!icon?(<Frag key="icon"><i className={FA(icon)}></i>{!label?' ':null}</Frag>):null}
+							{!!icAfter ? null : ICON}
 							{label}
+							{!!icAfter ? ICON : null}
 						</span></button>
 					);
 				}
@@ -3621,7 +5294,7 @@ module.exports = function Comps(COMPS) {
 			EV.Form.Button.defaultProps = {
 				kind: 	'button',
 				styles:	 [],
-				font:	'1rem',
+				font:	 null/* '1rem' */,
 				action:  null,
 				label:	 null,
 				icon:	 null,
@@ -3629,49 +5302,51 @@ module.exports = function Comps(COMPS) {
 
 		// MULTI   /////////////////////////////////////////////////////////
 
-			EV.Content.Multi 	= class Multi	 	extends Mix('Pure',  MX.Static) {
+			EV.Content.Multi 	= class Multi	 	extends Mix('React', 'Static') {
 				constructor(props) {
 					super(props); this.name = 'MULTI';
 				}
 
-				getText(props, lvl = false) {
+				getText({ adjct, href, label, lvl = false } = props) {
 					let cls = { 
 							'className': lvl?'lvl':null,
-							'data-more': props.adjct||null,
+							'data-more': adjct||null,
 						},
-						lnk = props.hasOwnProperty('href'),
-						lbl = props.label||'...';
+						lnk = !!href,
+						lbl = label||'...';
 					return (lnk ?
-						<a href={props.href||'#'} {...cls}>{lbl}</a> :
+						<a href={href||'#'} {...cls}>{lbl}</a> :
 						<span {...cls}>{lbl}</span>
 					);
 				}
 
 				render() {
-					let props 	= this.props, 
-						kind 	= props.kind, 
-						lvl		= props.hasOwnProperty('level'),
-						weight 	= props.weight||'',
-						size	= `data-x${props.size||1}`,
-						attrs	= {
+					let Text     = this.getText,
+						props 	 = this.props, 
+						kind 	 = props.kind, 
+						lvl		 = props.hasOwnProperty('level'),
+						weight 	 = props.weight||'',
+						size	 = `data-x${props.size||1}`,
+						collapse = !!props.collapse,
+						attrs	 = {
 							'type': 		"button",
-							'className':	`multi tkn ${kind} ${weight}`.trim(),
+							'className':	classN(['multi','tkn',kind,weight],{collapse}),
 							'value':		 props.value||null,
 							[size]:			'', 
 						};
 					return (
 						<button {...attrs}>
 							<Frag>
-								{this.getText(props)}{lvl ? 
-								 this.getText(props.level,true):
-								 null}
+								{<Text key="multi" {...props}/>}{lvl ? 
+									<Text key="level" {...props.level} lvl={true}/>
+								: null}
 							</Frag>
 						</button>
 					);
 				}
 			};
 
-			EV.Content.Multis 	= class Multis	 	extends Mix('Pure',  MX.Static) {
+			EV.Content.Multis 	= class Multis	 	extends Mix('React', 'Static') {
 				constructor(props) {
 					super(props); this.name = 'MULTIS';
 				}
@@ -3689,9 +5364,9 @@ module.exports = function Comps(COMPS) {
 							weight: props.weight
 						};
 					return (
-						<div className={align}>
-							{!!head?<h5>{head.label}</h5>:null}
-							<div className={flex}>{items.map((v,i) => (
+						<div key="container" className={align}>
+							{!!head?<h5 key="head">{head.label}</h5>:null}
+							<div key="multis" className={flex}>{items.map((v,i) => (
 								<Content.Multi key={`multi-${name}-${i}`} {...attrs} {...v}/>
 							))}</div>
 						</div>
@@ -3701,7 +5376,7 @@ module.exports = function Comps(COMPS) {
 
 		// LISTS   /////////////////////////////////////////////////////////
 
-			EV.Content.List 	= class List	 	extends Mix('Pure',  MX.Static) {
+			EV.Content.List 	= class List	 	extends Mix('React', 'Static') {
 				constructor(props) {
 					super(props); this.name = 'LIST';
 				}
@@ -3728,7 +5403,7 @@ module.exports = function Comps(COMPS) {
 				}
 			};
 
-			EV.Content.Person	= class Person		extends Mix('Pure',  MX.Static) {
+			EV.Content.Person	= class Person		extends Mix('React', 'Static') {
 				constructor(props) {
 					super(props); this.name = 'PERSON';
 				}
@@ -3748,7 +5423,7 @@ module.exports = function Comps(COMPS) {
 				}
 			};
 
-			EV.Content.Activity	= class Activity	extends Mix('Pure',  MX.Static) {
+			EV.Content.Activity	= class Activity	extends Mix('React', 'Static') {
 				constructor(props) {
 					super(props); this.name = 'ACTIVITY';
 				}
@@ -3763,7 +5438,7 @@ module.exports = function Comps(COMPS) {
 
 		// TRUSTS  /////////////////////////////////////////////////////////
 
-			EV.Trusts 			= class Trusts		extends Mix('Pure',  MX.Static) {
+			EV.Trusts 			= class Trusts		extends Mix('React', 'Static') {
 				constructor(props) {
 					super(props); this.name = 'TRUSTS';
 					this.keyNames = ['shield','br','rating']
@@ -3793,7 +5468,7 @@ module.exports = function Comps(COMPS) {
 				}
 			};
 			
-			EV.Trusts.Shield	= class Shield		extends Mix('Pure',  MX.Static) {
+			EV.Trusts.Shield	= class Shield		extends Mix('React', 'Static') {
 				constructor(props) {
 					super(props); this.name = 'SHIELD';
 				}
@@ -3805,7 +5480,7 @@ module.exports = function Comps(COMPS) {
 				}
 			};
 
-			EV.Trusts.Badge		= class Badge		extends Mix('Pure',  MX.Static) {
+			EV.Trusts.Badge		= class Badge		extends Mix('React', 'Static') {
 				constructor(props) {
 					super(props); this.name = 'BADGE';
 				}
@@ -3822,7 +5497,7 @@ module.exports = function Comps(COMPS) {
 				}
 			};
 
-			EV.Trusts.Rating	= class Rating		extends Mix('Pure',  MX.Static) {
+			EV.Trusts.Rating	= class Rating		extends Mix('React', 'Static') {
 				constructor(props) {
 					let len = {length:5}, inc = ((v,i)=>i+1);
 					super(props); this.name = 'RATING';
@@ -3868,7 +5543,7 @@ module.exports = function Comps(COMPS) {
 			};
 
 		// FOOT    /////////////////////////////////////////////////////////
-			EV.Foot 			= class Foot		extends Mix('Pure',  MX.Static) {
+			EV.Foot 			= class Foot		extends Mix('React', 'Static') {
 				constructor(props) {
 					super(props); this.name = 'FOOT';
 				}
@@ -3905,27 +5580,484 @@ module.exports = function Comps(COMPS) {
 			};
 
 		// THREADS /////////////////////////////////////////////////////////
-			EV.Threads 			= class Threads		extends Mix('Pure',  MX.Static) {
+
+			/**
+			 * The Chat-Thread Component.
+			 * @extends {React.PureComponent}
+			 */
+			EV.Threads 			= class Threads		extends Mix('Reflux','General') {
+				/**
+				 * Instaniates a new `Thread` component.
+				 * @param {ThreadProps} props Props used in creating `Thread` components.
+				 */
 				constructor(props) {
 					super(props); this.name = 'THREADS';
+					let THS = this, WK = THS.withKeys.bind(THS); 
+					// --------------------------------------------------- //
+						/** 
+						 * @type {ThreadProps}
+						 */
+						this.props;
+						this.style   = FromJS({opts:['lite','small','dark']});
+						this.id      = {all:'threads',sgl:'thread',msg:'message'};
+						this.forRefs = {
+							input: React.createRef(),
+							rdkey: React.createRef(),
+						};
+					// --------------------------------------------------- //
+						THS.mapState({
+							[THS.id.all]: {
+								default: [],
+								state(items) {
+									return { chats: items||[] }
+								}
+							},
+							[THS.id.sgl]: {
+								default: {},
+								/**
+								 * @param {ChatProps} items 
+								 */
+								state({ users = {}, messages = [] } = items) {
+									// ---
+									return { chats: WK(users, C => {
+										C.messages = messages;
+									},	"object") };
+								}
+							},
+							[THS.id.msg]: {
+								isAlert: true,
+								/**
+								 * @param {Object} items 
+								 * @param {ChatMessage} items.payload 
+								 */
+								state({ payload = {} } = items) {
+									let msg = FromJS(payload).toJS();
+									// ---
+									return { chats: WK(msg.uids, C => {
+										delete msg.uids; msg.latest = 1;
+										C.messages.last.latest = 0;
+										C.messages.push(msg);
+									},	"array") };
+								}
+							},
+						}	);
 				}
 
-				render() {
-					var props 	= this.props,
-						chats	= props.chats.reverse(),
-						optns 	= FromJS({opts:['lite','small']});
-					return ( COMPS.IsAuthd ?
-						<section className="noSelect gridItemChat gridThreads" id="footer">
-							<div className="gridItemThreads" id="chatter">
-								<Bubble {...optns.mergeDeep(FromJS({kind:'more',opts:['dark']})).toJS()} />
-								{chats.map((b,i)=><Bubble key={`chat${i}`} style={{gridColumn:i+2}} 
-													{...optns.mergeDeep(FromJS(b)).toJS()}/>)}
-								<Bubble {...optns.mergeDeep(FromJS({kind: 'add',opts:['dark']})).toJS()} />
-							</div>
-						</section> : null
-					);
-				}
+				// CYCLE     /////////////////////////////////////////////////////////
+
+					static getDerivedStateFromProps(props, state) {
+						if (props.stamp !== state.stamp) {
+							let { stamp, status, chats, loaded } = ( 
+								props.stamp>state.stamp?props:state
+							);  return { 
+								stamp, status, chats, loaded
+							};
+						};	return null;
+					}
+
+					componentDidMount() {
+						if (!!document) {
+							let url  = '/threads', 
+								id   = this.id.all,
+								send = Actions.Data.send; 
+							setTimeout(() => send(url, {
+								method:	 'GET', 
+								headers: { token: COMPS.Token },
+								query:   { id },
+							}	),	0);	}
+					}
+
+					componentDidUpdate(prevProps, prevState) {
+						// console.debug('THREAD UPDATE:', {
+							// prevProps, nextProps: this.props,
+							// prevState, nextState: this.state,
+						// })
+					}
+
+				// GETTERS   /////////////////////////////////////////////////////////
+
+					/**
+					 * Whether or not there's an open chat.
+					 * @type {boolean}
+					 */
+					get isOpen() { 
+						return !!this.current;
+					}
+					/**
+					 * Retrieves the current open chat.
+					 * @type {BubbleProps}
+					 */
+					get current() {
+						return this.state.chats.filter((c)=>(c.open))[0];
+					}
+					/**
+					 * @type {string[]}
+					 */
+					get users() {
+						return this.state.chats.reduce(
+							(p,c)=>(p.concat(Object.keys(c.users))
+						),	[])
+					}
+					/**
+					 * @type {HTMLInputElement}
+					 */
+					get rdkey() {
+						return this.forRefs.rdkey.current;
+					}
+					/**
+					 * @type {HTMLTextAreaElement}
+					 */
+					get input() {
+						return this.forRefs.input.current;
+					}
+
+				// FUNCTION  /////////////////////////////////////////////////////////
+
+					/**
+					 * Retrieves a sorted list of memberIDs.
+					 * @param {BubbleObjs|string[]} users The thread memebers or a list of memberIDs.
+					 * @param {'object'|'array'} [which] A flag denoting the `user` param type.
+					 * @param {boolean} [immutable] If `true`, return an immutable list.
+					 * @returns {string[]|import('immutable').List<string>}
+					 */
+					keys(users, which = 'object', immutable = false) {
+						let UUID = COMPS.UID, 
+							FILT = (u) => (u!=UUID),
+							IDs  = ({
+								/**
+								 * @param {string[]} usr 
+								 */
+								array (usr) { 
+									return usr.filter(FILT).map(u=>u.toString()); 
+								},
+								/**
+								 * @param {BubbleObjs} usr 
+								 */
+								object(usr) { 
+									return Object.keys(usr).filter(FILT); 
+								},
+							})[which](users).sort();
+						return immutable ? Imm.List(IDs) : IDs;
+					}
+
+					/**
+					 * Executes the specified callback on a `ChatProps` upon finding the matching memberIDs.
+					 * @param {BubbleObjs|string[]} users The thread memebers or a list of memberIDs.
+					 * @param {(chat:ChatProps,uids:string[])=>ChatProps} callback A callback to execute upon match. It will recieve the `ChatProps`, as well as the memberIDs.
+					 * @param {'object'|'array'} [which] A flag denoting the `user` param type.
+					 * @returns {ChatProps[]} The current (and possibly mutated) `ChatProps` list.
+					 */
+					withKeys(users, callback, which = 'object') {
+						let THS  = this;
+						/** 
+						 * @type {ChatProps[]}
+						 */
+						let Chts = FromJS(THS.state.chats).toJS(),
+							 IDs = THS.keys(users, which, false),
+							iIDs = Imm.List(IDs);
+						return Chts.map(C => {
+							/** 
+							 * @type {import('immutable').List<string>}
+							 */
+							let kys = THS.keys(C.users, "object", true);
+							if (Imm.is(kys,iIDs)) callback(C, IDs);	
+							return C;
+						});
+					}
+
+					/**
+					 * Creates a click-handler for the `Bubbles` within this component.
+					 * @param {number} idx The index of the `Bubble` within the chat list.
+					 * @returns {ReactHndlKey}
+					 */
+					toggleFactory(idx) {
+						let THS = this, opn = 'open', filt = (o=>o!=opn);
+						return function onClick(_e) {
+							/** 
+							 * @type {ThreadProps}
+							 */
+							let props = Assign({},THS.state);
+							let chats = props.chats,
+								curnt = chats[idx],
+								open  = curnt.open,
+								input = THS.input.value;
+							if (open) {
+								curnt.input = input; // Save any text-input
+								curnt.open = false; // Unset Open
+							} else {
+								// Clear All Opens
+								chats = chats.map(c => {
+									// Save any text-input
+									c.open && (c.input = input);
+									c.open=false; return c;
+								});
+								curnt.open =  true; // Set to Open
+							}; 	chats[idx] = curnt;
+							// Update state & render
+							THS.setState({ chats });
+							THS.forceUpdate();
+						};
+					}
+					/**
+					 * Creates an input-handler for the current chat-window.
+					 * @param {number} idx The index of the `Bubble` within the chat list.
+					 * @returns {ReactHndlKey}
+					 */
+					inputFactory(idx) {
+						let THS = this, id = THS.id.sgl;
+						return function onKeyPress(e) {
+							/** 
+							 * @type {ThreadProps} 
+							 */
+							let props = Assign({},THS.state),
+								shift = e.shiftKey,
+								ctrl  = e.ctrlKey,
+								alt   = e.altKey;
+							switch (e.key) {
+								case 'Enter': 
+									// Send new message
+									if (!shift) {
+										// Prevent key action
+										e.preventDefault();
+										// Variables
+										let chats = props.chats,
+											curnt = chats[idx],
+											text  = THS.input.value,
+											uids  = THS.rdkey.value;
+										// Push new message
+										if (!!text) {
+											text = text.trim();
+											Actions.Data.send(
+												'/threads', {
+													method: "PUT",
+													headers: { token: COMPS.Token },
+													params: { uids, kind: 'send' },
+													body: { id, msg: text }
+											});
+											curnt.messages.last.latest = 0;
+											curnt.messages.push({ 
+												time: new Date(), 
+												who:  COMPS.UID, 
+												text: text.trim(),
+												latest: 1,
+											}); chats[idx] = curnt;
+											// Update state & render
+											THS.setState({ chats });
+											THS.forceUpdate();
+										};	return;
+									};
+							};
+						};
+					}
+
+					/**
+					 * Adds a Date marker to the list as message timestamps change days.
+					 * @param {ChatMessage[]} list The message list.
+					 * @param {ChatMessage} next The next message.
+					 * @param {ChatMessage} prev The previous message.
+					 * @void
+					 */
+					getDate(list, next, prev) {
+						let stamp = new Date(next.time), date = '';
+						if (!!!prev) date = stamp; else {
+							let prv = new Date(prev.time);
+							if (stamp>prv&&stamp.getDay()!=prv.getDay()) {
+								date = stamp;
+						};	};
+						if (!!date) list.push(Number(date));
+					}
+
+					/**
+					 * Retrieves the `BubbleProps` from `ChatProps`.
+					 * @param {ChatProps} props The Chat props.
+					 * @returns {BubbleProps}
+					 */
+					getBubbleProps({ open = false, users = {}, messages = [] } = props) {
+						let style = this.style,
+							keys  = Object.keys(users),
+							heads = keys.length,
+							multi = heads > 1,
+							count = messages.length,
+							last  = null;
+						if (multi && !!count) {
+							for (let i=messages.length-1; i>-1; i--) {
+								if (messages[i].who!=COMPS.UID) {
+									last = users[messages[i].who];
+									break;;
+							};	};
+						};
+						if (!!!last) {
+							let { floor, random } = Math, len = keys.length;
+							last = users[keys[floor(random()*len)]];
+						};
+						return style.mergeDeep(
+							FromJS(last), FromJS({ 
+								multi: multi?heads:false, 
+								opts: [{ open: open }]
+						})	).toJS();
+					}
+
+					/**
+					 * Formats the current `ChatProps`.
+					 * @param {ChatProps} props The Chat props.
+					 * @returns {ChatProps}
+					 */
+					getChatProps(props) {
+						props = FromJS(props).toJS();
+						let THS = this, messages = props.messages;
+						if (!!messages) {
+							props.messages = messages.reduce(
+								(p,m)=>(THS.getDate(p,m,p.last),p.push(m),p)
+							,	[]);
+						}; 	return props;
+					}
+				
+				// MAIN      /////////////////////////////////////////////////////////
+
+					render() {
+						var THS   = this,
+							optns = THS.style,
+							dopts = optns.toJS(),
+							props = THS.state,
+							max   = props.max||10,
+							chats = FromJS(props.chats||[])
+										.toJS()
+										.map((c,i)=>(c.idx=i,c))
+										.slice(0,max),
+							chat  = (chats.filter((c)=>(c.open))[0]||{});
+						// ---------------------------------------------------------- //
+						return ( NMESPC.page.type!='jumbo' && COMPS.IsAuthd ?
+							<section className="noSelect gridItemChat gridThreads" id="threads">
+								<Threads.Chat {...THS.getChatProps(chat)} forRef={THS.forRefs} onKeyPress={THS.inputFactory(chat.idx)} />
+								<div className="gridItemThreads" id="chatter">
+									<Bubble name={{First:'More',Last:'Chats'}} {...dopts} {...{kind:'more'}} />
+									{chats.reverse().map((b,i)=>(
+										<Bubble key={`chat${i}`} kind="user" onClick={THS.toggleFactory(b.idx)} {...THS.getBubbleProps(b)} />
+									))}
+									<Bubble name={{First:'New',Last:'Chat'}} {...dopts} {...{kind: 'add'}} />
+								</div>
+							</section> : null
+						);
+					}
 			};
+			EV.Threads.defaultProps = {
+				max:    10,
+				chats:  [],
+			};
+
+			EV.Threads.Chat 	= /**
+			 * Creates a Chat-window.
+			 * @param {ChatProps} props The Chat-window props
+			 */
+			function({ open = false, users = {}, messages = [], forRef = {}, input = null, onKeyPress = null } = props) {
+				let sh   = 'short', nm = 'numeric',
+					dpts = 	((o)=>(o={
+								weekday:sh,month:sh,day:nm
+							},{
+								norm:o,year:Assign({year:nm},o)
+							}))();
+				// ----------------------------------------------------------------------- //
+					/**
+					 * Formats the name(s) of the current chat user(s).
+					 * @param {BubbleObjs} users The plain-object of the user's name.
+					 * @param {string[]} keys A list of `user_ids` associated with the users in this chat.
+					 * @returns {string}
+					 */
+					function getName(users, keys) { 
+						let name = '', dflt = {First:'???',Last:''},
+							len  = keys.length;
+						if (len >= 2) {
+								/**
+								 * @type {import('immutable').Map<number,BubbleProps>}
+								 */
+								let N = Imm.Map(users);
+								name = N.filter(u=>!!u)
+										.map(u=>({ 
+											First: u.name.First,
+											Last:  u.name.Last.replace(/^(\w).+$/, '.$1'),
+										}))
+										.map(n=>joinV(n||dflt,' '))
+										.toArray()
+										.filter(u=>!!u)
+										.join(', ');
+						};
+						if (!!!name) {
+							name = joinV((users[keys[0]]||{}).name||dflt, ' ');
+						};	
+						return name; 
+					}
+					/**
+					 * Renders a Chat message.
+					 * @param {ChatMessage} props The Chat props
+					 */
+					function Message({ who, text, time, url, latest = false } = props) {
+						let me  = who==COMPS.UID, oth = multi && !me,
+							wch = { true: 'you', false: 'them' };
+						return (
+							<div className={classN("threadBubble",wch[me],{'new':open&&latest})}>
+								<span key="text" className="ctn">{text.replace(/\\/g,'')}</span>
+									{ oth ? /* Display Name if multi-chat. */
+								<a key="name" className="nme trunc" href={url}>
+									{joinV(users[who].name,' ')}
+								</a> 
+									: null}
+							</div>
+						)
+					}
+					/**
+					 * Renders a Date marker as message timestamps change days.
+					 * @param {Object} props The props.
+					 * @param {Date} props.stamp A timestamp.
+					 */
+					function Day({ stamp } = props) {
+						let cur  =  new Date(),
+							date =  new Date(stamp),
+							wich =  {true:'year',false:'norm'},
+							year =  date.getFullYear()!=cur.getFullYear(),
+							text = 	date.toLocaleString(undefined,dpts[wich[year]]);
+						return (<div className="threadDate"><span>{text}</span></div>);
+					}
+					function Box({ value, forRef, onKeyPress } = props) {
+						return (<Frag>
+							<input key="key" type="hidden" ref={forRef.rdkey} name="key" value={rdkey}/>
+							<Form.Area key="box" {...{
+								id: `chat-input`, rows: 3, autoFocus: true, 
+								forRef: forRef.input, onKeyPress, value,
+								placeholder:'Type your message here...',
+								help: { text: [<p key="text">
+									Press <span className="mono key">ENTER</span> to send your message.<br/>
+									Press <span className="mono key">SHIFT</span><span className="mono">+</span><span className="mono key">ENTER</span> to add a <b>new-line</b>.<br/>
+									To <b>open</b>/<b>hide</b> the Chat Window, <span className="mono bold">click</span> on the <b>user's image</b>.
+								</p>]}, 
+							}	}/>
+						</Frag>);
+					}
+				// ----------------------------------------------------------------------- //
+				let ukeys = Object.keys(users||{}),
+					rdkey = [COMPS.UID,...ukeys].join(';'),
+					multi = ukeys.length > 1,
+					count = messages.length;
+				// ----------------------------------------------------------------------- //
+					return (
+						<div className="gridItemChatBox">
+							<div className={classN("threadCont",{open:open})}>
+								<h6 key="name" className="threadName trunc">{
+									getName(open?users:[],ukeys)
+								}</h6>
+								<div key="msg" className="threadMsg">
+									{!!count ?  messages.slice(0).reverse().map((m,i) => (
+										isNaN(m) ?
+										<Message key={`msg${i}`} {...m} /> :
+										<Day key={`msg${i}`} stamp={m} />
+									),	[]) : <span key="msg0"> </span> }
+								</div>
+								<div className="threadInput">
+									<Box value={input} forRef={forRef} onKeyPress={onKeyPress} />
+								</div>
+							</div>
+						</div>
+					)
+			}
 
 		// EXPORTS /////////////////////////////////////////////////////////
 			
@@ -3934,7 +6066,5 @@ module.exports = function Comps(COMPS) {
 				Content, Service, Services, PoS, Form, 
 				Trusts, Foot, Threads 
 			} = EV;
-
-			COMPS.Elements.Evectr = EV;
 
 };

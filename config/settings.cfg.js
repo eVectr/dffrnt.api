@@ -1,4 +1,5 @@
 
+/** @type {CFG.Settings} */
 module.exports = {
 	Debug: 		false,
 	Port: 		8443,
@@ -9,25 +10,25 @@ module.exports = {
 		DHP:	"/opt/local/etc/nginx/ssl/dhparam.pem",
 	},
 	Services: 	[
-		'https://evectr.com:8443/gbl-accessor',
-		'https://evectr.com:8443/gbl-rest',
+		'https://arian.evectr.com:8443/gbl-accessor',
+		'https://arian.evectr.com:8443/gbl-rest',
 	],
 	APIDoc:		{
 		info: {
 			title: "eVectr.API",
-			description: "The official eVectr™ API.",
-			termsOfService: "https://evectr.com:8443/terms",
+			description: "The official eVectr� API.",
+			termsOfService: "https://arian.evectr.com:8443/terms",
 			contact: { 
 				name: "eVectr™ Support",
-				email: "support@evectr.com:8443",
-				url: "https://evectr.com:8443/help",
+				email: "support@arian.evectr.com:8443",
+				url: "https://arian.evectr.com:8443/help",
 			},
 			version: "1.0.0"
 		},
-		externalDocs: {},
 		servers: [
-			{ url: "https://evectr.com:8443" }
+			{ url: "https://arian.evectr.com:8443" }
 		],
+		externalDocs: {},
 	},
 	Folders: 	{
 		Uploads: 	{
@@ -47,7 +48,8 @@ module.exports = {
 		Secret: "jy24xsFDWU5jYnZ2MNFmtCvJOhcDoxlL",
 		Age: 	{
 			Out: (1000*300),
-			In:  (((1000*60*60)*24)*30),
+			In:  ((1000*60*60)*24),
+			Rem: (((1000*60*60)*24)*30),
 		},
 		REDIS: 	{
 			Config: {
@@ -57,18 +59,32 @@ module.exports = {
 			},
 			Main:	{ Index: 0, Name: 'Client' },
 			Stores: [
-				{ Index: 1, Name: 'Users'   },
-				{ Index: 2, Name: 'Limits'  },
-				{ Index: 3, Name: 'Lockers' },
-				{ Index: 4, Name: 'Messages' },
+				{ Index: 1, Name: 'Users'    },
+				{ Index: 2, Name: 'Groups'   },
+				{ Index: 3, Name: 'Limits'   },
+				{ Index: 4, Name: 'Lockers'  },
 				{ Index: 5, Name: 'Alerts'   },
-				{ Index: 6, Name: 'Comments' },
-			]
+				{ Index: 6, Name: 'Messages' },
+				{ Index: 7, Name: 'Comments' },
+			],
+			PSubs: {
+				
+			},
 		},
 		Auth: 	{
+			Paths:  {
+				IN:  '/auth/login',
+				OUT: '/auth/logout',
+			},
 			Flush: 	false,
 			SQL: 	{
-				Login: 	 "SELECT email_address, user_pass FROM users WHERE email_address = ?",
+				Login: 	 [
+					"SELECT user_id       `uid`,",
+					"       email_address `account`,",
+					"       user_pass     `password`",
+					"FROM   users",
+					"WHERE  email_address = ?"
+				].join('\n'),
 				Profile: [
 					"SELECT u.user_id, u.email_address,",
 					"       u.display_name, u.user_pass,",
@@ -103,6 +119,7 @@ module.exports = {
 				].join('\n')
 			},
 			Format: {
+				UID:        'user_id',
 				Account: 	'email_address',
 				Profile: 	[
 					'Photo', 'Name', 'Email', 'Age', 'Sex', 'Location'
@@ -110,7 +127,6 @@ module.exports = {
 				Scopes: [
 					'user_id',
 					'display_name',
-					'email_address',
 					'user_pass',
 					'checks',
 					'modes',
@@ -127,17 +143,23 @@ module.exports = {
 					total: 50,   method: 'all',
 					lookup: ['connection.remoteAddress'],
 					omit: [
-						'/locale/',
-						'/locale/search/',
-						'/locale/search/city/',
-						'/locale/search/region/',
-						'/locale/search/country/',
-						'/locale/timezone/',
-						'/hobbies/search/',
-						'/languages/search/',
-						'/nationalities/search/',
-						'/religions/search/',
-						'/genders/search/'
+						'/search/for/misc',
+						'/search/for/genders',
+						'/search/for/orientations',
+						'/search/for/religions',
+						'/search/for/nationalities',
+						'/search/for/languages',
+						'/search/for/hobbies',
+						'/search/for/country',
+						'/search/for/region',
+						'/search/for/city',
+						'/search/for/locale',
+						'/search/for/charge',
+						'/search/for/providers',
+						'/search/for/services',
+						'/search/suggest',
+						'/search/advanced',
+						'/search',
 					]
 				},
 				"TokenIP/Day": 		{
@@ -158,8 +180,8 @@ module.exports = {
 					total: 5,    method: 'post', 
 					lookup: ['connection.remoteAddress']
 				},
-				"Tries/Second": 	{
-					total: 5,     method: 'post', 
+				"5Tries/Second": 	{
+					total: 5,     method: 'all', 
 					lookup: ['connection.remoteAddress']
 				},
 				"Constant/Second": 	{
@@ -226,5 +248,55 @@ module.exports = {
 						// -------------------------------------------------------------- //
 							return PlugIn;
 					},
+		// Mongo: 		async function Mongo() {
+					// 	let mongoose = require('mongoose'),
+					// 		sch_path  = '../../../main/mongo/',
+					// 		schemas  = {
+					// 			ContactCategory: require(`${sch_path}/contactcategory.js`),
+					// 			AnotherOne: require(`${sch_path}/anotherone.js`),
+					// 			AndAnotherOne: require(`${sch_path}/andanotherone.js`),
+					// 			AndAnotherNotherOne: require(`${sch_path}/andanothernotherone.js`),
+					// 			AndTheLastOne: require(`${sch_path}/andthelastone.js`),
+					// 		},
+					// 		connstr  = 'mongodb://evectrContact:r4nd0m@localhost:27017/contact',
+					// 		result   = false;
+
+					// 	result = await new Promise((resolve, reject) => mongoose.connect(connstr, err => {
+					// 		if (err) reject(err);
+					// 		console.log('Mongoose connected')
+					// 		resolve(mongoose);
+					// 	})	);
+			
+					// 	if (result === true) {
+					// 		let MongoPromiseFactory = (name, filter) => {
+					// 				return new Promise((resolve, reject) => {
+					// 					schemas[name].find(filter, (error, result) => {
+					// 						if (!!error) reject(error);
+					// 						else resolve(result);
+					// 					});
+					// 				});
+					// 			};
+					// 		return {
+					// 			mongoose,
+					// 			ContactCategory: (filter) => {
+					// 				return MongoPromiseFactory('ContactCategory', filter);
+					// 			},
+					// 			AnotherOne: (filter) => {
+					// 				return MongoPromiseFactory('AnotherOne', filter);
+					// 			},
+					// 			AndAnotherOne: (filter) => {
+					// 				return MongoPromiseFactory('AndAnotherOne', filter);
+					// 			},
+					// 			AndAnotherNotherOne: (filter) => {
+					// 				return MongoPromiseFactory('AndAnotherNotherOne', filter);
+					// 			},
+					// 			AndTheLastOne: (filter) => {
+					// 				return MongoPromiseFactory('AndTheLastOne', filter);
+					// 			},
+					// 		};
+					// 	} else {
+					// 		throw result;
+					// 	};
+					// }
 	},
 };

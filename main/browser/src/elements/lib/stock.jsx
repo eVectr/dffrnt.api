@@ -1,5 +1,15 @@
+/// <reference path="./stock.d.tsx" />
 'use strict';
 
+/**
+ * @typedef {{[props: string]: any}} ReactProps
+ */
+
+/**
+ * Defines "_stock_" `Handlers`, `Components`, and `Mixins`.
+ * @param {FluxComponents} COMPS The `global` `Components` bucket.
+ * @void
+ */
 module.exports = function Comps(COMPS) {
 
 	////////////////////////////////////////////////////////////////////////
@@ -12,49 +22,155 @@ module.exports = function Comps(COMPS) {
 		const 	RDOM 		= COMPS.RDOM;
 
 		const	STOCK		= {};
+		const	RNotify		= '__notify__';
+
+	////////////////////////////////////////////////////////////////////////
+	// FIXINS --------------------------------------------------------------
+
+		let RFLXC = Reflux.Component.prototype;
+		if (!RFLXC.hasOwnProperty('componentDidMount')) {
+			let _reflux = RFLXC.componentWillMount;
+			delete RFLXC.componentWillMount;
+			Object.defineProperties(RFLXC, {
+				componentDidMount: {
+					writable: true, enumerable: true, 
+					value: function componentDidMount() {
+						_reflux.bind(this)();
+					}
+				},
+				mapState: {
+					writable: true, enumerable: true, 
+					value: function mapState(mappers = {}) {
+						let THS = this, 
+							chkStamp = (stmp)=>(!!stmp&&stmp>THS.state.stamp),
+							maps = Imm.Map(mappers).map(m=>(
+								m.isAlert=(!!m.isAlert),
+								m.state=(m.state||(items=>items)).bind(THS),
+								m.default=(m.default||{}), m
+							));
+						THS.mapStoreToState(COMPS.Stores.Data, store => {
+							let which = { true:store[RNotify]||{}, false:store };
+							return maps.reduce((prev, map, id) => { try {
+								let { stamp, items = map.default } = (
+										which[map.isAlert][id]||{}
+									);
+								return (chkStamp(stamp) ? Assign({  
+									loaded: true, status: 'done', stamp
+								},	map.state(items)) : prev);
+							} catch (e) {
+								console.error(e)
+							} },	null)
+						});
+					}
+				},
+			});
+		};
 
 	////////////////////////////////////////////////////////////////////////
 	// UTILITIES -----------------------------------------------------------
 
+		/**
+		 * Run actions that should only be executed in a Browser.
+		 * @param {()=>void} callback A function that will execute Browser-specific actions.
+		 * @void
+		 */
+		function onBrowser(callback) {
+			!!MODE.Browser && callback();
+		};
+		/**
+		 * A general, in-house `Logger` for `Components`.
+		 * @param {string} task An identifier for the log-message.
+		 * @void
+		 */
 		function onLog 		(task) {
 			var LG = function () { console.log("%s%s %s", this.lvl, task, this.name); }
 			// setTimeout(LG.bind({ lvl: this.lvl, name: this.name }), 0);
 		}
+		/**
+		 * Carries out some default-initializations before hydrating a `Component` with new `Props`.
+		 * @returns {ReactProps}
+		 */
 		function onInitial 	() {
 			var nme = this.name, cnt = nme.appears('\\.');
 			this.lvl = '\t'.dup(cnt); return this.props;
 		}
+		/**
+		 * Carries out some default-actions when a `Component` is mounted.
+		 * @void
+		 */
 		function onMounted 	() {
-			var nme = this.name, cnt = nme.appears('\\.');
-			this.lvl = '\t'.dup(cnt); 
-			!!this.addReceiver && this.addReceiver();
-			this.componentLog("{} Mounted");
+			let THS = this, { props, state } = THS,
+				pmeta = props._meta||{}, nme, 
+				smeta = state._meta||{}, cnt;
+			// -------------------------------------------------------- //
+				nme = THS.name; cnt = nme.appears('\\.');
+				THS.lvl = '\t'.dup(cnt); 
+				!!THS.addReceiver && THS.addReceiver();
+				THS.componentLog("{} Mounted");
+			// -------------------------------------------------------- //
+				onBrowser(() => { try { 
+					if (pmeta.defer!==false && smeta.load===false) {
+						THS.setState({ _meta: Assign(
+							{}, smeta||{}, { load: true }
+						) 	});
+				}	} catch(e) {}; });
+			
 		}
-		function onProps 	(nextProps) {
-			this.componentLog("{} Receiving");
-			this.setState(nextProps);
+		/**
+		 * Checks if `props` or `state` has been changed.
+		 * @param {ReactProps} prev The old `props` or `state`.
+		 * @param {ReactProps} next The new `props` or `state`.
+		 * @returns {boolean}
+		 */
+		function onShouldChk(prev, next) {
+			return FromJS(prev).equals(FromJS(next))===false;
 		}
-		function onShouldP 	(nextProps, nextState) {
-			//
-			return ImmIs(FromJS(this.props), FromJS(nextProps)) === false;
+		/**
+		 * Determines whether or not to re-render a `Component`.
+		 * @param {ReactProps} nextProps The new props.
+		 * @param {ReactProps} nextState The new state.
+		 * @returns {boolean} `true`, if `nextProps` is different from the `Component's` current `props`.
+		 */
+		function onShouldB  (nextProps, nextState) {
+			let { props, state } = this, result = {
+					props: onShouldChk(props,nextProps),
+					state: onShouldChk(state,nextState),
+				};
+			/* if (['PORTAL'].has(this.name)) {
+				console.log(this.constructor.name, {
+					result,
+					props:     FromJS(props).toJS(),
+					nextProps: FromJS(nextProps).toJS(),
+					state:     FromJS(state).toJS(),
+					nextState: FromJS(nextState).toJS(),
+				})
+			} */
+			return (result.props || result.state)
 		}
-		function onShouldS 	(nextProps, nextState) {
-			//
-			return ImmIs(FromJS(this.state), FromJS(nextState)) === false;
+		/**
+		 * Determines whether or not to re-render a Static `Component`.
+		 * @param {ReactProps}  nextProps The new props.
+		 * @param {ReactProps} _nextState The new state.
+		 * @returns {boolean} `true`, if `nextProps` is different from the `Component's` current `props`.
+		 */
+		function onShouldP 	(nextProps, _nextState) {
+			return onShouldChk(this.props,nextProps) === false;
 		}
+		/**
+		 * Determines whether or not to re-render a Dynamic `Component`.
+		 * @param {ReactProps} _nextProps The new props.
+		 * @param {ReactProps} nextState The new state.
+		 * @returns {boolean} `true`, if `nextState` is different from the `Component's` current `props`.
+		 */
+		function onShouldS 	(_nextProps, nextState) {
+			return onShouldChk(this.state,nextState) === false;
+		}
+		/**
+		 * An internal `logger` used for debugging renders.
+		 * @void
+		 */
 		function onUpdate	() { this.componentLog("[] Updated"); }
-		const 	 onShould 	= { P: onShouldP, S: onShouldS };
-
-	////////////////////////////////////////////////////////////////////////
-	// FIXES ---------------------------------------------------------------
-
-		// console.log('BFORE:',Object.keys(Reflux.Component.prototype));
-		// // console.log('FUNCT: %s',Reflux.Component.prototype.componentWillMount);
-		// let ReFroto = Reflux.Component.prototype;
-		// // ReFroto.UNSAFE_componentWillMount = ReFroto.componentWillMount;
-		// ReFroto.componentDidMount = ReFroto.componentWillMount;
-		// delete ReFroto.componentWillMount;
-		// console.log('AFTER:',Object.keys(Reflux.Component.prototype));
+		const 	 onShould 	= { B: onShouldB, P: onShouldP, S: onShouldS };
 
 	////////////////////////////////////////////////////////////////////////
 	// MIXINS --------------------------------------------------------------
@@ -66,6 +182,7 @@ module.exports = function Comps(COMPS) {
 			Reflux: Reflux.Component 
 		};
 
+		COMPS.RNotify   = RNotify;
 		COMPS.ExLinks 	= {};
 		COMPS.qryOmit 	= Imm.List(['id','as','at','to','path','offset','kind']);
 
@@ -97,8 +214,14 @@ module.exports = function Comps(COMPS) {
 						);
 					}
 				} else {
-					let TagName = COMPS.Tag(tag);
-					return (<TagName {...props} />);
+					let TagName = COMPS.Tag(tag),
+						items = (config.items||[]),
+						chldn = items.map(childA);
+					if (!!chldn.length) {
+						return (<TagName {...props}>{chldn}</TagName>);
+					} else {
+						return (<TagName {...props} />);
+					}
 				}
 			} else { return config; }
 		};
@@ -156,23 +279,43 @@ module.exports = function Comps(COMPS) {
 			return ('/')+(req+(!!prm?'/'+prm:''))+(!!qry?'?'+qry:'');
 		};
 
+		COMPS.onBrowser = onBrowser;
+
 		COMPS.Mixins 	= {
+			Defer:      {
+				componentDidMount() {
+					let THS = this;
+					// ---------------------------------------------- //
+						// THS.callSuperMethod('componentDidMount');
+					// ---------------------------------------------- //
+						if (MODE.Browser) {
+							let state = THS.state;
+
+								// console.log(`DEFERRING ${THS.name}...`)
+
+							THS.setState({ _meta: Assign(
+								{}, state._meta||{}, { load: true }
+							) 	});
+						}
+				},
+			},
 			General: 	{
 				getInitialState: 			onInitial,
-				shouldComponentUpdate: 		onShould.P,
+				shouldComponentUpdate:		onShould.B,
 				componentDidMount: 			onMounted,
 				componentDidUpdate:			onUpdate,
 				componentLog: 				onLog,
 			},
 			Static: 	{
 				getInitialState: 			onInitial,
+				shouldComponentUpdate:		onShould.B,
 				componentDidMount: 			onMounted,
 				componentDidUpdate:			onUpdate,
 				componentLog: 				onLog,
 			},
 			Dynamic: 	{
 				getInitialState: 			onInitial,
-				shouldComponentUpdate: 		onShould.S,
+				shouldComponentUpdate:		onShould.B,
 				componentDidMount: 			onMounted,
 				componentDidUpdate:			onUpdate,
 				componentLog: 				onLog,
@@ -376,6 +519,7 @@ module.exports = function Comps(COMPS) {
 				},
 			},
 			Receivers:  {
+				name: 'SOCKET',
 				logReceiver() { this.componentLog('Receivers: '+COMPS.Receivers); },
 				addReceiver() { COMPS.Receivers++; this.logReceiver(); },
 				remReceiver() { COMPS.Receivers--; this.logReceiver(); },
@@ -818,19 +962,85 @@ module.exports = function Comps(COMPS) {
 			}
 		};
 
+		/**
+		 * A React Mixin Factory.
+		 * @kind function
+		 * @param {('React'|'Pure'|'Reflux')} kind ...
+		 * @param {...string} mixes ...
+		 * @returns {(React.Component<{},{},any>|React.PureComponent<{},{},any>|Reflux.Component<{},{},any>)}
+		 */
 		COMPS.Mix 		= (kind, ...mixes) => {
-			let Mixed = mixes.reduce((E,C) => {
-					let CLS = class extends E {
-							constructor(props) { super(props); }
-						};
-					Imm.Map(C).map((m,n)=>(CLS.prototype[n]=m));
-					Object.setPrototypeOf(CLS.prototype,E.prototype);
-					return CLS;
-				},	class extends MixBase[kind] {
-					constructor(props) {
+			let All = {}, Mixed, Defaults = {};
+			// Declare Base Class -------------------------------------------- //
+				All[kind] = class extends MixBase[kind] {
+					constructor(props) { 
 						super(props); this.state = props; 
-				}	}	);
-			return Mixed;
+						Object
+							.keys(Mixed)
+							.filter((F)=>(Mixed[F]!=this[F]))
+							.map((F) => {
+								let over = this[F].bind(this),
+									mixs = Mixed[F].bind(this);
+								this[F] = function(...args) {
+									return (mixs(...args),over(...args));
+								};
+							});
+					}
+					callSuperMethod(name, ...args) { 
+						// let method = super[name];
+						let method = this.__proto__.__proto__.__proto__[name];
+						// console.log(`${this.name}.${name}:`, method);
+						if (!!method) return method(...args);
+					}
+					static get defaultProps(   ) { 
+						return FromJS(Defaults).toJS(); 
+					}
+					static set defaultProps(def) { 
+						Defaults = FromJS(Defaults).mergeDeep(def).toJS(); 
+					}
+				};	
+				// Establish Name & Default meta-prop
+				All[kind].defaultProps = { _meta: {} };
+				DEFINE(All[kind].constructor, { name: {
+					enumerable:0, configurable:0, 
+					writable:1, value: kind
+				}	});
+			// Setup Reflux Mixin; if needed --------------------------------- //
+				if (kind == "Reflux") {
+					let RFLX = All[kind].prototype;
+					Defaults = Assign(Defaults, {
+						loaded: false,
+						stamp:  null,
+						status: null,
+					});
+					// RFLX.getDerivedStateFromProps = function(props, state) {
+						// console.log({ props, state })
+						// if (!!!state.stamp||props.stamp!==state.stamp) {
+							// return Assign({}, props.stamp>state.stamp?props:state);
+						// };	return null;
+					// };
+				};
+			// Inherit Mixin Classes ----------------------------------------- //
+				Mixed = {};
+				mixes.map((M) => { try {
+					let PRTO = All[kind].prototype;
+					Imm.Map(MX[M]).map((F,N) => {
+						if (!!!Mixed[N]) Mixed[N] = [PRTO[N]].filter(P=>!!P);
+						Mixed[N].push(F);
+					});
+				} catch(err) {
+					console.log(C); throw err;
+				} 	});
+				Mixed = Imm.Map(Mixed).map((FNS,N) => {
+					return All[kind].prototype[N] = function(...args) {
+						let prev = args.last; args = args.slice(0,-1);
+						return FNS.reduce((P,C)=>(
+							C.bind(this)(...args, P)
+						), 	prev);
+					};
+				}).toObject();
+			// Return Extended Class ----------------------------------------- //
+				return All[kind];
 		};
 
 	////////////////////////////////////////////////////////////////////////
@@ -843,8 +1053,14 @@ module.exports = function Comps(COMPS) {
 		const 	iURL 		= COMPS.iURL;
 		const 	joinV 		= COMPS.joinV;
 
+		// DEFER ///////////////////////////////////////////////////////////
+			STOCK.Defer 		= function Defer({ load = false, what }) {
+				// console.log('DEFERRING:', load, what)
+				return (!!!load ? null : what());
+			}
+
 		// JSONP ///////////////////////////////////////////////////////////
-			STOCK.JSONP 		= class extends Mix('Reflux',MX.Dynamic,MX.Receivers) {
+			STOCK.JSONP 		= class extends Mix('Reflux','Dynamic','Receivers') {
 				constructor(props) {
 					super(props); this.name = 'JSONP';
 					let THS = this, store = COMPS.Stores.Data;
@@ -871,7 +1087,7 @@ module.exports = function Comps(COMPS) {
 					);
 				}
 			};
-			STOCK.JSONP.Iter 	= class extends Mix('React', MX.Dynamic) {
+			STOCK.JSONP.Iter 	= class extends Mix('React', 'Dynamic') {
 				constructor(props) {
 					super(props)
 					this.name = 'JSONP.ITER';
@@ -898,7 +1114,7 @@ module.exports = function Comps(COMPS) {
 					);
 				}
 			};
-			STOCK.JSONP.Item 	= class extends Mix('Reflux',MX.Items,MX.Receivers) {
+			STOCK.JSONP.Item 	= class extends Mix('Reflux','Items','Receivers') {
 				constructor(props) {
 					super(props); this.name = 'JSONP.ITEM';
 					let THS = this, store = COMPS.Stores.Data;
@@ -991,7 +1207,7 @@ module.exports = function Comps(COMPS) {
 			};
 
 		// TAGS ////////////////////////////////////////////////////////////
-			STOCK.Tags 			= class extends Mix('React', MX.Taggr) {
+			STOCK.Tags 			= class extends Mix('React', 'Taggr') {
 				constructor(props) {
 					super(props)
 					this.name = 'TAGS';
@@ -1070,33 +1286,57 @@ module.exports = function Comps(COMPS) {
 			};
 
 		// BUBBLE //////////////////////////////////////////////////////////
-			STOCK.Bubble 		= class extends Mix('Pure',  MX.Static) {
+			STOCK.Bubble 		= class Bubble extends Mix('React', 'Static') {
 				constructor(props) {
 					super(props); this.name = 'BUBBLE';
 					this.icons = {user:'user',add:'plus',more:'ellipsis-h','':''}
 				}
 
+				/**
+				 * Converts a `NameObj` into a full-string.
+				 * @param {NameObj} name The user's name-object
+				 */
 				getName(name) { 
 					return joinV(name||{First:'',Last:''}); 
 				}
+				/**
+				 * Grabs the initials of a user's name.
+				 * @param {string} name The name of the user.
+				 */
 				getInitials(name) {
 					return name.replace(/[^A-Z]|\B[A-Z]/g,'')||null
+				}
+				/**
+				 * Parses the `multi` prop into a digestible object.
+				 * @param {boolean|number} multi Either a `boolean` denoting it's multi-state, or a 
+				 *   `Number`, with `0` being `false`. When a `Number` is used, the amount of other 
+				 *   users this bubble represents will be shown to the right of the primary user's 
+				 *   name.
+				 * @returns {{cName:string,count:number}}
+				 */
+				getMulti(multi) {
+					let res = { cName: { multiple: !!multi }, count: null },
+						typ = (multi||false).constructor.name;
+					(typ=='Number' && !!multi) && (res.count = (multi-1));
+					return res;
 				}
 
 				render() {
 					var props 	= this.props,
 						id 		= props.id,
 						Name 	= this.getName(props.name),
+						Multi   = this.getMulti(props.multi),
 						Photo 	= props.img,
 						Kind 	= props.kind,
+						Click   = !!props.onClick?props.onClick.bind(this):null,
 						Opts 	= [Kind].concat(props.opts),
 						Icons 	= this.icons,
-						classes = classN('bubble', Opts),
-						style 	= Assign(props.style, {
+						classes = classN('bubble', Multi.cName, Opts),
+						style 	= Assign({}, props.style, {
 									backgroundImage: iURL(Photo),
 								});
 					return (
-						<div id={id} style={style} className={classes} role="img">
+						<div key="bub" id={id} style={style} className={classes} onClick={Click} data-name={Name} data-cnt={Multi.count} role="img">
 							{!!!Photo ? (<i {...{
 								'className':    FA(Icons[Kind]),
 								'data-initial':	this.getInitials(Name),
@@ -1116,7 +1356,7 @@ module.exports = function Comps(COMPS) {
 			};
 
 		// LINK ////////////////////////////////////////////////////////////
-			STOCK.NormalLink 	= class extends Mix('Pure',  MX.Static) {
+			STOCK.NormalLink 	= class extends Mix('React', 'Static') {
 				constructor(props) {
 					super(props)
 					this.name = 'NORMALLINK';
@@ -1157,7 +1397,7 @@ module.exports = function Comps(COMPS) {
 					return this[hndl](prop.value, prop.safe);
 				}
 			};
-			STOCK.SocketLink 	= class extends Mix('React', MX.Sockets) {
+			STOCK.SocketLink 	= class extends Mix('React', 'Sockets') {
 				constructor(props) {
 					super(props)
 				}
@@ -1216,7 +1456,7 @@ module.exports = function Comps(COMPS) {
 			};
 
 		// LOCALE //////////////////////////////////////////////////////////
-			STOCK.PhoneNum 		= class extends Mix('React', MX.General,MX.Phone) {
+			STOCK.PhoneNum 		= class extends Mix('React', 'General','Phone') {
 				constructor(props) {
 					super(props)
 					this.name = 'PHONE';
@@ -1235,25 +1475,39 @@ module.exports = function Comps(COMPS) {
 					);
 				}
 			};
-			STOCK.Address  		= class extends Mix('React', MX.General) {
-				constructor(props) {
-					super(props)
-					this.name = 'ADDRESS';
+			STOCK.Address  		= class extends Mix('React', 'General') {
+				constructor(props) { 
+					super(props); this.name = 'ADDRESS'; 
+					// ----------------------------------------------- //
+						this.handleCopy = this.handleCopy.bind(this);
+					// ----------------------------------------------- //
+						let { Name, Street, Line2, City, Region, Postal, Country, flat } = props,
+							filt = (l,s)=>(l.filter(p=>!!p).join(s)),
+							sepr = ({true:', ',false:'\n'})[!!flat];
+						this.full = filt([
+							Name, Street, Line2, filt([
+								City, filt([Region, Postal],' ')],
+							sepr), Country
+						], 	sepr);
+				}
+
+				handleCopy(e) {
+					e.clipboardData.setData('text/plain', this.full);
+					e.preventDefault();
 				}
 
 				render() {
-					var th = this, props = th.props, alt = '', 
-						flat = !!props.flat?'flat':null;
+					var { props, handleCopy, full } = this,
+						{ collapse, flat } = props;
 					return (
-						<address className={classN("address",flat)} alt={alt}>
-							<Frag>
-								{!!props.Name   ?<span className="name"   >{props.Name   }</span>:null}
-								{!!props.Street ?<span className="street" >{props.Street }</span>:null}
-								{!!props.City   ?<span className="city"   >{props.City   }</span>:null}
-								{!!props.Region ?<span className="region" >{props.Region }</span>:null}
-								{!!props.Postal ?<span className="postal" >{props.Postal }</span>:null}
-								{!!props.Country?<span className="country">{props.Country}</span>:null}
-							</Frag>
+						<address className={classN("address",{collapse,flat})} onCopy={handleCopy} aria-label={full}>
+							<span key="name"    className="name"   >{props.Name   }</span>
+							<span key="street"  className="street" >{props.Street.replace(/-/g,'\u2014') }</span>
+							<span key="street"  className="street" >{props.Line2  }</span>
+							<span key="city"    className="city"   >{props.City   }</span>
+							<span key="region"  className="region" >{props.Region }</span>
+							<span key="postal"  className="postal" >{props.Postal }</span>
+							<span key="country" className="country">{props.Country}</span>
 						</address>
 					);
 				}

@@ -1,15 +1,15 @@
-
+/** @type {CFG.Spaces} */
 module.exports = {
     PUSH:       [
-        // { enc: 'Base64', path: '/public/images/Logo.footer.png' },
-        // { enc: 'Base64', path: '/public/images/Logo.stock.png' },
-        // { enc: 'utf8',   path: '/public/js/vendor.js' },
-        // { enc: 'utf8',   path: '/public/js/engine.js' },
-        // { enc: 'utf8',   path: '/public/comps/font-awesome/web-fonts-with-css/css/fontawesome-all.min.css' },
-        // { enc: 'utf8',   path: '/public/css/style.css' },
-        // { enc:  null,    path: '/public/comps/font-awesome/web-fonts-with-css/webfonts/fa-solid-900.woff2' },
-        // { enc:  null,    path: '/public/comps/font-awesome/web-fonts-with-css/webfonts/fa-regular-400.woff2' },
-        //     // { as: 'image', enc: 'Base64', mime: 'image/x-icon', path: '/public/images/icons/favicon.ico' },
+        { enc: 'Base64', path: '/public/images/Logo.footer.png' },
+        { enc: 'Base64', path: '/public/images/Logo.stock.png' },
+        { enc: 'utf8',   path: '/public/js/vendor.js' },
+        { enc: 'utf8',   path: '/public/js/engine.js' },
+        { enc: 'utf8',   path: '/public/comps/font-awesome/web-fonts-with-css/css/fontawesome-all.min.css' },
+        { enc: 'utf8',   path: '/public/css/style.css' },
+        { enc:  null,    path: '/public/comps/font-awesome/web-fonts-with-css/webfonts/fa-solid-900.woff2' },
+        { enc:  null,    path: '/public/comps/font-awesome/web-fonts-with-css/webfonts/fa-regular-400.woff2' },
+            // { as: 'image', enc: 'Base64', mime: 'image/x-icon', path: '/public/images/icons/favicon.ico' },
     ],
     Global:     { // RESERVED ~ !!!
         config:     {
@@ -54,7 +54,7 @@ module.exports = {
             accessor:     false,
             restrict:    { true: null, false: null },
             page:        {
-                title:      (path) => '404 Error',
+                title:      () => '404 Error',
                 CSS:        ['style'],
                 styles:      false,
                 main:       'evectr',
@@ -66,17 +66,18 @@ module.exports = {
         type:       'page',
         config:     {
             name:        'main',
-            scheme:      '/\\b(home|log(in|out))\\b/',
+            scheme:      '/((home|log(in|out))|)/',
             title:       'Main Page',
             description: 'Default Functionality',
             accessor:     false,
             restrict:    { true: 'profile', false: null },
             page:        {
-                title:      (path) => ('Powered by People.'),
+                title:      () => ('Powered by People.'),
                 CSS:        ['style'],
                 styles:      false,
                 main:       'evectr',
                 type:       'jumbo',
+                unlock:      true,
             },
         },
     },
@@ -114,7 +115,7 @@ module.exports = {
             accessor:     false,
             restrict:    { true: null, false: 'login' },
             page:        {
-                title:      (path) => 'Search Results',
+                title:      () => 'Search Results',
                 CSS:        ['style'],
                 styles:      false,
                 main:       'evectr',
@@ -132,11 +133,29 @@ module.exports = {
             accessor:     false,
             restrict:    { true: null, false: 'login' },
             page:        {
-                title:      (path) => 'Defined Search',
+                title:      () => 'Defined Search',
                 CSS:        ['style'],
                 styles:      false,
                 main:       'evectr',
                 type:       'stock',
+            },
+        },
+    },
+    Wallet:   {
+        type:       'page',
+        config:     {
+            name:        'wallet',
+            scheme:      '/wallet/',
+            title:       'Wallet Page',
+            description: 'User Wallet Management',
+            accessor:     false,
+            restrict:    { true: null, false: 'login' },
+            page:        {
+                title:      (_path, usr) => `Wallet | ${Object.values(((usr||{}).Profile||{}).Name||{}).join(' ')}`,
+                CSS:        ['style'],
+                styles:      false,
+                main:       'evectr',
+                type:       'cover',
             },
         },
     },
@@ -150,7 +169,7 @@ module.exports = {
             accessor:     false,
             restrict:    { true: null, false: 'login' },
             page:        {
-                title:      (path, usr) => `Settings | ${Object.values(((usr||{}).Profile||{}).Name||{}).join(' ')}`,
+                title:      (_path, usr) => `Settings | ${Object.values(((usr||{}).Profile||{}).Name||{}).join(' ')}`,
                 CSS:        ['style'],
                 styles:      false,
                 main:       'evectr',
@@ -168,7 +187,7 @@ module.exports = {
             accessor:     false,
             restrict:    { true: null, false: 'login' },
             page:        {
-                title:      (path, usr) => `Update | ${Object.values(((usr||{}).Profile||{}).Name||{}).join(' ')}`,
+                title:      (_path, usr) => `Update | ${Object.values(((usr||{}).Profile||{}).Name||{}).join(' ')}`,
                 CSS:        ['style'],
                 styles:      false,
                 main:       'evectr',
@@ -186,7 +205,7 @@ module.exports = {
             accessor:     false,
             restrict:    { true: null, false: 'login' },
             page:        {
-                title:      (path, usr) => `Services | ${Object.values(((usr||{}).Profile||{}).Name||{}).join(' ')}`,
+                title:      (_path, usr) => `Services | ${Object.values(((usr||{}).Profile||{}).Name||{}).join(' ')}`,
                 CSS:        ['style'],
                 styles:      false,
                 main:       'evectr',
@@ -198,14 +217,14 @@ module.exports = {
         type:       'page',
         config:     {
             name:        'profile',
-            scheme:      '/(([\\w_-]|\\.(?!html?|je?pg|pdf|gif|svg|ico|png|(doc|xls|ppt)x?))+|profile)/',
+            scheme:      '/user_:uid(\\d+)|:account(\\b(?:(?:[\\w_-]|\\.(?!html?|je?pg|pdf|gif|svg|ico|png|(?:doc|xls|ppt)x?))+|profile)\\b)/',
             title:       'Profile Page',
             description: 'Displaying User Profiles',
             accessor:     false,
             restrict:    { true: null, false: 'login' },
-            errorIF:     (ret) => (Object.keys(ret).length==0),
+            errorIF:     (pay) => (Object.keys(pay).length==0),
             page:        {
-                title:      (path,usr,pay) => `Profile | ${Object.values((pay||{}).name||[]).join(' ')}`,
+                title:      (_path, _user, pay) => `Profile | ${Object.values((pay||{}).name||[]).join(' ')}`,
                 CSS:        ['style'],
                 styles:      false,
                 main:       'evectr',

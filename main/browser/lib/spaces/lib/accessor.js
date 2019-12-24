@@ -1,6 +1,7 @@
 
 'use strict';
 
+/** @type {CFG.SPCE.SpaceHandler} */
 module.exports = {
 	Data:  [
 		function (path, req) { return {}; },
@@ -47,6 +48,7 @@ module.exports = {
 						icon:	'bell',
 						igroup: 'navNotif',
 						all:	'/alerts',
+						allLbl: 'Read All Notifications',
 						items: [
 							{
 								icon: 	'comment',
@@ -84,6 +86,11 @@ module.exports = {
 								label: 	' Services',
 								href:	'/services',
 								icon:	'handshake',
+							} : null, 
+							!!res.Scopes.modes.transactional ? {
+								label: 	' Wallet',
+								href:	'/wallet',
+								icon:	'wallet',
 							} : null, {
 								label: 	' Settings',
 								href:	'/settings',
