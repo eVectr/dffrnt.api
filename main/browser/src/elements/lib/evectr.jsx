@@ -26,6 +26,7 @@ function Comps(COMPS) {
 		const 	iURL 		= COMPS.iURL;
 		const 	joinV 		= COMPS.joinV;
 		const 	onBrowser 	= COMPS.onBrowser;
+		const 	stopEvent 	= COMPS.stopEvent;
 		const 	DATA_TMR 	= {};
 
 		const { StripeProvider,
@@ -307,31 +308,34 @@ function Comps(COMPS) {
 						'confirm' : React.createRef(),
 						'agree'   : React.createRef(),
 					};
-					this.name  		  = 'SIGNUP';
-					this.handleSignup = this.handleSignup.bind(this);
-					this._refs 		  = _refs;
-					this.REFS 		  = {
-						/**
-						 * @type {HTMLFormElement}
-						 */
-						get     form() { return _refs.form.current; 	},
-						/**
-						 * @type {HTMLInputElement}
-						 */
-						get username() { return _refs.username.current; },
-						/**
-						 * @type {HTMLInputElement}
-						 */
-						get password() { return _refs.password.current; },
-						/**
-						 * @type {HTMLInputElement}
-						 */
-						get  confirm() { return _refs.confirm.current; 	},
-						/**
-						 * @type {HTMLInputElement}
-						 */
-						get    agree() { return _refs.agree.current; 	},
-					};
+					// ---------------------------------------------------------- //
+						this.name  		  = 'SIGNUP';
+						this.handleSignup = this.handleSignup.bind(this);
+						this._refs 		  = _refs;
+						this.REFS 		  = {
+							/**
+							 * @type {HTMLFormElement}
+							 */
+							get     form() { return _refs.form.current; 	},
+							/**
+							 * @type {HTMLInputElement}
+							 */
+							get username() { return _refs.username.current; },
+							/**
+							 * @type {HTMLInputElement}
+							 */
+							get password() { return _refs.password.current; },
+							/**
+							 * @type {HTMLInputElement}
+							 */
+							get  confirm() { return _refs.confirm.current; 	},
+							/**
+							 * @type {HTMLInputElement}
+							 */
+							get    agree() { return _refs.agree.current; 	},
+						};
+					// ---------------------------------------------------------- //
+						
 				}
 
 				handleSignup(e) {
@@ -339,19 +343,12 @@ function Comps(COMPS) {
 					let { username, password, confirm, agree } = this.REFS
 					Actions.Data.send(RSignUp, { 
 						method: 'POST', body: { 
-							email: username.value,
-							email: username.value,
-							email: username.value,
-							email: username.value,
+							email:    username.value,
+							password: password.value,
+							confpass: confirm.value,
+							agree: 	  !!agree.checked,
 						}
 					}, 	false);
-				}
-
-				getAutoCompFix(name, source) {
-					return (<iframe key={name} {...{
-						src: source, id: name, name: name, 
-						style: {display:'none'}
-					}}/>);
 				}
 
 				render() {
@@ -370,11 +367,19 @@ function Comps(COMPS) {
 							'data-action': 	'/signup',
 							'method':		'POST',
 							'className':	 classN(styles),
-							'onSubmit': 	 THS.handleSignup,
+							'buttons':		[{
+								kind:    "submit", 
+								label:   "Sign Up!",
+								styles: ['good'], 
+								large:   true, 
+								block:   true, 
+								start, size,
+							}],
 						};
 					return (
 						<Form key='signupfrm' ref={REFS.form} {...attrs}>
 							<Form.Xput 	   {...{id:			'signup-email',
+												name:		'email',
 												kind:		'email',
 												icon:		'envelope',
 												styles:		 align,
@@ -384,6 +389,7 @@ function Comps(COMPS) {
 												priority:	'*',
 											}} forRef={REFS.username} />
 							<Form.Xput     {...{id:			'signup-password',
+												name:		'password',
 												kind:		'password',
 												icon:		'key',
 												styles:		 align,
@@ -393,6 +399,7 @@ function Comps(COMPS) {
 												priority:	'*',
 											}} forRef={REFS.password} />
 							<Form.Xput     {...{id:			'signup-confirm',
+												name:		'confpass',
 												kind:		'password',
 												icon:		'unlock-alt',
 												styles:		 align,
@@ -402,6 +409,7 @@ function Comps(COMPS) {
 												priority:	'*',
 											}} forRef={REFS.confirm} />
 							<Form.Checkbox {...{id: 		'signup-agree',
+												name: 		'agree',
 												label:		'I agree to these Terms:',
 												styles: 	[start,size,'good-y','nope-n'],
 												required:	 true,
@@ -414,10 +422,6 @@ function Comps(COMPS) {
 								</div>
 							</div>
 							<hr  className={align}/>
-							<div className={align}>
-								<Form.Button kind="submit" label="Sign Up!"
-										styles={['good']} large block/>
-							</div>
 						</Form>
 					);
 				}
@@ -505,6 +509,11 @@ function Comps(COMPS) {
 					return ([
 						this.getAutoCompFix(autoc, source),
 						<form key='loginfrm' ref={REFS.form} {...attrs}>
+							<div className={classN(['submit'],start,size)} style={{order:1000}}>
+								<Form.Button kind="submit" label="Login!"
+										styles={['info']} large block
+										action={THS.handleSignup}/>
+							</div>
 							<Form.Xput 	   {...{id:			'login-email',
 												kind:		'email',
 												icon:		'envelope',
@@ -531,11 +540,6 @@ function Comps(COMPS) {
 												no:			'NO',
 											}} forRef={REFS.remember} />
 							<hr  className={align}/>
-							<div className={align}>
-								<Form.Button kind="submit" label="Login!"
-										styles={['info']} large block
-										action={THS.handleSignup}/>
-							</div>
 						</form>
 					]);
 				}
@@ -1138,10 +1142,38 @@ function Comps(COMPS) {
 			EV.Plaque 			= class Plaque 		extends Mix('React', 'Static') {
 				constructor(props) {
 					super(props); this.name = 'PLAQUE';
+					// --------------------------------------------- //
+						this.handleChat = this.handleChat.bind(this);
+						this.handleJoin = this.handleJoin.bind(this);
+				}
+
+				/**
+				 * Starts a new Chat with the User of this Profile.
+				 * @param {React.UIEvent} e The click event.
+				 * @void
+				 */
+				handleChat(e) {
+					stopEvent(e);
+					let { uid } = this.props, req = {
+							method: 'POST',
+							headers: { token: COMPS.Token },
+							params: { uids: [uid].join(';') },
+							body: { id: 'newchat' },
+						};
+					console.log('CHAT REQ:', req)
+					Actions.Data.send('/threads', req, true);
+				}
+				/**
+				 * Add the User of this Profile to the current User's Community.
+				 * @param {React.UIEvent} e The click event.
+				 * @void
+				 */
+				handleJoin(e) {
+					stopEvent(e);
 				}
 
 				render() {
-					let props 	= this.props,
+					let { props, handleChat, handleJoin } = this,
 						uid     = props.uid,
 						isUser  = COMPS.UID == uid,
 						mode	= props.mode||'show',
@@ -1156,14 +1188,14 @@ function Comps(COMPS) {
 						}[props.sex];
 					return (
 						<Frag>
-							{/* <!-- PROFILE PHOTO --> */}
+							{/* <!-- PROFILE PHOTO  --> */}
 								<header className="gridItemPic d" role="complementary">
 									<Bubble kind="user" name={fname} img={pic} opts={['small','er','lite']} />
 								</header>
 								<header className="gridItemPic" role="complementary">
 									<Bubble kind="user" name={fname} img={pic} opts={['huge','cutout']} id="profile_picture"/>
 								</header>
-							{/* <!-- PROFILE INFO  --> */}
+							{/* <!-- PROFILE INFO   --> */}
 								<Title {...{
 									id:			'profileName',
 									kind: 		'user', 
@@ -1181,16 +1213,16 @@ function Comps(COMPS) {
 										</h6>
 									</div>
 								</header>
-							{/* <!-- PROFILE JOIN  --> */}
+							{/* <!-- PROFILE SOCIAL --> */}
 								{mode=='show' && !isUser ? (
 								<header className="gridItemJoin" role="complementary">
 									<div className="cutout">
-										<button className="tkn mayb large" type="submit" title={`Chat with ${uname}!`}>
+										<button className="tkn mayb large" title={`Chat with ${uname}!`} onClick={handleChat}>
 											<span><i className={FA('comments')}></i></span>
 										</button>
 									</div>
 									<div className="cutout">
-										<button className="tkn good large block" type="submit" title={`Invite ${uname} into your world!`}>
+										<button className="tkn good large block" title={`Invite ${uname} into your world!`} onClick={handleJoin}>
 											<span><i className={FA('user-plus')}></i> Join my Community</span>
 										</button>
 									</div>
@@ -1932,12 +1964,7 @@ function Comps(COMPS) {
 																style:'good',   icon:'chevron-circle-right', 
 																start:'S7',     size:'C6', iconProps: { 
 																	after: true, edge: true,
-															}}/* ,	{ 
-																kind:'button', label:'Or Use a Saved-Card',
-																style:'info',   icon:'check-square',
-																action(e) { THS.setState({ addCard: false }); }, 
-																size:'C12', iconProps: { after:true },
-															} */]
+															}}]
 														}}
 														compact/>
 												</div>
@@ -3100,13 +3127,18 @@ function Comps(COMPS) {
 						THS.addOpen  = THS.addOpen.bind(THS);
 						THS.addClose = THS.addClose.bind(THS);
 					// -------------------------------------------------- //
-						THS.mapState({
-							[THS.fid]: {
-								default: [],
-								state(items) {
-									return { cards: items||[] }
+						let smap = {
+							default: [],
+							state(items) {
+								return { 
+									cards: ISS(items)=='array'?items:[],
+									addNew: false,
 								}
-							},
+							}
+						};
+						THS.mapState({
+							[THS.fid]: smap,
+							'user-newcard': smap,
 						}	);
 				}
 
@@ -3130,11 +3162,11 @@ function Comps(COMPS) {
 				// EVENTS    /////////////////////////////////////////////////////////
 
 					addOpen(e) {
-						e.stopPropagation(); e.preventDefault(); 
+						stopEvent(e);
 						this.setState({ addNew:  true });
 					}
 					addClose(e) {
-						e.stopPropagation(); e.preventDefault(); 
+						stopEvent(e);
 						this.setState({ addNew: false });
 					}
 				
@@ -3142,20 +3174,30 @@ function Comps(COMPS) {
 
 					GetMethods({ addNew = false, stamp, acct_id, cust_id, form, cards = [], select = false, small = false, addOpen, addClose } = props) {
 						let Elem = (!!form?Form:'div'); !!form && (form.stamp = stamp);
-						return (<Frag>
-							<Elem key="cards" className="spread gridSlice" {...(form||{})}>
+						/**
+						 * 
+						 * @param {*} props 
+						 */
+						function Cards({ cards, select, small } = props) {
+							return (<Frag>
 								{/* Expand to see Conditions */}
 									{ !!select ?
-								<h4 className="spread">Choose a Payment Method</h4>
+								<h4 key="head" className="spread">Choose a Payment Method</h4>
 									: null }
-									{!!cards ? cards.map((C,I) => (
+									{!!cards&&!!cards.length ? cards.map((C,I) => (
 								<PoS.Method key={`cc${I}`} id={C.id} type={C.type} name={C.name} number={C.number} 
 											exp={C.exp} holder={C.holder} address={C.address}
 											select={select} small={small}/>
 									)) : 
-								<p className="spread" style={{textAlign:'center'}}>You have no Saved Pay-Methods.</p>
+								<p key="none" className="spread" style={{textAlign:'center'}}><i>You have no Saved Pay-Methods.</i></p>
 									}
 								<hr key="hr" className="MTB spread"/>
+							</Frag>);
+						}
+						// ---------
+						return (<Frag>
+							<Elem key="cont" className="spread gridSlice" {...(form||{})}>
+								<Cards key="cards" cards={cards} select={select} small={small} />
 							</Elem>
 								{ !select ? <Frag>
 							<button key="btn" className={`tkn good block spread`} onClick={addOpen}>
@@ -3166,10 +3208,11 @@ function Comps(COMPS) {
 								content: (
 									<PoS.Card id="user-pay" ids={{ 
 										uid: COMPS.UID, acct_id, cust_id
-									}}  form={{ 'buttons': [{ 
+									}}  form={{ 'bid':"heloo", 'buttons': [{ 
 										kind:'submit', label:'Save this Card',
 										style:'good',  icon:'chevron-circle-right'
-									}]	}} compact/>
+									}]	}} 
+									compact/>
 							)}]} step={1} closer={addClose}/>
 								</Frag> : null }
 						</Frag>);
@@ -3183,6 +3226,7 @@ function Comps(COMPS) {
 							{ addNew = false, cards, stamp } = state, 
 							{ acct_id, cust_id, select = false, small = false } = props;
 						// ------------------------------------------------------------------------ //
+						console.log('METHODS:', Assign({}, state))
 						return (
 							<GetMethods {...{ addNew, stamp, acct_id, cust_id, form, cards, select, small, addOpen, addClose }}/>
 						);
@@ -3331,12 +3375,12 @@ function Comps(COMPS) {
 
 			EV.Form 			= class Form 		extends Mix('Reflux','Static') {
 				constructor(props) {
-					super(props); let THS = this, rid; THS.name = 'FORM';
+					super(props); let THS = this; THS.name = 'FORM';
 					// ---------------------------------------------------
 						THS.handleSubmit = THS.handleSubmit.bind(THS);
 						THS.handleReset  = THS.handleReset.bind(THS);
 					// ---------------------------------------------------
-						THS.SnapShot    = null; rid = props.rid;
+						THS.SnapShot    = null;
 						THS.Statuses    = { true:'fail', false:'done' };
 						THS.ShouldClear = !!props.clear;
 						THS.deferSS 	= !!props.no1stSnap;
@@ -3363,12 +3407,10 @@ function Comps(COMPS) {
 				// CYCLE     /////////////////////////////////////////////////////////
 
 					componentDidMount() {
-						// super.componentDidMount();
 						!!!this.deferSS && this.mkeSnapShot();
 					}
 
 					componentDidUpdate() {
-						// super.componentDidUpdate();
 						this.mkeSnapShot();
 					}
 
@@ -3516,7 +3558,7 @@ function Comps(COMPS) {
 
 					getAttrs(props) {
 						let stats = props.status,
-							omttd = ['loaded','clear','stamp','status','timeout','api','no1stSnap','repeated','noLoad'],
+							omttd = ['rid','loaded','clear','stamp','status','timeout','api','no1stSnap','repeated','noLoad'],
 							mappr = (v,k)=>(IS(v)=="boolean"),
 							filtr = (v,k)=>(!omttd.has(k)&&(k=='style'||!['object','array'].has(IS(v)))),
 							attrs = Map(props).filter(filtr).toJS();
@@ -3652,6 +3694,9 @@ function Comps(COMPS) {
 							attrs 	= THS.getAttrs(state),
 							buttons = state.buttons||[];
 						THS.clrTimer(); THS.setTimer(); THS.clrDone();
+
+							console.info('FORM ATTRS:',attrs);
+
 						return (<Frag key={id}>
 							<input key="status" ref="status" {...chattr}/>
 							<form key="form" ref="form" {...attrs}>
@@ -5591,34 +5636,52 @@ function Comps(COMPS) {
 				 * @param {ThreadProps} props Props used in creating `Thread` components.
 				 */
 				constructor(props) {
-					super(props); this.name = 'THREADS';
-					let THS = this, WK = THS.withKeys.bind(THS); 
+					super(props); let THS = this; THS.name = 'THREADS';
 					// --------------------------------------------------- //
 						/** 
 						 * @type {ThreadProps}
 						 */
 						this.props;
 						this.style   = FromJS({opts:['lite','small','dark']});
-						this.id      = {all:'threads',sgl:'thread',msg:'message'};
+						this.id      = {all:'threads',add:'newchat',sgl:'thread',msg:'message'};
 						this.forRefs = {
 							input: React.createRef(),
 							rdkey: React.createRef(),
 						};
 					// --------------------------------------------------- //
+						let WK = THS.withKeys.bind(THS),
+							AD = THS.addChat.bind(THS);
+					// --------------------------------------------------- //
 						THS.mapState({
 							[THS.id.all]: {
 								default: [],
-								state(items) {
-									return { chats: items||[] }
+								/**
+								 * @param {ChatProps[]} chats 
+								 */
+								state(chats) {
+									return { chats: chats||[] }
+								}
+							},
+							[THS.id.add]: {
+								default: {},
+								/**
+								 * @param {ChatProps[]} chats
+								 */
+								state(chats) {
+									/**
+									 * @type {ChatProps}
+									 */
+									let chat = chats[0];
+									chat.open = true;
+									return { chats: AD(chat) };
 								}
 							},
 							[THS.id.sgl]: {
 								default: {},
 								/**
-								 * @param {ChatProps} items 
+								 * @param {ChatProps} chat 
 								 */
-								state({ users = {}, messages = [] } = items) {
-									// ---
+								state({ users = {}, messages = [] } = chat) {
 									return { chats: WK(users, C => {
 										C.messages = messages;
 									},	"object") };
@@ -5741,6 +5804,45 @@ function Comps(COMPS) {
 					}
 
 					/**
+					 * ...
+					 * @param {*} one 
+					 * @param {*} two 
+					 */
+					checkKeys(one, two) {
+						return Imm.is(
+							this.keys(one.k, one.w, true),
+							this.keys(two.k, two.w, true)
+						);
+					}
+
+					/**
+					 * ...
+					 * @param {ChatProps} chat ...
+					 * @returns {ChatProps[]}
+					 */
+					addChat(chat) {
+						/**
+						 * @type {ChatProps[]}
+						 */
+						let chats = this.state.chats;
+						let users = {k:chat.users};
+						/**
+						 * @param {ChatProps} C 
+						 * @returns {boolean}
+						 */
+						let filtr = (C)=>(this.checkKeys({k:C.users},users));
+						let check = chats.filter(filtr);
+						// ----
+						chats.map(C=>C.open=false);
+						if (!!!check.length) {
+							chats = [chat, ...chats];
+						} else {
+							let idx = chats.indexOf(check[0]);
+							chats[idx] = chat;
+						};	return chats;
+					}
+
+					/**
 					 * Executes the specified callback on a `ChatProps` upon finding the matching memberIDs.
 					 * @param {BubbleObjs|string[]} users The thread memebers or a list of memberIDs.
 					 * @param {(chat:ChatProps,uids:string[])=>ChatProps} callback A callback to execute upon match. It will recieve the `ChatProps`, as well as the memberIDs.
@@ -5823,7 +5925,8 @@ function Comps(COMPS) {
 										let chats = props.chats,
 											curnt = chats[idx],
 											text  = THS.input.value,
-											uids  = THS.rdkey.value;
+											uids  = THS.rdkey.value,
+											last;
 										// Push new message
 										if (!!text) {
 											text = text.trim();
@@ -5834,7 +5937,8 @@ function Comps(COMPS) {
 													params: { uids, kind: 'send' },
 													body: { id, msg: text }
 											});
-											curnt.messages.last.latest = 0;
+											last = curnt.messages.last
+											if (!!last) last.latest = 0;
 											curnt.messages.push({ 
 												time: new Date(), 
 												who:  COMPS.UID, 

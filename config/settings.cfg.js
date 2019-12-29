@@ -10,23 +10,23 @@ module.exports = {
 		DHP:	"/opt/local/etc/nginx/ssl/dhparam.pem",
 	},
 	Services: 	[
-		'https://arian.evectr.com:8443/gbl-accessor',
-		'https://arian.evectr.com:8443/gbl-rest',
+		'https://evectr.com:8443/gbl-accessor',
+		'https://evectr.com:8443/gbl-rest',
 	],
 	APIDoc:		{
 		info: {
 			title: "eVectr.API",
 			description: "The official eVectr™ API.",
-			termsOfService: "https://arian.evectr.com:8443/terms",
+			termsOfService: "https://evectr.com/terms",
 			contact: { 
-				name: "eVectrâ„¢ Support",
-				email: "support@arian.evectr.com:8443",
-				url: "https://arian.evectr.com:8443/help",
+				name: "eVectr™ Support",
+				email: "support@evectr.com",
+				url: "https://evectr.com/help",
 			},
 			version: "1.0.0"
 		},
 		servers: [
-			{ url: "https://arian.evectr.com:8443" }
+			{ url: "https://evectr.com" }
 		],
 		externalDocs: {},
 	},
@@ -54,22 +54,20 @@ module.exports = {
 		REDIS: 	{
 			Config: {
 				Host: 		'localhost',
-				Port: 		6379,
+				Port: 		 6379,
 				Password: 	'Pion33r247',
 			},
 			Main:	{ Index: 0, Name: 'Client' },
 			Stores: [
 				{ Index: 1, Name: 'Users'    },
 				{ Index: 2, Name: 'Groups'   },
-				{ Index: 3, Name: 'Limits'   },
+				{ Index: 3, Name: 'Limits',   Flush: false },
 				{ Index: 4, Name: 'Lockers'  },
-				{ Index: 5, Name: 'Alerts'   },
-				{ Index: 6, Name: 'Messages' },
+				{ Index: 5, Name: 'Alerts',   Flush: false },
+				{ Index: 6, Name: 'Messages', Flush: false },
 				{ Index: 7, Name: 'Comments' },
 			],
-			PSubs: {
-				
-			},
+			PSubs: {},
 		},
 		Auth: 	{
 			Paths:  {
