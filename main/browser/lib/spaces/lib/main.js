@@ -41,7 +41,7 @@ module.exports = {
 										name: 	 'main',
 										start:	 'two',
 										size:	 'mostly',
-										default: true,
+										default:  true,
 										tabs:	 [
 											{ 	name: 	'login',
 												icon:	'sign-in-alt',

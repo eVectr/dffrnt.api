@@ -1723,7 +1723,7 @@
 									}),
 						UserFlag:	new GNParam({
 										Name:	 'User Flag',
-										Aliases: ['Provider','Transact','SvcQuant'],
+										Aliases: ['Agree','Provider','Transact','SvcQuant'],
 										Default  (   ) { return -1; },
 										Format 	 (cls) { return cls.userflag; },
 										Desc: 	 new GNDescr({
@@ -1733,6 +1733,14 @@
 											required: false, 
 											to: 'query', 
 										})
+									})
+									.AddVersion('Agree', {
+										Name:	 'Agreement',
+										Format 	 (cls) { return cls.agree; },
+										Desc:	 {
+											description: "A flag denoting Agreement",
+											matches: { '<<NAME>>': 'Whether or not the user Agrees ((0|1|true|false))' },
+										}
 									})
 									.AddVersion('Provider', {
 										Name:	 'Provider Status',
@@ -3291,32 +3299,35 @@
 						};	},
 						POST		() { return {
 							Scheme: 	'/',
-							Limits: 	['New/Day'],
+							// Limits: 	['New/Day'],
 							Doc: 		{ Examples: {} },
 							Query: 		[
-								"SET character_set_client  = latin1;",
-								"SET character_set_results = latin1;",
-								"SET collation_connection  = @@collation_database;",
-								"INSERT INTO users (",
-								"    email_address, user_pass",
-								") SELECT i.email, MD5(i.pass) FROM (",
-								"    SELECT ':EEMAIL:'   AS email,",
-								"           ':PASSWORD:' AS  pass,",
-								"           ':CONFPASS:' AS  conf",
-								") AS i WHERE NOT EXISTS(",
+								"SET @EMAIL := (SELECT i.email FROM (",
+								"    SELECT ':EMAIL:' email",
+								") i WHERE NOT EXISTS(",
 								"    SELECT u.user_id FROM users u ",
 								"    WHERE  u.email_address = i.email",
-								") AND NOT (",
+								"));",
+								"SET @PASSW := (SELECT i.pass FROM (",
+								"    SELECT MD5(':PASSWORD:')  `pass`,",
+								"           MD5(':CONFPASS:')  `conf`",
+								") i WHERE NOT (",
 								"    NULLIF(i.pass,'') OR NULLIF(i.conf,'')",
-								") IS NULL AND i.pass = i.conf;",
-								":/Exists/Email(GET):"
+								") IS NULL AND i.pass = i.conf);",
+								"INSERT INTO users (",
+								"    email_address, user_pass",
+								") VALUES (@EMAIL, @PASSW);",
+								"SELECT u.user_id FROM users u",
+								"WHERE  u.email_address = ':EMAIL:'",
 							],
 							Params: 	{ 
 								Email: 		['EDIT'], 
 								Password: 	 true, 
 								ConfPass: 	['CONFIRM'], 
 							},
-							Parse  	(res) { return res[0].exists; },
+							Parse  	(res) { 
+								console.log(res)
+								return res[0].user_id; },
 						};	},
 						PUT			() { return {
 							Scheme: 	'/:uids(\\d*)/',
@@ -5024,9 +5035,22 @@
 						Parse  	(res) { return res[0].validated; }
 					}),
 					// ======================================================================
-					Validate: 		new RouteDB({
-						Methods: 	Docs.Kinds.GET, 
+					Validation: 	new RouteDB({
+						Methods: 	_Methods.GPOS, 
 						GET			() { return {
+							Scheme: 	'/:uid(\\d+)/',
+							// Limits: 	['Tries/Day'],
+							Doc: 		{ Examples: {} },
+							Query: 		[
+								"SELECT  v.validation_auth FROM user_validations v",
+								"WHERE   v.user_fk = :UID:",
+							],
+							Params: 	{ UID: true },
+							Parse		(res) {
+								return res[0].validation_auth;
+							}
+						};	},
+						POST		() { return {
 							Scheme: 	'/:md5([A-Fa-f0-9]+)/',
 							Limits: 	['Tries/Day'],
 							Doc: 		{ 
@@ -5048,7 +5072,64 @@
 						Parse  	(res) { return res[0].exists; }
 					}),
 					// ======================================================================
-					"/": 			RouteDB.Namespace(),
+					"/": 			new RouteDB({
+						Methods: 	Docs.Kinds.POST, 
+						POST		() { return {
+							Scheme: 	'/',
+							// Limits: 	['Tries/Day'],
+							Doc: 		{ Examples: {} },
+							async Query(cls) {
+								let error, UID, MD5, link, {
+										Email, Password, ConfPass, Agree
+									} = cls;
+
+										console.log(cls)
+
+								// Filter ineligible Requests
+									switch (true) {
+										case !!!Email:
+											throw new Error("EMAIL_INVALID");
+										case Password!==ConfPass:
+											throw new Error("PASS_MISMATCH");
+										case !!!Agree:
+											throw new Error("MUST_AGREE");
+										default: 
+											let exst = (await Points.Exists.Email.GET({ 
+															params: { email: Email } 
+														}))[1];
+											if (!!exst) throw new Error("EMAIL_IN_USE");
+									}
+								// Create New User
+									UID = 	(await Points.User['/'].POST({ 
+												body: { 
+													email:    Email, 
+													password: Password,
+													confpass: ConfPass
+												}
+											}))[1];
+									if (!!!UID) throw new Error("SIGNUP_FAILED");
+										console.log('ACCOUNT CREATED')
+								// Retrieve & Send Validation Token
+									MD5 =	(await Points.Signup.Validation.GET({
+												params: { uid: UID },
+											}))[1];
+									if (!!!MD5) throw new Error("VALID_FAILED");
+									link = `https://evectr.com/validate/${MD5}`;
+									// *** SEND VALIDATION INSTRUCTION-EMAIL ***
+								// Return Payload
+									return [error, [{
+										user_id: UID, email: Email
+									}]];
+							},
+							Params: 	{ 
+								Email: 		['EDIT'], 
+								Password: 	 true, 
+								ConfPass: 	['CONFIRM'], 
+								Agree:		['Agree'],
+							},
+						};	},
+						Parse  	(res) { return res[0]; }
+					}),
 				},
 				Errors: 	{ BAD_REQ: ['/'] }
 			},
@@ -5074,7 +5155,7 @@
 							],
 							Params: 	{ ID: true, Email: true },
 						};	},
-						Parse  	(res) { return res[0].exists; }
+						Parse  	(res) { return JSON.parse(res[0].exists); }
 					}),
 					// ======================================================================
 					UserName: 		new RouteDB({
@@ -5160,6 +5241,28 @@
 				Errors: 	{ BAD_REQ: ['/'] }
 			},
 			Threads: 		{
+				Utilities: 	{
+					get prefixes() {
+						return ['thread','activity'];
+					},
+					key(key, which = 0) { 
+						return `${this.prefixes[which]}:${key}`; 
+					},
+					idLst(ids = "", omit = []) {
+						let list = ids.slice(1,-1).split('|').map(i=>Number(i));
+						return list.filter(k=>!!k&&!omit.has(k));
+					},
+					idObj(list = []) {
+						return list.reduce((p,c)=>(p[c]={},p),{});
+					},
+					setActivity(UUID, key) {
+						return new Promise(res => (
+							Stores.Messages.ZADD(
+								this.key(UUID,1), (new Date()).getTime(), key,
+								(_e,list)=>res(list||[])
+						)	)	);
+					},
+				},
 				Actions: 	{
 					// ======================================================================
 					"/": 			new RouteDB({
@@ -5176,32 +5279,28 @@
 								},
 							},
 							async Query(cls) {
-								let pfx  = ['thread','activity'], 
-									gKey = (k,w=0) => (`${pfx[w]}:${k}`),
-									UUID = Number(cls.UUID), usrs = [], rslt = [], keys, UIDs, tkey,
-									tLst = (k) => (k.slice(1,-1).split('|').map(i=>Number(i))).filter(k=>!!k&&k!=UUID),
-									tMap = (l) => (l.reduce((p,c)=>(p[c]={},p),{})),
+								let UUID = Number(cls.UUID), usrs = [], rslt = [], keys, UIDs, tkey,
 									erms = 'Thread not Found';
 								// ----------------------------------------------------------- //
 									if (!!!cls.UIDs) {
 										keys =  await new Promise(res => (
 													Stores.Messages.ZREVRANGE(
-														gKey(UUID,1), 
+														this.key(UUID,1), 
 														cls.Page-1, cls.Limit-1, 
 														(_e,list)=>res(list||[])
 												)	)	);
 										rslt =  await Promise.all(
 													keys.map(k => (new Promise((R,J) => (
 														Stores.Messages.HMGET(
-															gKey(k), 'owner', 'messages', 
+															this.key(k), 'owner', 'messages', 
 															(e, rep)=>(!!e?J(e):R({
 																owned: UUID==rep[0],
-																users: tMap(tLst(k)),
+																users: this.idObj(this.idLst(k,[UUID])),
 																messages: JSON.parse(rep[1]),
 												}))	)	))	)	)	);
 										// 
 										usrs =	(await Points.User['/'].GET({
-													params: { uids: tLst(keys.join('')) },
+													params: { uids: this.idLst(keys.join(''),[UUID]) },
 													query:  { uuid: cls.UUID },
 												}))[1]
 										rslt.map((chat) => {
@@ -5223,23 +5322,26 @@
 													  .reduce((p,c)=>(!p.has(c)&&p.push(c),p),[])
 													  .join('|');
 										keys =  `|${UIDs}|`;
-										tkey =  gKey(keys);
+										tkey =  this.key(keys);
 										rslt =  await new Promise((R,J) => (
 													Stores.Messages.HGETALL(tkey, (e, rep)=>(
 														(!!e||!!!rep)?J(e||new Error(erms)):R({
 															owned: UUID==rep.owner,
-															users: tMap(tLst(keys)),
+															users: this.idObj(this.idLst(keys,[UUID])),
 															messages: JSON.parse(rep.messages),
 												})	)	)	));
 										//
 										usrs =	(await Points.User['/'].GET({
-													params: { uids: tLst(keys) },
+													params: { uids: this.idLst(keys,[UUID]) },
 													query:  { uuid: cls.UUID },
 												}))[1]
 										Object.keys(usrs).map((uid) => {
 											let ousr = usrs[uid];
 											rslt.users[uid] = {
-												name: ousr.name,
+												name: {
+													First: ousr.name.first,
+													Last:  ousr.name.last,
+												},
 												img: ousr.photos.profile
 											};
 										})
@@ -5266,33 +5368,36 @@
 								},
 							},
 							async Query(cls) {
-								let pfx  = 'thread', 
-									UUID = Number(cls.UUID), rslt = [], keys, tkey,
-									tLst = (k) => (k.slice(1,-1).split('|').map(i=>Number(i))).filter(k=>k!=UUID),
-									tMap = (l) => (l.reduce((p,c)=>(p[c]={},p),{})),
+								let UUID = Number(cls.UUID), rslt = [], keys, tkey,
 									UIDs = [UUID].concat(cls.UIDs||[]).sort()
 												 .reduce((p,c)=>(!p.has(c)&&p.push(c),p),[])
-												 .join('|');;
+												 .join('|');
 								// ----------------------------------------------------------- //
 									keys =  `|${UIDs}|`;
-									tkey =  gKey(keys);
-									rslt =  await new Promise((R,J) => (
-												Stores.Messages.HGETALL(tkey, (e, rep)=>(
-													(!!e?J(e):R(!!!rep?rep:{
-														owned: UUID==rep.owner,
-														users: tMap(tLst(keys)),
-														messages: JSON.parse(rep.messages),
-											})	))	))	);
+									tkey =  this.key(keys);
+									rslt =  (await Points.Threads['/'].GET({
+												params: { uids: cls.UIDs.join(';') },
+												query:  { uuid: cls.UUID },
+											}))[1];
 									if (!!!rslt) {
 										rslt =  await new Promise((R,J) => (
 													Stores.Messages.HMSET(tkey, { 
 														owner: UUID, messages: '[]', archive: '[]' 
 													},	(e)=>(!!e?J(e):R({
-															owned: true,
-															users: tMap(tLst(keys)),
-															messages: [],
+														owned: true,
+														users: this.idObj(this.idLst(keys,[UUID])),
+														messages: [],
 												})	)	)	)	);
-									};	rslt =  [rslt];
+										if (!!rslt) {
+											rslt = null;
+											await this.setActivity(UUID,keys);
+											rslt = (await Points.Threads['/'].GET({
+												params: { uids: cls.UIDs.join(';') },
+												query:  { uuid: cls.UUID },
+											}))[1];
+											console.log(JSON.stringify(rslt,null,"  "))
+										};
+									};
 								// ----------------------------------------------------------- //
 									return [null, rslt];
 							},
@@ -5316,11 +5421,7 @@
 								},
 							},
 							async Query(cls) {
-								let pfx  = 'thread', 
-									gKey = (k) => (`${pfx}:${k}`),
-									UUID = Number(cls.UUID), rslt = [], user = [], keys, tkey, 
-									tLst = (k) => (k.slice(1,-1).split('|').map(i=>Number(i))).filter(k=>k!=UUID),
-									tMap = (l) => (l.reduce((p,c)=>(p[c]={},p),{})),
+								let UUID = Number(cls.UUID), rslt = [], user = [], keys, tkey, 
 									gUID = (uids)=>(uids.sort()
 													.reduce((p,c)=>(!p.has(c)&&p.push(c),p),[])
 													.join('|')),
@@ -5329,12 +5430,12 @@
 								// ----------------------------------------------------------- //
 									// Get existing Thread
 									keys =  `|${UIDs}|`;
-									tkey =  gKey(keys);
+									tkey =  this.key(keys);
 									rslt =  await new Promise((R,J) => (
 												Stores.Messages.HGETALL(tkey, (e, rep)=>(
 													(!!e?J(e):R(!!!rep?rep:{
 														owned: UUID==rep.owner,
-														users: tMap(tLst(keys)),
+														users: this.idObj(this.idLst(keys,[UUID])),
 														messages: JSON.parse(rep.messages),
 											})	))	))	);
 									// Perform actions on Thread
@@ -5378,7 +5479,7 @@
 													// Rename the Thread
 													await new Promise((R,J) => (
 														Stores.Messages.RENAME(
-															tkey, gKey(`|${UIDs}|`), (e,r)=>(!!e?J(e):R(r)
+															tkey, this.key(`|${UIDs}|`), (e,r)=>(!!e?J(e):R(r)
 													))));
 													// Post the Notification
 													Alert.Post(All, { type:'message', payload: alert });
@@ -5399,6 +5500,8 @@
 														archive: JSON.stringify(rslt.messages.slice(50)), 
 													},	(e,r)=>(!!e?J(e):R(r)
 												))));
+												// Update Activity
+												await this.setActivity(UUID,keys);
 												// Post the Notification
 												Alert.Post(Oth, { 
 													type:'message', payload: { 
@@ -5459,32 +5562,33 @@
 								},
 							},
 							async Query(cls) {
-								let pfx  = 'thread', 
-									gKey = (k) => (`${pfx}:${k}`),
-									UUID = Number(cls.UUID), rslt = [], keys, tkey, 
-									tLst = (k) => (k.slice(1,-1).split('|').map(i=>Number(i))).filter(k=>k!=UUID),
-									tMap = (l) => (l.reduce((p,c)=>(p[c]={},p),{})),
+								let UUID = Number(cls.UUID), rslt = [], keys, tkey, 
 									gUID = (uids)=>(uids.sort()
 													.reduce((p,c)=>(!p.has(c)&&p.push(c),p),[])
 													.join('|')),
-									UIDs = gUID([UUID,...cls.UIDs]);
+									UIDs = gUID([UUID,...cls.UIDs]),
+									hndl = (R,J)=>(e,r)=>(!!e?J(e):R(r));
 								// ----------------------------------------------------------- //
 									// Get existing Thread
 									keys =  `|${UIDs}|`;
-									tkey =  gKey(keys);
+									tkey =  this.key(keys);
+									akey =  this.key(keys,1);
 									rslt =  await new Promise((R,J) => (
 												Stores.Messages.HGETALL(tkey, (e, rep)=>(
 													(!!e?J(e):R(!!!rep?rep:{
 														owned: UUID==rep.owner,
-														users: tMap(tLst(keys)),
+														users: this.idObj(this.idLst(keys,[UUID])),
 														messages: JSON.parse(rep.messages),
 											})	))	))	);
+								// ----------------------------------------------------------- //
 									// Perform actions on Thread
 									if (!!rslt) { 
 										if (!rslt.owned) {
 											await new Promise((R,J) => (
-												Stores.Messages.DEL(tkey, (e,r)=>(!!e?J(e):R(r)
-											))));
+												Stores.Messages.DEL(tkey, hndl(R,J))
+											)).then(() => new Promise((R,J) => (
+												Stores.Messages.DEL(akey, hndl(R,J))
+											)));
 											rslt = [true];
 										} else throw new Error(
 											`You're not the owner of this Thread`
@@ -5531,7 +5635,7 @@
 							async Query	(cls) { 
 								let user = {}, error, Stripe = Plugins.Stripe, cards;
 								// Grab User Info
-									user = (await Points.User['/'].GET({
+									user = (await Points.User['/'].POST({
 												params: { uids: cls.UID },
 												query:  { uuid: cls.UUID, single: true },
 											}))[1];
@@ -5553,6 +5657,7 @@
 									return [error, cards.data];
 							},
 							Params: 	{ 
+								// For:	  undefined,
 								UID: 	  true,
 								UUID: 	  true,
 								ID: 	  true,

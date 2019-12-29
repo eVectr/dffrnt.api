@@ -250,6 +250,11 @@ module.exports = function Comps(COMPS) {
 			catch(e) { return ''; }
 		};
 
+		COMPS.stopEvent = (e) => { try {
+			e.stopPropagation();
+			e.preventDefault();
+		} catch(e) {}; }
+
 		COMPS.onSocket 	= (props) => {
 			var links, socks; 
 			try {
