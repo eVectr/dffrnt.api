@@ -255,6 +255,52 @@ module.exports = function Comps(COMPS) {
 			e.preventDefault();
 		} catch(e) {}; }
 
+		COMPS.Uploader	= (uri, method = "POST", id, headers = {}) => {
+			// Assertions -------------------------------------------------------------- //
+				if (!!!uri) throw new Error('UPLOAD: Must specify a valid URI.');
+				if (!!!id ) console.warn('UPLOAD: No ID was specified.');
+			// Return ------------------------------------------------------------------ //
+				return function UploadHandler(e) {
+					// Variables ------------------------------------------------------- //
+						let TRG = e.currentTarget,
+							isF = TRG.tagName=='FORM',
+							FRM = isF ? TRG : TRG.form,
+							XHR = new XMLHttpRequest(),
+							DTA = new FormData(FRM),
+							JSN = {}, PTH = uri;
+					// Event Handlers -------------------------------------------------- //
+						function handleEvent(e) {
+							let Type = e.type.toUpperCase();
+							console.info(`${PTH}: ${Type} | ${e.loaded}B Transferred\n`);
+						}
+					// Add Event Handlers ---------------------------------------------- //
+						XHR.addEventListener('error', handleEvent);
+						XHR.addEventListener('abort', handleEvent);
+						XHR.addEventListener('loadstart', handleEvent);
+						XHR.addEventListener('load', handleEvent);
+						XHR.addEventListener('progress', handleEvent);
+						XHR.onreadystatechange = function () {
+								let { readyState, status } = this;
+								if (readyState==4 && status==200) {
+									/**
+									 * @type {ROUT.JSN.Payload}
+									 */
+									JSN = JSON.parse(this.responseText);
+								};
+							};
+						XHR.addEventListener('loadend', (e) => {
+							console.info(`${PTH}: UPLOAD |`, JSN);
+							Actions.Data.place(id, { items: JSN.result });
+						});
+					// Setup the Request ----------------------------------------------- //
+						XHR.open(method, PTH, true);
+						Imm.Map(headers).map((V,K)=>(
+							XHR.setRequestHeader(K, V)
+						));
+						XHR.send(DTA);
+				};
+		};
+
 		COMPS.onSocket 	= (props) => {
 			var links, socks; 
 			try {
@@ -1292,8 +1338,15 @@ module.exports = function Comps(COMPS) {
 
 		// BUBBLE //////////////////////////////////////////////////////////
 			STOCK.Bubble 		= class Bubble extends Mix('React', 'Static') {
+				/**
+				 * @param {BubbleProps} props 
+				 */
 				constructor(props) {
 					super(props); this.name = 'BUBBLE';
+					/**
+					 * @type {BubbleProps}
+					 */
+					this.props;
 					this.icons = {user:'user',add:'plus',more:'ellipsis-h','':''}
 				}
 
@@ -1326,28 +1379,45 @@ module.exports = function Comps(COMPS) {
 					return res;
 				}
 
+				/**
+				 * Creates an Alert-Count Badge
+				 * @param {Object} props
+				 * @param {number} props.count The current Alert-Count.
+				 */
+				Badge({ count } = props) {
+					return (!!count ? (
+						<div className="counter" data-cnt={count<100?count:"!"} />
+					) : null);
+				}
+
 				render() {
-					var props 	= this.props,
-						id 		= props.id,
-						Name 	= this.getName(props.name),
-						Multi   = this.getMulti(props.multi),
-						Photo 	= props.img,
-						Kind 	= props.kind,
-						Click   = !!props.onClick?props.onClick.bind(this):null,
-						Opts 	= [Kind].concat(props.opts),
-						Icons 	= this.icons,
-						classes = classN('bubble', Multi.cName, Opts),
-						style 	= Assign({}, props.style, {
+					var { 	Badge, props, icons, 
+							getName, getMulti, 
+							getInitials 
+						} = this, {	
+							id, name, multi, alerts,
+							img:Photo, kind:Kind, 
+							style, opts, onClick, htmlFor,
+						} = props,
+						Tag     = !!htmlFor?'label':'div',
+						Name 	= getName(name),
+						Multi   = getMulti(multi),
+						Click   = !!onClick?onClick.bind(this):null,
+						Opts 	= [Kind].concat(opts),
+						Icons 	= icons,
+						classes = classN('bubble', Multi.cName, ...Opts),
+						style 	= Assign({}, style, {
 									backgroundImage: iURL(Photo),
 								});
 					return (
-						<div key="bub" id={id} style={style} className={classes} onClick={Click} data-name={Name} data-cnt={Multi.count} role="img">
+						<Tag key="bub" id={id} style={style} htmlFor={htmlFor} className={classes} onClick={Click} data-name={Name} data-cnt={Multi.count} role="img">
+							<Badge count={alerts} />
 							{!!!Photo ? (<i {...{
 								'className':    FA(Icons[Kind]),
-								'data-initial':	this.getInitials(Name),
+								'data-initial':	getInitials(Name),
 								'aria-hidden':	true,
 							}}></i>) : null}
-						</div>
+						</Tag>
 					);
 				}
 			};

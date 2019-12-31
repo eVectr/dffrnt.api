@@ -315,7 +315,6 @@ module.exports = function (Reflux, Actions, IOs) {
 						    imval = FromJS(value || {});
 						state = FromJS(this.state).mergeDeep(imval);
 						this.setState(state.toJS());
-						console.info('APP STATE UPDATED!!');
 					}
 				}, {
 					key: 'reset',
@@ -454,7 +453,6 @@ module.exports = function (Reflux, Actions, IOs) {
 		}, {
 			key: 'onSend',
 			value: function onSend(point, data, noProg) {
-				console.log(point);
 				this.time(data);
 				requestAnimationFrame(function () {
 					!!!noProg && Actions.App.progress(99);
@@ -529,7 +527,7 @@ module.exports = function (Reflux, Actions, IOs) {
 
 				var THS = this,
 				    state = THS.state[id] || {};
-				this.setState(_defineProperty({}, id, Assign(state, data, { stamp: new Date() })));
+				this.setState(_defineProperty({}, id, Assign({}, state, data, { stamp: new Date() })));
 			}
 		}, {
 			key: 'clear',

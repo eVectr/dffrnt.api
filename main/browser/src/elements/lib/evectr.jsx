@@ -27,6 +27,7 @@ function Comps(COMPS) {
 		const 	joinV 		= COMPS.joinV;
 		const 	onBrowser 	= COMPS.onBrowser;
 		const 	stopEvent 	= COMPS.stopEvent;
+		const 	Uploader 	= COMPS.Uploader;
 		const 	DATA_TMR 	= {};
 
 		const { StripeProvider,
@@ -214,17 +215,18 @@ function Comps(COMPS) {
 				 */
 				getHeader(mode, title, searches = []) {
 					let elems = [];
-					switch (mode) { case 'cover': case 'stock': 
-						elems = elems.concat([
-							<Search key="sch" tokens={searches||[]}/>
-						]);
+					switch (mode) { 
+						case 'cover': case 'stock': 
+							elems = elems.concat([
+								<Search key="sch" tokens={searches||[]}/>
+							]);
 					};
 					switch (mode) {
 						case 'cover': 
 							title = title||{};
 							elems = elems.concat([
 								<Frag key="plq">
-									<Cover img={title.cover} />
+									<Cover uid={title.user.uid} img={title.cover} />
 									<Plaque {...title.user} />
 								</Frag>]); break;;
 						case 'stock': 
@@ -1036,16 +1038,77 @@ function Comps(COMPS) {
 			}
 
 		// COVER   /////////////////////////////////////////////////////////
-			EV.Cover 			= function Cover({ img = '', load = false } = props) {
-				let image   = img||'',
-					style   = (!!image ? { 
-						backgroundImage: `url('${image}')` 
-					}  : null);
-				return (
-					<header className="gridItemCover" role="complementary">
-						<div className="gpu" style={style} role="img"></div>
-					</header>
-				);
+			EV.Cover 			= class Cover 		extends Mix('Reflux', 'Static') {
+				/**
+				 * @param {{uid:number,img:string,load:boolean}} props 
+				 */
+				constructor(props) {
+					super(props); let THS = this;
+					// --------------------------------------------- //
+						THS.name = 'COVER';
+						THS.id = 'user_cover';
+					// --------------------------------------------- //
+						THS.handlePic  = Uploader(
+							`/user/${COMPS.UID}/photos/cover`,
+							"PUT", THS.id, {token:COMPS.Token}
+						).bind(THS);
+					// --------------------------------------------- //
+						THS.mapState({
+							[THS.id]: {
+								default: {},
+								/**
+								 * @param {Props.User.Obj} user
+								 */
+								state({ photos = {} } = user) {
+									let { cover } = photos;
+									if (!!cover) return { 
+										img: `${cover}?v=${(new Date().getTime())}`
+									}; else return null;
+								}
+							},
+						});
+				}
+
+				/**
+				 * Renders a User's Cover Pic. Editable; if applicable.
+				 * @param {Object} props 
+				 * @param {string} props.image 
+				 * @param {boolean} props.isUser 
+				 * @param {(e:Event)=>void} props.onSubmit 
+				 */
+				Picture({ image, isUser = false, onSubmit } = props) {
+					let id    = "cover_file",
+						style = (!!image ? { 
+							backgroundImage: `url('${image}')` 
+						}  : null);
+					return (
+						<header className={classN("gridItemCover",{edit:isUser})} role="complementary">
+							<div className="gpu" style={style} role="img"></div>
+							{ isUser ? <Frag>
+								<form className="coverForm" encType="multipart/form-data">
+									<input type="hidden" name="single" value="true" required/>
+									<input type="file" id={id} name="cover" onChange={onSubmit} required/>
+								</form>
+								<label className="coverLbl btn tkn norm some" htmlFor={id}>
+									<span>Edit</span>
+								</label>
+							</Frag> : null }
+						</header>
+					);
+				}
+
+				render() {
+					let { state, props, handlePic, Picture } = this,
+						uid     = props.uid,
+						isUser  = COMPS.UID == uid,
+						image   = state.img||'';
+
+							console.log('COVER:', Assign({}, props))
+
+					return (
+						<Picture {...{ image, isUser }} onSubmit={handlePic}/>
+					)
+				}
 			};
 			EV.Cover.defaultProps = {
 				img: '',
@@ -1139,12 +1202,34 @@ function Comps(COMPS) {
 
 		// PLAQUE  /////////////////////////////////////////////////////////
 			
-			EV.Plaque 			= class Plaque 		extends Mix('React', 'Static') {
+			EV.Plaque 			= class Plaque 		extends Mix('Reflux', 'Static') {
 				constructor(props) {
-					super(props); this.name = 'PLAQUE';
+					super(props); let THS = this;
 					// --------------------------------------------- //
-						this.handleChat = this.handleChat.bind(this);
-						this.handleJoin = this.handleJoin.bind(this);
+						THS.name = 'PLAQUE';
+						THS.id = 'user_photo';
+					// --------------------------------------------- //
+						THS.handleChat = THS.handleChat.bind(THS);
+						THS.handleJoin = THS.handleJoin.bind(THS);
+						THS.handlePic  = Uploader(
+							`/user/${COMPS.UID}/photos/picture`,
+							"PUT", THS.id, {token:COMPS.Token}
+						).bind(THS);
+					// --------------------------------------------- //
+						THS.mapState({
+							[THS.id]: {
+								default: {},
+								/**
+								 * @param {Props.User.Obj} user
+								 */
+								state({ photos = {} } = user) {
+									let { profile } = photos;
+									if (!!profile) return { 
+										photo: `${profile}?v=${(new Date().getTime())}`
+									}; else return null;
+								}
+							},
+						});
 				}
 
 				/**
@@ -1172,12 +1257,36 @@ function Comps(COMPS) {
 					stopEvent(e);
 				}
 
+				/**
+				 * Renders a User's Profile Pic. Editable; if applicable.
+				 * @param {Object} props 
+				 * @param {string} props.name 
+				 * @param {string} props.pic 
+				 * @param {boolean} props.isUser 
+				 * @param {(e:Event)=>void} props.onSubmit 
+				 */
+				Picture({ name, pic, isUser = false, onSubmit } = props) {
+					let id = "picture_file";
+					return (
+						<header className="gridItemPic" role="complementary">
+							<Bubble kind="user" name={name} img={pic} opts={['huge','cutout',{edit:isUser}]} id="profile_picture" htmlFor={id}/>
+							{ isUser ? <form encType="multipart/form-data">
+								<input type="hidden" name="single" value="true" required/>
+								<input type="file" id={id} name="picture" onChange={onSubmit} required/>
+							</form> : null }
+						</header>
+					);
+				}
+
 				render() {
-					let { props, handleChat, handleJoin } = this,
+					let { 	props, state, 
+							handleChat, handleJoin, handlePic, 
+							Picture 
+						} = this,
 						uid     = props.uid,
 						isUser  = COMPS.UID == uid,
 						mode	= props.mode||'show',
-						pic		= props.photo,
+						pic		= state.photo,
 						uname	= props.uname||'',
 						fname	= props.name,
 						badges	= props.badges||[],
@@ -1192,9 +1301,7 @@ function Comps(COMPS) {
 								<header className="gridItemPic d" role="complementary">
 									<Bubble kind="user" name={fname} img={pic} opts={['small','er','lite']} />
 								</header>
-								<header className="gridItemPic" role="complementary">
-									<Bubble kind="user" name={fname} img={pic} opts={['huge','cutout']} id="profile_picture"/>
-								</header>
+								<Picture name={fname} {...{ pic, isUser }} onSubmit={handlePic}/>
 							{/* <!-- PROFILE INFO   --> */}
 								<Title {...{
 									id:			'profileName',
@@ -1591,7 +1698,7 @@ function Comps(COMPS) {
 						{(items||[]).map((v,n)=>{
 							let /* is header-row */ h = (n<cnum),
 								/* modulo number */ m = modu(n),
-								/* is 1st-column */ f = cnum==1||(m==1),
+								/* is 1st-column */ f = (m==1),
 								/* is end-column */ e = (m==0);
 							return (
 								<div key={`${id}-n${n}`} className={classN("column",{nowrap:f,head:h,left:f,right:e})} style={v.style}>
@@ -1700,6 +1807,9 @@ function Comps(COMPS) {
 							props 	= THS.state,
 							edit  	= !!props.editable,
 							srvcs	= props.services||[];
+
+						console.log('SERVICES:', Assign({}, props));
+
 						return (
 							<Frag>{srvcs.map((s) => (
 								<Service key={`svc-slab-${s.id}`} {...s} editable={edit}/>
@@ -1866,6 +1976,7 @@ function Comps(COMPS) {
 								country: "CA",
 								phone: "4035619332",
 							};
+
 						return (
 							<Content.Slab key={IDs.svc} load={load} id={IDs.svc} group="svcs" title={title} swap>
 								<Defer load={load} what={()=>(
@@ -2502,7 +2613,7 @@ function Comps(COMPS) {
 							adid  = `${edid}-add`;
 						if (!!editable) {
 							if (!!!THS.adder) THS.adder = (
-								<div key="add" className="gridSlice PTB">
+								<div key="add" className="gridSlice PTB" style={{width:'100%'}}>
 									<input key="sid" type="hidden" name="sids" value={svid} data-param/>
 										{ tnme == 'urls' ? 
 									<div key="nme" className="some"><Form.Xput icon="signature" kind="text" placeholder="URL Name" id="name" data-rel="*"/></div>
@@ -3694,9 +3805,6 @@ function Comps(COMPS) {
 							attrs 	= THS.getAttrs(state),
 							buttons = state.buttons||[];
 						THS.clrTimer(); THS.setTimer(); THS.clrDone();
-
-							console.info('FORM ATTRS:',attrs);
-
 						return (<Frag key={id}>
 							<input key="status" ref="status" {...chattr}/>
 							<form key="form" ref="form" {...attrs}>
@@ -5643,13 +5751,17 @@ function Comps(COMPS) {
 						 */
 						this.props;
 						this.style   = FromJS({opts:['lite','small','dark']});
-						this.id      = {all:'threads',add:'newchat',sgl:'thread',msg:'message'};
+						this.id      = {
+							all:'threads', add:'newchat',
+							sgl:'thread',  one:'first_msg',
+							msg:'message'
+						};
 						this.forRefs = {
 							input: React.createRef(),
 							rdkey: React.createRef(),
 						};
 					// --------------------------------------------------- //
-						let WK = THS.withKeys.bind(THS),
+						let WK = THS.keysWith.bind(THS),
 							AD = THS.addChat.bind(THS);
 					// --------------------------------------------------- //
 						THS.mapState({
@@ -5687,18 +5799,36 @@ function Comps(COMPS) {
 									},	"object") };
 								}
 							},
+							[THS.id.one]: {
+								isAlert: true,
+								/**
+								 * @param {Object} items 
+								 * @param {{key:string}} items.payload 
+								 */
+								state({ payload = {} } = items) {
+									if (!!payload.key) {
+										Actions.Data.send('/threads', {
+											method: 'GET',
+											headers: { token: COMPS.Token },
+											params: { uids: payload.key },
+											query: { id: 'newchat' },
+										}, 	true);
+									};	return {};
+								}
+							},
 							[THS.id.msg]: {
 								isAlert: true,
 								/**
 								 * @param {Object} items 
 								 * @param {ChatMessage} items.payload 
 								 */
-								state({ payload = {} } = items) {
+								state({ id, payload = {} } = items) {
 									let msg = FromJS(payload).toJS();
-									// ---
+									// Mutate the State
 									return { chats: WK(msg.uids, C => {
 										delete msg.uids; msg.latest = 1;
 										C.messages.last.latest = 0;
+										console.info('NEW MSG:', Assign({},msg));
 										C.messages.push(msg);
 									},	"array") };
 								}
@@ -5727,7 +5857,8 @@ function Comps(COMPS) {
 								method:	 'GET', 
 								headers: { token: COMPS.Token },
 								query:   { id },
-							}	),	0);	}
+							}	),	0);	
+						}
 					}
 
 					componentDidUpdate(prevProps, prevState) {
@@ -5802,17 +5933,40 @@ function Comps(COMPS) {
 							})[which](users).sort();
 						return immutable ? Imm.List(IDs) : IDs;
 					}
-
 					/**
 					 * ...
 					 * @param {*} one 
 					 * @param {*} two 
 					 */
-					checkKeys(one, two) {
+					keysCheck(one, two) {
 						return Imm.is(
 							this.keys(one.k, one.w, true),
 							this.keys(two.k, two.w, true)
 						);
+					}
+					/**
+					 * Executes the specified callback on a `ChatProps` upon finding the matching memberIDs.
+					 * @param {BubbleObjs|string[]} users The thread memebers or a list of memberIDs.
+					 * @param {(chat:ChatProps,uids:string[])=>ChatProps} callback A callback to execute upon match. It will recieve the `ChatProps`, as well as the memberIDs.
+					 * @param {'object'|'array'} [which] A flag denoting the `user` param type.
+					 * @returns {ChatProps[]} The current (and possibly mutated) `ChatProps` list.
+					 */
+					keysWith(users, callback, which = 'object') {
+						let THS  = this;
+						/** 
+						 * @type {ChatProps[]}
+						 */
+						let Chts = FromJS(THS.state.chats).toJS(),
+							 IDs = THS.keys(users, which, false),
+							iIDs = Imm.List(IDs);
+						return Chts.map(C => {
+							/** 
+							 * @type {import('immutable').List<string>}
+							 */
+							let kys = THS.keys(C.users, "object", true);
+							if (Imm.is(kys,iIDs)) callback(C, IDs);	
+							return C;
+						});
 					}
 
 					/**
@@ -5830,41 +5984,16 @@ function Comps(COMPS) {
 						 * @param {ChatProps} C 
 						 * @returns {boolean}
 						 */
-						let filtr = (C)=>(this.checkKeys({k:C.users},users));
+						let filtr = (C)=>(this.keysCheck({k:C.users},users));
 						let check = chats.filter(filtr);
 						// ----
 						chats.map(C=>C.open=false);
 						if (!!!check.length) {
 							chats = [chat, ...chats];
-						} else {
+						} else { 
 							let idx = chats.indexOf(check[0]);
 							chats[idx] = chat;
 						};	return chats;
-					}
-
-					/**
-					 * Executes the specified callback on a `ChatProps` upon finding the matching memberIDs.
-					 * @param {BubbleObjs|string[]} users The thread memebers or a list of memberIDs.
-					 * @param {(chat:ChatProps,uids:string[])=>ChatProps} callback A callback to execute upon match. It will recieve the `ChatProps`, as well as the memberIDs.
-					 * @param {'object'|'array'} [which] A flag denoting the `user` param type.
-					 * @returns {ChatProps[]} The current (and possibly mutated) `ChatProps` list.
-					 */
-					withKeys(users, callback, which = 'object') {
-						let THS  = this;
-						/** 
-						 * @type {ChatProps[]}
-						 */
-						let Chts = FromJS(THS.state.chats).toJS(),
-							 IDs = THS.keys(users, which, false),
-							iIDs = Imm.List(IDs);
-						return Chts.map(C => {
-							/** 
-							 * @type {import('immutable').List<string>}
-							 */
-							let kys = THS.keys(C.users, "object", true);
-							if (Imm.is(kys,iIDs)) callback(C, IDs);	
-							return C;
-						});
 					}
 
 					/**
@@ -5970,7 +6099,6 @@ function Comps(COMPS) {
 						};	};
 						if (!!date) list.push(Number(date));
 					}
-
 					/**
 					 * Retrieves the `BubbleProps` from `ChatProps`.
 					 * @param {ChatProps} props The Chat props.
@@ -5981,8 +6109,11 @@ function Comps(COMPS) {
 							keys  = Object.keys(users),
 							heads = keys.length,
 							multi = heads > 1,
-							count = messages.length,
-							last  = null;
+							count = messages.length;
+						/**
+						 * @type {ChatProps}
+						 */
+						let last;
 						if (multi && !!count) {
 							for (let i=messages.length-1; i>-1; i--) {
 								if (messages[i].who!=COMPS.UID) {
@@ -5997,10 +6128,12 @@ function Comps(COMPS) {
 						return style.mergeDeep(
 							FromJS(last), FromJS({ 
 								multi: multi?heads:false, 
-								opts: [{ open: open }]
+								opts: [{ open }],
+								alerts: messages.reduce((P,C)=>(
+									P+(C.unseen||[]).has(COMPS.UID)
+								),	0)
 						})	).toJS();
 					}
-
 					/**
 					 * Formats the current `ChatProps`.
 					 * @param {ChatProps} props The Chat props.
@@ -6015,6 +6148,59 @@ function Comps(COMPS) {
 							,	[]);
 						}; 	return props;
 					}
+
+					/**
+					 * Grabs the number of unseen messages for the User.
+					 * @param {ChatProps} chat 
+					 */
+					getUnseen(chat) {
+						let stat  = ![undefined,null].has(chat.idx),
+							empty = !!!chat.messages;
+						if (!stat||empty) return 0;
+						return chat.messages.filter(
+							M=>(M.unseen||[]).has(COMPS.UID)
+						).length;
+					}
+					/**
+					 * Refreshes the "new" status of unseen messages.
+					 * @param {ChatProps} chat The chat properties.
+					 * @void
+					 */
+					setUnseen(chat) {
+						let THS = this;
+						if (!!THS.getUnseen(chat)) {
+							let uids = [
+									COMPS.UID,
+									Object.keys(chat.users),
+								].join(';');
+							setTimeout(()=>Actions.Data.send('/threads', {
+								method: "PUT",
+								headers: { token: COMPS.Token },
+								params: { uids, kind: 'seen' },
+								body: { id: 'thread', single: true },
+							}, true), 100);
+						};
+						/* let THS   = this,
+							stat  = ![undefined,null].has(chat.idx),
+							empty = !!!chat.messages; */
+						/**
+						 * @type {ChatProps[]}
+						 */
+						// let chats = THS.state.chats;
+						// ------------------------------------------------- //
+							/* if (!!stat&&!empty&&!!chat.messages.last.latest) {
+								setTimeout(() => {
+									THS.setState({
+										chats: chats.map((C,I)=>(
+											(I==chat.idx)&&(
+												C.messages.last.latest=0,
+												C.alerts
+											),	C
+										)),
+									});
+								}, 2000);
+							}; */
+					}
 				
 				// MAIN      /////////////////////////////////////////////////////////
 
@@ -6028,20 +6214,22 @@ function Comps(COMPS) {
 										.toJS()
 										.map((c,i)=>(c.idx=i,c))
 										.slice(0,max),
-							chat  = (chats.filter((c)=>(c.open))[0]||{});
+							chat  = (chats.filter((c,i)=>(c.open))[0]||{});
 						// ---------------------------------------------------------- //
-						return ( NMESPC.page.type!='jumbo' && COMPS.IsAuthd ?
-							<section className="noSelect gridItemChat gridThreads" id="threads">
-								<Threads.Chat {...THS.getChatProps(chat)} forRef={THS.forRefs} onKeyPress={THS.inputFactory(chat.idx)} />
-								<div className="gridItemThreads" id="chatter">
-									<Bubble name={{First:'More',Last:'Chats'}} {...dopts} {...{kind:'more'}} />
-									{chats.reverse().map((b,i)=>(
-										<Bubble key={`chat${i}`} kind="user" onClick={THS.toggleFactory(b.idx)} {...THS.getBubbleProps(b)} />
-									))}
-									<Bubble name={{First:'New',Last:'Chat'}} {...dopts} {...{kind: 'add'}} />
-								</div>
-							</section> : null
-						);
+							THS.setUnseen(chat);
+						// ---------------------------------------------------------- //
+							return ( NMESPC.page.type!='jumbo' && COMPS.IsAuthd ?
+								<section className="noSelect gridItemChat gridThreads" id="threads">
+									<Threads.Chat {...THS.getChatProps(chat)} forRef={THS.forRefs} onKeyPress={THS.inputFactory(chat.idx)} />
+									<div className="gridItemThreads" id="chatter">
+										<Bubble name={{First:'More',Last:'Chats'}} {...dopts} {...{kind:'more'}} />
+										{chats.reverse().map((b,i)=>(
+											<Bubble key={`chat${i}`} kind="user" onClick={THS.toggleFactory(b.idx)} {...THS.getBubbleProps(b)} />
+										))}
+										<Bubble name={{First:'New',Last:'Chat'}} {...dopts} {...{kind: 'add'}} />
+									</div>
+								</section> : null
+							);
 					}
 			};
 			EV.Threads.defaultProps = {
@@ -6089,6 +6277,23 @@ function Comps(COMPS) {
 							name = joinV((users[keys[0]]||{}).name||dflt, ' ');
 						};	
 						return name; 
+					}
+					/**
+					 * ...
+					 * @param {Object} props 
+					 * @param {ChatProps[]} props.messages 
+					 */
+					function Messages({ items } = props) {
+						let count = items.length;
+						return (
+							<div key="msg" className="threadMsg">
+								{!!count ? items.map((m,i) => (
+									isNaN(m) ?
+									<Message key={`msg${i}`} {...m} /> :
+									<Day key={`msg${i}`} stamp={m} />
+								),	[]) : <span key="msg0"> </span> }
+							</div>
+						);
 					}
 					/**
 					 * Renders a Chat message.
@@ -6139,8 +6344,7 @@ function Comps(COMPS) {
 				// ----------------------------------------------------------------------- //
 				let ukeys = Object.keys(users||{}),
 					rdkey = [COMPS.UID,...ukeys].join(';'),
-					multi = ukeys.length > 1,
-					count = messages.length;
+					multi = ukeys.length > 1;
 				// ----------------------------------------------------------------------- //
 					return (
 						<div className="gridItemChatBox">
@@ -6148,13 +6352,7 @@ function Comps(COMPS) {
 								<h6 key="name" className="threadName trunc">{
 									getName(open?users:[],ukeys)
 								}</h6>
-								<div key="msg" className="threadMsg">
-									{!!count ?  messages.slice(0).reverse().map((m,i) => (
-										isNaN(m) ?
-										<Message key={`msg${i}`} {...m} /> :
-										<Day key={`msg${i}`} stamp={m} />
-									),	[]) : <span key="msg0"> </span> }
-								</div>
+								<Messages items={messages.slice(0).reverse()}/>
 								<div className="threadInput">
 									<Box value={input} forRef={forRef} onKeyPress={onKeyPress} />
 								</div>

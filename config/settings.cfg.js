@@ -10,23 +10,23 @@ module.exports = {
 		DHP:	"/opt/local/etc/nginx/ssl/dhparam.pem",
 	},
 	Services: 	[
-		'https://evectr.com:8443/gbl-accessor',
-		'https://evectr.com:8443/gbl-rest',
+		'https://arian.evectr.com:8443/gbl-accessor',
+		'https://arian.evectr.com:8443/gbl-rest',
 	],
 	APIDoc:		{
 		info: {
 			title: "eVectr.API",
 			description: "The official eVectr™ API.",
-			termsOfService: "https://evectr.com/terms",
+			termsOfService: "https://arian.evectr.com:8443/terms",
 			contact: { 
 				name: "eVectr™ Support",
 				email: "support@evectr.com",
-				url: "https://evectr.com/help",
+				url: "https://arian.evectr.com:8443/help",
 			},
 			version: "1.0.0"
 		},
 		servers: [
-			{ url: "https://evectr.com" }
+			{ url: "https://arian.evectr.com:8443" }
 		],
 		externalDocs: {},
 	},

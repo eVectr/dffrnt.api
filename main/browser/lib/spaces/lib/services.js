@@ -88,6 +88,7 @@ module.exports = {
 								return { tag: tag, items: text };
 							},
 				DSV  	  = function DML(v) {
+								if (!!!v) return [];
 								var asg = Assign,
 									chk = !!v && !isNaN(v),
 									num = (chk ? (v>5?5:v) : null),
@@ -105,10 +106,11 @@ module.exports = {
 				user_id	  = res.user_id,
 				pdid 	  = res.provider_id,
 				photos 	  = res.photos||{},
-				services  = DSV(res.services||5),
+				services  = DSV(res.services),
 				settings  = res.settings||{},
 				modes	  = settings.modes||{},
 				provider  = !!modes.provider;
+
 			// -----
 			if (!provider) throw new Error('Not a Service Provider');
 			// -----
