@@ -474,6 +474,7 @@
 						.notused { color: #5F7C98 !important; }
 				/* F1: TURKISH ROSE (RED)         */
 					/* BACKGROUND         */
+						.counter,
 						.heading.reveal.nope:hover,
 						.heading.reveal.nope:hover+.heading,
 						.nope:not(.heading):not(.tgl):not(.help):not(.alert):hover,
@@ -2448,7 +2449,9 @@
 		}
 		.mirror { float: right; }
 		.nowrap,
-		.column.nowrap > * { white-space: nowrap; }
+		.column.nowrap > * { 
+			white-space: nowrap; 
+		}
 		.small { font-size: .85em; }
 		.muted { color: #777; }
 
@@ -2750,6 +2753,34 @@
 				background-position: center;
 				background-color: #E6E6E6;
 				opacity: 0.7;
+			}
+			.coverForm {
+				position: relative;
+				width: 	100%;
+				height: 100%;
+				top: 0; left: 0;
+				background-color: black;
+				position: absolute;
+			}
+				.coverForm > input[type="file"] {
+					display: none;
+				}
+			.coverLbl {
+				position: relative;
+				display: table;
+				top: 1.5em;
+				right: 1.5em;
+				position: absolute;
+			}
+			.coverForm, .coverLbl {
+				opacity: 0;
+				transition: opacity .5s ease;
+			}
+			.gridItemCover.edit:hover .coverForm {
+				opacity: .25;
+			}
+			.gridItemCover.edit:hover .coverLbl {
+				opacity: 1;
 			}
 
 		/******************************************************************/
@@ -3214,6 +3245,7 @@
 						top: 0; left: 0;
 						transform: translateX(-130%);
 						width: 130%; 
+						min-width: 275px;
 						height: 95%;
 						padding: .5em;
 						position: absolute;
@@ -3913,10 +3945,52 @@
 			width: 100%;
 			font-size: 5em;
 		}
-		.bubble > * {
+		.bubble > *:not(.counter) {
 			grid-area: point;
 			border: none;
 			width: 100%;
+		}
+
+
+		.bubble > .counter {
+			position: relative;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			top: -.25em;
+			right: -.25em;
+			width: 1.5em;
+			height: 1.5em;
+			font-size: .5em;
+			font-weight: bold;
+			border-radius: 50%;
+			border: 1px solid #75717B;
+			position: absolute;
+		}
+			.bubble > .counter:after {
+				content: attr(data-cnt);
+				line-height: 1.5em;
+			}
+		.bubble:hover > .counter {
+			top: -.5em;
+			right: -.5em;
+		}
+
+
+		.bubble.edit:hover::after {
+			content: "EDIT";
+			font-size: smaller;
+			font-weight: bold;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			width: 100%;
+			height: 100%;
+			background-color: rgba(0,0,0,.35);
+			border-radius: inherit;
+		}
+		.bubble.edit + form > input[type="file"] {
+			display: none;
 		}
 
 	/******************************************************************/
@@ -3933,9 +4007,6 @@
 					align-items: stretch;
 		}
 
-		.table .column {
-			overflow: hidden;
-		}
 		.table .column p:last-child {
 			margin-bottom: 0;
 		}
@@ -3968,9 +4039,11 @@
 
 		.table .column {
 			display: flex;
-			align-items: center;
+			align-items: stretch;
+			justify-content: stretch;
 			background-color: white;
 			padding: .5em 1em;
+			overflow: hidden;
 		}
 		.table .column.head {
 			align-items: flex-end;
@@ -3980,6 +4053,9 @@
 		}
 		.column.head.right {
 			border-radius: 0 .5em 0 0;
+		}
+		.table > .column > *:not(.trunc) {
+			display: contents;
 		}
 
 		.column.L { justify-content:  flex-start; }

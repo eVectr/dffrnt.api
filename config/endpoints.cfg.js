@@ -440,7 +440,7 @@
 											to: 'query', 
 										})
 									}),
-						Picture: 	new GNParam({
+						/* Picture: 	new GNParam({
 										Name:	 'Profile Image',
 										Default  (   ) { return 'NULL'; },
 										Format	 (cls) { return cls.picture; },
@@ -451,8 +451,8 @@
 											required: true,
 											to: 'query', 
 										})
-									}),
-						Cover: 		new GNParam({
+									}), */
+						/* Cover: 		new GNParam({
 										Name:	 'Cover Image',
 										Default  (   ) { return 'NULL'; },
 										Format	 (cls) { return cls.cover; },
@@ -463,7 +463,7 @@
 											required: true,
 											to: 'query', 
 										})
-									}),
+									}), */
 						Visibles: 	new GNParam({
 										Name:	 'Visiblity Flags',
 										Default  (   ) { return -1; },
@@ -1708,6 +1708,9 @@
 											hidden: true, 
 											to: 'query', 
 										})
+									})
+									.AddVersion('Store', {
+										Desc: { type: PT.Path, required: false },
 									}),
 						TZone: 		new GNParam({
 										Name: 	 'Timezone',
@@ -1784,6 +1787,7 @@
 										}),
 						File: 		new GNParam({
 										Name:	 'File',
+										Aliases: ['Picture','Cover'],
 										Default:  null,
 										Format 	 (cls) { return cls.file||this.Default; },
 										Desc: 	  new GNDescr({
@@ -1791,10 +1795,17 @@
 												accept: 'audio/*,video/*,image/*,application/pdf',
 												'data-limit': 8388608,
 											} 	}, 
-											description: 'A valid {{File Stream}}', 
+											description: 'A valid {{<<NAME>> Stream}}', 
 											matches: {}, required: true, to: 'query', 
 										})
-									}),
+									})
+									.AddVersion('Picture', {
+										Format	 (cls) { return cls.picture||this.Default; },
+										Desc: 	 { type: { File: { accept: 'image/*' } } },
+									})
+									.AddVersion('Cover', {
+										Format	 (cls) { return cls.cover||this.Default; },
+									}, 	'Picture'),
 
 				}
 			},
@@ -3141,23 +3152,43 @@
 						Methods: 	Docs.Kinds.PUT,
 						PUT			() { return {
 							Merge: 		true,
-							Scheme: 	'/', //$# '/:uids(\\d*)/',
+							Scheme: 	'/', 
 							Limits: 	["Tries/Second"],
 							Doc: 		{
 								Headers: 	{ Token: true },
+								Files: 		{
+									field:	'cover',
+									max:	1,
+									dest 	() { return 'cover'; },
+									name	(prm, _bdy, file) { 
+										let jpg = file.mimetype=='image/jpeg',
+											ext = file.originalname.split('.').last,
+											res = `user_${prm.uids}.${jpg?'jpg':ext}`;
+										return res; 
+									},
+								},
 								Examples: 	{
 									"/:uids:14": "Updates the {{Cover Image}} of the {{User}} at the {{User ID}}, 14",
 								},
 							},
 							Query: 		[
+								// "UPDATE     user_profile_details  AS d",
+								// "LEFT  JOIN user_photos           AS i ON d.user_fk = i.user_fk",
+								// "                                     AND i.id      = :COVER:",
+								// "SET        d.profile_cover    = COALESCE(i.id, d.profile_cover)",
+								// "WHERE      d.user_fk IN (:UIDS:);",
 								"UPDATE     user_profile_details  AS d",
-								"LEFT  JOIN user_photos           AS i ON d.user_fk = i.user_fk",
-								"                                     AND i.id      = :COVER:",
-								"SET        d.profile_cover    = COALESCE(i.id, d.profile_cover)",
+								"SET        d.profile_cover = CONCAT_WS('/',':LOCATION:',':COVER:')",
 								"WHERE      d.user_fk IN (:UIDS:);",
 								":/User/Photos(GET):"
 							],
-							Params: 	{ Cover: true, UIDs: true, UUID: true, Single: true },
+							Params: 	{ 
+								UIDs:       true, 
+								Cover:    ['Cover'], 
+								Location: ['Store'],
+								UUID:       true, 
+								Single:     true, 
+							},
 						};	},
 						Links: 		[],
 						Key: 		'user_id',
@@ -3168,23 +3199,43 @@
 						Methods: 	Docs.Kinds.PUT,
 						PUT			() { return {
 							Merge: 		true,
-							Scheme: 	'/', //$# '/:uids(\\d*)/',
+							Scheme: 	'/', 
 							Limits: 	["Tries/Second"],
 							Doc: 		{
 								Headers: 	{ Token: true },
+								Files: 		{
+									field:	'picture',
+									max:	1,
+									dest 	() { return 'user'; },
+									name	(prm, _bdy, file) { 
+										let jpg = file.mimetype=='image/jpeg',
+											ext = file.originalname.split('.').last,
+											res = `user_${prm.uids}.${jpg?'jpg':ext}`;
+										return res; 
+									},
+								},
 								Examples: 	{
 									"/:uids:14": "Updates the {{Profile Image}} of the {{User}} at the {{User ID}}, 14",
 								},
 							},
 							Query: 		[
+								// "UPDATE     user_profile_details  AS d",
+								// "LEFT  JOIN user_photos           AS i ON d.user_fk = i.user_fk",
+								// "                                     AND i.id      = :PICTURE:",
+								// "SET        d.profile_picture  = COALESCE(i.id, d.profile_picture)",
+								// "WHERE      d.user_fk IN (:UIDS:);",
 								"UPDATE     user_profile_details  AS d",
-								"LEFT  JOIN user_photos           AS i ON d.user_fk = i.user_fk",
-								"                                     AND i.id      = :PICTURE:",
-								"SET        d.profile_picture  = COALESCE(i.id, d.profile_picture)",
+								"SET        d.profile_picture = CONCAT_WS('/',':LOCATION:',':PICTURE:')",
 								"WHERE      d.user_fk IN (:UIDS:);",
 								":/User/Photos(GET):"
 							],
-							Params: 	{ Picture: true, UIDs: true, UUID: true, Single: true },
+							Params: 	{ 
+								UIDs:       true, 
+								Picture:  ['Picture'], 
+								Location: ['Store'],
+								UUID:       true, 
+								Single:     true, 
+							},
 						};	},
 						Links: 		[],
 						Key: 		'user_id',
@@ -3195,7 +3246,7 @@
 						Methods: 	Docs.Kinds.GPUT,
 						GET			() { return {
 							Merge: 		true,
-							Scheme: 	'/', //$# '/:uids([\\d;]+\\b)/',
+							Scheme: 	'/',
 							Doc: 		{
 								Headers: 	{ Token: true },
 								Examples: 	{
@@ -3212,11 +3263,11 @@
 								"WHERE      u.user_fk IN (:UIDS:)",
 								":LIMIT: :PAGE:",
 							],
-							Params: 	{ UIDs: true, ID: true, Page: ['SQL'], Limit: ['SQL'] },
+							Params: 	{ UIDs: true, ID: true, Page: ['SQL'], Limit: ['SQL'], Single: true },
 						};	},
 						PUT			() { return {
 							Merge: 		true,
-							Scheme: 	'/', //$# '/:uids(\\d*)/',
+							Scheme: 	'/',
 							Limits: 	["Tries/Second"],
 							Doc: 		{
 								Headers: 	{ Token: true },
@@ -3225,7 +3276,13 @@
 								},
 							},
 							Query: 		[":/User/Picture(PUT):",":/User/Cover(PUT):",":/User/Photos(GET):"],
-							Params: 	{ Picture: true, Cover: true, UIDs: true, UUID: true, Single: true },
+							Params: 	{ 
+								Picture: ['Picture'], 
+								Cover:   ['Cover'], 
+								UIDs:      true, 
+								UUID:      true, 
+								Single:    true 
+							},
 						};	},
 						Links: 		[],
 						Key: 		'user_id',
@@ -3330,7 +3387,7 @@
 								return res[0].user_id; },
 						};	},
 						PUT			() { return {
-							Scheme: 	'/:uids(\\d*)/',
+							Scheme: 	'/:uids(\\d+)/',
 							Limits: 	["Tries/Second"],
 							Doc: 		{
 								Headers: 	{ Token: true },
@@ -5255,6 +5312,35 @@
 					idObj(list = []) {
 						return list.reduce((p,c)=>(p[c]={},p),{});
 					},
+					async getMessages(UIDs, UUID) {
+						try {
+							return (await Points.Threads['/'].GET({
+								params: { uids: UIDs.join(';') },
+								query:  { uuid: UUID },
+							}))[1];
+						} catch (e) {}
+					},
+					/**
+					 * Saves a Chat-Thread
+					 * @param {string} key 
+					 * @param {ChatProps} chat 
+					 */
+					setMessages(key, chat) {
+						let Lmt = Dmt = 50;
+						// Get the Message Limit
+						Lmt = chat.messages.filter(M=>!!(M.unseen||[]).length);
+						Lmt = (Lmt>Dmt ? Lmt : Dmt);
+						// Save the Message Thread
+						return new Promise((R,J) => (
+							Stores.Messages.HMSET(key, { 
+								messages: JSON.stringify(chat.messages.slice(0,Lmt)), 
+								archive: JSON.stringify([
+									...chat.archive,
+									...chat.messages.slice(Lmt),
+								]), 
+							},	(e,r)=>(!!e?J(e):R(r)
+						))));
+					},
 					setActivity(UUID, key) {
 						return new Promise(res => (
 							Stores.Messages.ZADD(
@@ -5375,10 +5461,8 @@
 								// ----------------------------------------------------------- //
 									keys =  `|${UIDs}|`;
 									tkey =  this.key(keys);
-									rslt =  (await Points.Threads['/'].GET({
-												params: { uids: cls.UIDs.join(';') },
-												query:  { uuid: cls.UUID },
-											}))[1];
+									rslt =  await this.getMessages(cls.UIDs,cls.UUID);
+
 									if (!!!rslt) {
 										rslt =  await new Promise((R,J) => (
 													Stores.Messages.HMSET(tkey, { 
@@ -5395,7 +5479,6 @@
 												params: { uids: cls.UIDs.join(';') },
 												query:  { uuid: cls.UUID },
 											}))[1];
-											console.log(JSON.stringify(rslt,null,"  "))
 										};
 									};
 								// ----------------------------------------------------------- //
@@ -5410,8 +5493,8 @@
 							},
 						};	},
 						PUT			() { return {
-							Scheme: 	'/:uids([\\d;]+)/:kind(add|rem|send)/',
-							Limits: 	["Tries/Second","5Tries/Second"],
+							Scheme: 	'/:uids([\\d;]+)/:kind(add|rem|send|seen|type)/',
+							Limits: 	["5Tries/Second"],
 							Doc: 		{
 								Headers: 	{ Token: true },
 								Examples: 	{
@@ -5421,7 +5504,12 @@
 								},
 							},
 							async Query(cls) {
-								let UUID = Number(cls.UUID), rslt = [], user = [], keys, tkey, 
+								/**
+								 * @type {ChatProps}
+								 */
+								let rslt;
+								let THS  = this,
+									UUID = Number(cls.UUID), user = [], keys, tkey, 
 									gUID = (uids)=>(uids.sort()
 													.reduce((p,c)=>(!p.has(c)&&p.push(c),p),[])
 													.join('|')),
@@ -5431,13 +5519,14 @@
 									// Get existing Thread
 									keys =  `|${UIDs}|`;
 									tkey =  this.key(keys);
-									rslt =  await new Promise((R,J) => (
+									rslt =  ((await new Promise((R,J) => (
 												Stores.Messages.HGETALL(tkey, (e, rep)=>(
 													(!!e?J(e):R(!!!rep?rep:{
 														owned: UUID==rep.owner,
 														users: this.idObj(this.idLst(keys,[UUID])),
 														messages: JSON.parse(rep.messages),
-											})	))	))	);
+														archive: JSON.parse(rep.archive),
+											})	))	))	))||[]);
 									// Perform actions on Thread
 									if (!!rslt) { 
 										// Determine Actions
@@ -5484,31 +5573,45 @@
 													// Post the Notification
 													Alert.Post(All, { type:'message', payload: alert });
 												};	break;;
+											// Message has been Seen
+											case 'seen':
+												rslt.messages = rslt.messages.map(
+													(M,_I,_A)=>((M.unseen||[]).has(UUID)&&(
+														M.unseen=M.unseen.filter(U=>(U!=UUID))
+													), 	M));
+												// Save the Message Thread
+												await this.setMessages(tkey, rslt);
+												break;
 											// Send a Message
 											case 'send':
-												let Oth = cls.UIDs.filter(u=>u!=UUID),
+												let All = UIDs.split('|'),
+													Oth = cls.UIDs.filter(u=>u!=UUID),
 													Msg = {
 														time: new Date().getTime(),
-														who: UUID, text: cls.Msg
+														unseen: Oth.map(u=>Number(u)),
+														who: UUID, text: cls.Msg,
 													};
 												// Append new Message
 												rslt.messages.push(Msg);
 												// Save the Message Thread
-												await new Promise((R,J) => (
-													Stores.Messages.HMSET(tkey, { 
-														messages: JSON.stringify(rslt.messages.slice(0,50)), 
-														archive: JSON.stringify(rslt.messages.slice(50)), 
-													},	(e,r)=>(!!e?J(e):R(r)
-												))));
+												await this.setMessages(tkey, rslt);
 												// Update Activity
-												await this.setActivity(UUID,keys);
-												// Post the Notification
-												Alert.Post(Oth, { 
-													type:'message', payload: { 
-														...{ uids: UIDs.split('|') }, 	
-														...Msg
-												}	});
-												break;;
+												await Promise.all(All.map(
+													O=>THS.setActivity(O,keys)
+												));
+												// Post the Notification(s)
+												if (rslt.messages.length>1) {
+													Alert.Post(Oth, { 
+														type:'message', payload: { 
+															...{ uids: UIDs.split('|') }, 	
+															...Msg
+													}	});
+												} else {
+													Alert.Post(Oth, { 
+														type: 'first_msg', 
+														payload: { key: UIDs.split('|').join(';') }, 
+													});
+												};	break;;
 										};
 									} else {
 										throw new Error('Thread not found.');
@@ -5523,7 +5626,9 @@
 											Default: 	null,
 											Format 		(cls) { return cls.kind; },
 											Desc: 		new GNDescr({
-												type: PT.Text({ selects: ['add','rem','send'] }), 
+												type: PT.Text({ selects: [
+													'add','rem','send','seen','type'
+												] 	}), 
 												description: 'A valid <<NAME>>',
 												required: true, 
 												matches: { 
@@ -5605,8 +5710,8 @@
 							},
 						};	},
 						Parse  	(res) { 
-							let { UIDs, Single } = this.QY;
-							if (!!UIDs||!!Single) {
+							let { uids, single } = this.QY;
+							if (!!uids||!!single) {
 								return res[0]
 							} else {
 								return res;

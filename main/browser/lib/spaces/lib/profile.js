@@ -86,6 +86,7 @@ module.exports = {
 		return function (res) {
 			var FLT  = 	function FLT(v) { return !!v }, 
 				DSV  = 	function DML(v) {
+							if (!!!v) return [];
 							var asg = Assign,
 								chk = !!v && !isNaN(v),
 								num = (chk ? (v>5?5:v) : null),
@@ -139,7 +140,7 @@ module.exports = {
 								}),
 				gender			= null, /*DML(identity.gender,0,1),*/
 				orient			= DML(identity.orient, 0, 1),
-				services 		= DSV(res.services||5),
+				services 		= DSV(res.services),
 				modes			= settings.modes||{},
 				provider 		= !!modes.provider && services.length,
 				verified		= !!checks.verified;

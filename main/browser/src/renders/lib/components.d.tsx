@@ -96,6 +96,10 @@ declare global {
          */
         img?: string;
         /**
+         * An `optional` notification-count.
+         */
+        alerts?: number;
+        /**
          * An _optional_ list of `classNames` to style the `Bubble` with.
          */
         opts?: string[];
@@ -103,6 +107,11 @@ declare global {
          * An _optional_ `plain-object` of custom `CSS` to style the `Bubble` with. 
          */
         style?: { [cssProp: string]: string; };
+        /**
+         * A reference to an input. If set, will render 
+         * the Bubble within a Label.
+         */
+        htmlFor?: string;
         /**
          * An _optional_ handler for user interaction.
          */
@@ -139,6 +148,10 @@ declare global {
          */
         url?: string;
         /**
+         * A list IDs representing those that have not seen the message.
+         */
+        unseen: number[];
+        /**
          * A flag denoting a new message.
          */
         latest?: boolean;
@@ -147,6 +160,10 @@ declare global {
      * A plain-object describing a Chat session.
      */
     export interface ChatProps {
+        /**
+         * The `optional` index of the Chat-Thread
+         */
+        idx?: number;
         /**
          * The state of the Chat-window.
          */

@@ -22,7 +22,10 @@ declare global {
 
     export namespace FluxElements {
         namespace Stock {
-            
+            /**
+             * Renders a Bubble Immage/Button.
+             */
+            class Bubble extends React.Component<BubbleProps, BubbleProps> {}
         }
     }
 
@@ -79,5 +82,14 @@ declare global {
          * @param e The event object.
          */
         function stopEvent(e: React.SyntheticEvent<Element,Event>): void;
+        /**
+         * A factory that creates an upload-handlers.
+         * @param uri The request URI.
+         * @param method The HTTP Method of this Upload Request.
+         * @param id An arbitrary identifier to of the Reflux Receiver-Component
+         * @param headers A plain-object of HTTP-Headers/Values
+         * @returns An upload-handler to use in form-components.
+         */
+        function Uploader(uri: string, method: 'POST'|'PUT', id: string, headers: { [header:string]: string }): (e: React.UIEvent<HTMLInputElement>) => void;
     }
 };

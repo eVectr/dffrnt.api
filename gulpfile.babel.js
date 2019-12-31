@@ -45,7 +45,9 @@
 			};
 		};
 
-		let 	crashes = null;
+		let 	crashes  = null,
+				args 	 = process.argv.slice(2), C = 0,
+				verb  	 = (args.slice(-1)[0]||'')=='--verbose';
 
 	// Configs ----------------------------------------------------------------------------------
 
@@ -94,7 +96,7 @@
 						fullPaths: false,
 						debug: isDev(),
 					},
-					entries: [
+					bundles: [
 						{
 							source: 	'vendor.js',
 							require:	browReq,
@@ -121,19 +123,23 @@
 								booleans: true,
 								if_return: true,
 								join_vars: true,
-								warnings: isDev(),
+								warnings: isDev() && verb,
 								// passes: 5,
 							}
 					} 	},
 					location: 	`${pubFld}/js`,
 				};
 		const 	jsx 	= {
-					source: `${brwFld}/src/**/*.jsx`,
+					task:     'brow-jsx',
+					source:   `${brwFld}/src/**/*.jsx`,
+					watch:    `${brwFld}/lib/**/*.jsx`,
 					location:  libFld,
 					presets:  ['react','env']
 				};
 		const 	es6 	= {
-					source: `${brwFld}/src/es6/*.js`,
+					task:     'brow-es6',
+					source:   `${brwFld}/src/es6/*.js`,
+					watch:    `${brwFld}/lib/es6/*.js`,
 					location:  jsx.location,
 					presets:   jsx.presets
 				};
@@ -297,16 +303,14 @@
 		gulp.task('setup', SERIES('npm','bower','init'));
 
 	// Convert ----------------------------------------------------------------------------------
-	
-			console.log({ isDev: isDev(), isPro: isPro() })
 
 		//  ES6 to ES5 Conversion/Watch
 			gulp.task('es6-make',	(done) => {
 				gulp.src(es6.source)
+					.on(  'end', (e) => { done(); })
+					.on('error', (e) => { LOG('>>> ERROR', e); this.emit('end'); })
 					.pipe( babel({ presets: es6.presets, /* compact: true, */ comments: false }))
-					.on( 'error', (e) => { LOG('>>> ERROR', e); this.emit('end'); })
 					.pipe(gulp.dest(es6.location));
-				done();
 			});
 			gulp.task('es6-watch',	WATCH( 'ES6', es6.source, ['es6-make']));
 			gulp.task('es6', 		PARALLEL('es6-make','es6-watch'));
@@ -314,33 +318,34 @@
 		//  JSX to  JS Conversion/Watch
 			gulp.task('jsx-make',	(done) => {
 				gulp.src(jsx.source)
+					.on(  'end', (e) => { done(); })
+					.on('error', (e) => { LOG('>>> ERROR', e); this.emit('end'); })
 					.pipe( babel({ presets: jsx.presets, /* compact: true, */ comments: false }))
-					.on( 'error', (e) => { LOG('>>> ERROR', e); this.emit('end'); })
 					.pipe(gulp.dest(jsx.location));
-				done();
 			});
 			gulp.task('jsx-watch',	WATCH( 'JSX', jsx.source, ['jsx-make']));
 			gulp.task('jsx', 		PARALLEL('jsx-make','jsx-watch'));
 
 		// Browserify Concatenation
-			gulp.task( 'brow', (done) => {
-				let args = process.argv.slice(2), C = 0,
-					verb = (args.slice(-1)[0]||'')=='--verbose';
+			gulp.task('brow-make', (done) => {
 
 				function getBundle(entry) {
 					let BUND = new browserify(Assign({}, {
 							entries: entry.entries,
 						},	brow.options)),
 						SMAP = `${entry.source}.map`,
+						PMAP = `${pubFld}/js/${SMAP}`,
 						MINI = Assign({}, isDev() ? { 
-							map: `${pubFld.slice(1)}/js/${SMAP}`, 
-							output: `${pubFld}/js/${SMAP}`, 
+							map: PMAP.slice(1), 
+							output: PMAP, 
 						} : {},{
 							compressPath: p => (path.relative(`${__dirname}/..`, p)) 
 						}, 	brow.mini);
 
-					function doBundle() {
+					function doBundle(ids = []) {
+						// console.log(ids)
 						LOG(`BUNDLE: ${entry.source} to ${brow.location} ...`);
+						// if (fs.existsSync(PMAP)) { fs.unlinkSync(PMAP); console.log('FILE DELETED'); }
 						BUND.bundle()
 							.pipe(source(entry.source))
 							// .pipe( babel({ presets: ['env'], compact: false }))
@@ -353,19 +358,24 @@
 					if (!!entry.exclude ) BUND.exclude( entry.exclude );
 
 					BUND.on('update', doBundle)
-						.plugin('watchify', { delay: 100, ignoreWatch: ['**/node_modules/**'] })
 						.plugin('minifyify', MINI)
-						.on('log', msg => { LOG(`BUNDLE: ${msg}`); done() });
+						.plugin('watchify', { delay: 100, ignoreWatch: ['**/node_modules/**'] })
+						.on('log', msg => { LOG(`BUNDLE.SIZE: ${msg}`); BUND.emit('end'); })
+						.on('end', ( ) => { done(); })
 
-					if (verb) BUND.on('file', (f,i)=>{ C++; LOG(`FILE ${C}: ${f} | ${i}`); });
+					if (verb) BUND
+						.on('file', (f,i)=>{ C++; LOG(`BUNDLE.FILE ${i} | ${C}: ${f}`); })
+						.on('transform', (_tr,file) => { LOG(`BUNDLE.TRANSFORM: ${file}`); })
 
 					doBundle();
-				}
+				};
 
-				brow.entries.map(getBundle);
+				brow.bundles.map(getBundle);
 			});
+			// gulp.task('brow-watch',	WATCH('BROW', [es6.watch,jsx.watch], ['brow-make']));
 
-		gulp.task('bundle', SERIES('es6', 'jsx', 'brow'));
+		// gulp.task('bundle', SERIES('es6', 'jsx', 'brow-make', 'brow-watch'));
+		gulp.task('bundle', SERIES('es6', 'jsx', 'brow-make'));
 
 		// LESS to CSS Conversion/Watch
 			gulp.task('css-make',	(done) => {

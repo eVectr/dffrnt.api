@@ -418,10 +418,9 @@
 								async Main   (req) { try {
 									let sess = req.session,
 										acct = sess.user.acct,
-										bdy  = req.query,
-										rslt;
+										bdy  = req.query;
 									// Get Alerts List ----------------------------------- //
-									rslt = await Alert.List(acct);
+									let rslt = await Alert.List(acct);
 									// Return -------------------------------------------- //
 									return {
 										send: [MSG.VALID.temp,rslt,null,bdy],
@@ -466,7 +465,7 @@
 										bdy  = req.body, 
 										rslt = [], 
 										alids;
-									// Remove the Session(s)
+									// Remove the Alert(s)
 									alids = prm.alids.match(/([\w_-]{8})(?:(?=;)|$)/g);
 									if (!!alids) {
 										await Alert.Acknowledge(alids);

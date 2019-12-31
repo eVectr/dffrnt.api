@@ -276,7 +276,6 @@ function (Reflux, Actions, IOs) {
 							let state, imval = FromJS(value||{});
 							state = FromJS(this.state).mergeDeep(imval);
 							this.setState(state.toJS());
-							console.info('APP STATE UPDATED!!')
 						}
 						reset() { 
 							this.state = this.temps.toJS(); 
@@ -390,7 +389,6 @@ function (Reflux, Actions, IOs) {
 				}
 				
 				onAuth  		(point, data, noProg) {
-					// console.log(point)
 					this.time(data);
 					!!!noProg && Actions.App.progress(99, { paused:true });
 					requestAnimationFrame((function () {
@@ -398,7 +396,6 @@ function (Reflux, Actions, IOs) {
 					}).bind(this));
 				}
 				onSend  		(point, data, noProg) {
-					console.log(point)
 					this.time(data);
 					requestAnimationFrame((function () {
 						!!!noProg && Actions.App.progress(99);
@@ -454,7 +451,7 @@ function (Reflux, Actions, IOs) {
 				place			(id, data = {}) {
 					let THS = this, state = THS.state[id]||{};
 					this.setState({ [id]: Assign(
-						state, data, { stamp: new Date() }
+						{}, state, data, { stamp: new Date() }
 					) 	});
 				}
 				clear 			(id) {
